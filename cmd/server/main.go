@@ -96,10 +96,20 @@ func main() {
 		}
 		var ownAvatarOnce sync.Once
 		waClient.OnStatus = func() {
-			st := waStatus(waClient)
-			hub.Publish("whatsapp", st)
-			if st["connected"] == true {
-				ownAvatarOnce.Do(func() { c.FetchOwnAvatar(waClient.OwnJID()) })
+			ws := waStatus(waClient)
+			hub.Publish("whatsapp", ws)
+			if ws["connected"] == true {
+				ownAvatarOnce.Do(func() {
+					c.FetchOwnAvatar(waClient.OwnJID())
+					// Real people only: seeded leads live on fake +999 numbers.
+					if cs, err := st.Contacts(); err == nil {
+						for _, ct := range cs {
+							if ct.Avatar == "" && !store.IsDemoNumber(ct.Phone) {
+								c.FetchAvatar(ct)
+							}
+						}
+					}
+				})
 			}
 		}
 		go func() {
