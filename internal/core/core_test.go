@@ -262,3 +262,47 @@ func TestReplyAsJohnToDemoLeadIsNeverSent(t *testing.T) {
 		t.Fatalf("a real lead should get John's text: %q", after)
 	}
 }
+
+// The holding note promises a proper reply: handing the chat back once
+// Claude works again keeps that promise.
+func TestHandBackAfterOutageAnswersTheLead(t *testing.T) {
+	r := newRig(t)
+	r.claude.status.Store(http.StatusBadRequest)
+	r.lead("what is U-topia?")
+	r.waitRun(t)
+	r.claude.status.Store(0)
+
+	if err := r.core.SetStatus(r.contact(t).ID, store.StatusAuto); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		if runs, _ := r.store.Runs(2); len(runs) == 2 && runs[0].Status == "sent" {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	runs, _ := r.store.Runs(2)
+	if len(runs) != 2 || runs[0].Status != "sent" {
+		t.Fatalf("handing back should answer the waiting message: %+v", runs)
+	}
+	if n, _ := r.wa.sent(); n != 2 {
+		t.Fatalf("want the holding note then the real answer, got %d voice notes", n)
+	}
+}
+
+// A chat the AI handed off on purpose isn't re-answered on hand back: it
+// would only hand off again.
+func TestHandBackAfterHandoffWaitsForTheLead(t *testing.T) {
+	r := newRig(t)
+	r.lead("I want a refund")
+	r.waitRun(t)
+	calls := r.claude.calls.Load()
+	if err := r.core.SetStatus(r.contact(t).ID, store.StatusAuto); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if r.claude.calls.Load() != calls {
+		t.Fatal("no reply until the lead writes again")
+	}
+}

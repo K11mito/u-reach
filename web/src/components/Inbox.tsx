@@ -330,7 +330,7 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
               title="John's turn: the AI is paused in this chat"
               body={
                 contact.handoff_reason.startsWith("assistant unavailable")
-                  ? "The AI couldn't reply this time. Answer as John, or hand back to the AI for their next message."
+                  ? "The AI couldn't reply this time. Answer as John, or hand back to the AI once it's working and it answers them straight away."
                   : sentence(contact.handoff_reason || "The AI handed this chat to you.")
               }
             >

@@ -359,6 +359,10 @@ func (c *Core) speak(ctx context.Context, runID int64, script string) (voice.Voi
 // FallbackScript is the holding note sent when the brain is unavailable.
 const FallbackScript = "Hey! Got your message, thank you. Give me a little moment and I'll get back to you properly, okay?"
 
+// unavailable starts the handoff reason of a chat paused because the brain
+// failed, rather than because the AI chose to hand it to John.
+const unavailable = "assistant unavailable: "
+
 // Prewarm renders the fallback note ahead of time, so the safety net is
 // instant and works even if ElevenLabs is slow at that moment.
 func (c *Core) Prewarm(ctx context.Context) {
@@ -382,7 +386,7 @@ func (c *Core) fallback(ctx context.Context, runID int64, contact store.Contact,
 			log.Printf("core: holding text failed too: %v", err)
 		}
 	}
-	c.Store.SetStatus(contact.ID, store.StatusNeedsJohn, "assistant unavailable: "+cause.Error())
+	c.Store.SetStatus(contact.ID, store.StatusNeedsJohn, unavailable+cause.Error())
 	c.Store.FinishRun(runID, "failed", "brain: "+cause.Error(), "", "")
 	c.publishRun(runID)
 	c.publishContact(contact.ID)
@@ -500,7 +504,13 @@ func (c *Core) SendAsJohn(ctx context.Context, contactID int64, text string) err
 }
 
 // SetStatus changes a chat's mode (take over / hand back) and tells the dashboard.
+// Handing back a chat that was paused because the AI was down answers the
+// lead's waiting message, since their holding note promised a proper reply.
 func (c *Core) SetStatus(contactID int64, status string) error {
+	before, err := c.Store.Contact(contactID)
+	if err != nil {
+		return err
+	}
 	if err := c.Store.SetStatus(contactID, status, ""); err != nil {
 		return err
 	}
@@ -509,7 +519,48 @@ func (c *Core) SetStatus(contactID int64, status string) error {
 		c.Store.AddEvent(contactID, typ, nil)
 	}
 	c.publishContact(contactID)
+	if status == store.StatusAuto && strings.HasPrefix(before.HandoffReason, unavailable) {
+		c.answerWaiting(before)
+	}
 	return nil
+}
+
+// answerWaiting replies to the lead's last message if nobody has really
+// answered it yet (only the holding note went out).
+func (c *Core) answerWaiting(ct store.Contact) {
+	msgs, err := c.Store.Messages(ct.ID, 20)
+	if err != nil {
+		return
+	}
+	var last *store.Message
+	for i := len(msgs) - 1; i >= 0 && last == nil; i-- {
+		switch m := msgs[i]; {
+		case m.Direction == "in":
+			last = &msgs[i]
+		case m.Source == "ai" && m.Text == FallbackScript:
+			continue
+		default:
+			return // John or the AI already answered
+		}
+	}
+	chatJID, err := types.ParseJID(ct.Chat)
+	if last == nil || err != nil {
+		return
+	}
+	log.Printf("core: %s handed back; answering their waiting message", ct.DisplayName())
+	m := Msg{WAID: last.WAID, Chat: chatJID, Phone: ct.Phone, Text: last.Text, Simulated: store.IsDemoNumber(ct.Phone), At: time.UnixMilli(last.CreatedAt)}
+	c.mu.Lock()
+	if c.chats == nil {
+		c.chats = map[int64]*chat{}
+	}
+	ch := c.chats[ct.ID]
+	if ch == nil {
+		ch = &chat{}
+		c.chats[ct.ID] = ch
+	}
+	ch.pending = append(ch.pending, pending{msg: m, msgID: last.ID})
+	c.mu.Unlock()
+	c.fire(ct.ID)
 }
 
 // FetchAvatar pulls a contact's WhatsApp profile photo in the background,
