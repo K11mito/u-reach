@@ -116,6 +116,28 @@ var fallbackModels = map[string]bool{
 
 // Reply writes John's next voice note for the conversation.
 func (b *Brain) Reply(ctx context.Context, c Contact, history []Turn) (Reply, Meta, error) {
+	return b.generate(ctx, userPrompt(c, history), c, history)
+}
+
+// Opener writes John's first, unprompted voice note to someone he knows
+// (the outbound campaign). Replies then flow through Reply.
+func (b *Brain) Opener(ctx context.Context, c Contact) (Reply, Meta, error) {
+	var s strings.Builder
+	fmt.Fprintf(&s, "Today is %s.\n", time.Now().Format("Monday 2 January 2006"))
+	fmt.Fprintf(&s, "Write John's FIRST voice note to %s. He is reaching out personally; they haven't messaged him.\n", c.Name)
+	if c.Context != "" {
+		fmt.Fprintf(&s, "How John knows them: %s\n", c.Context)
+	}
+	if len(c.Memory) > 0 {
+		fmt.Fprintf(&s, "What John remembers about them: %s\n", strings.Join(c.Memory, "; "))
+	}
+	s.WriteString("Open warmly by name and mention how you know them. In a sentence or two, say why you thought of them and what U-topia is, made personal to them. " +
+		"End with one simple question that invites a reply. 40 to 70 words, about 15 to 25 seconds. " +
+		"Set include_referral to true and say you're dropping your link below. handoff is false.")
+	return b.generate(ctx, s.String(), c, nil)
+}
+
+func (b *Brain) generate(ctx context.Context, prompt string, c Contact, history []Turn) (Reply, Meta, error) {
 	params := anthropic.BetaMessageNewParams{
 		Model:     b.Model,
 		MaxTokens: 8000,
@@ -124,7 +146,7 @@ func (b *Brain) Reply(ctx context.Context, c Contact, history []Turn) (Reply, Me
 			CacheControl: anthropic.NewBetaCacheControlEphemeralParam(),
 		}},
 		Messages: []anthropic.BetaMessageParam{
-			anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(userPrompt(c, history))),
+			anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(prompt)),
 		},
 		OutputConfig: anthropic.BetaOutputConfigParam{
 			Effort: anthropic.BetaOutputConfigEffort(b.Effort),
