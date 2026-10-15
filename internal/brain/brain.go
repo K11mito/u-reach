@@ -120,14 +120,49 @@ type Meta struct {
 type Brain struct {
 	Model       string
 	Effort      string
-	ReferralURL string     // read through Referral(); set through Configure
-	OnUsage     func(Meta) // called after every billed request, e.g. to record spend
+	ReferralURL string       // read through Referral(); set through Configure
+	OnUsage     func(Meta)   // called after every billed request, e.g. to record spend
+	OnHealth    func(Health) // called when Claude starts or stops answering
 
 	client   anthropic.Client
 	mu       sync.RWMutex
 	system   string
 	style    Style
 	autonomy string
+	health   Health
+}
+
+// Health is whether the last request reached Claude, for the dashboard: when
+// the API key or its credit runs out, John sees it before the leads pile up.
+type Health struct {
+	OK    bool   `json:"ok"`
+	Error string `json:"error,omitempty"`
+	At    int64  `json:"at,omitempty"` // Unix ms of the last request
+}
+
+// Health reports the last request's outcome (OK before the first one).
+func (b *Brain) Health() Health {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if b.health.At == 0 {
+		return Health{OK: true}
+	}
+	return b.health
+}
+
+// setHealth records a request's outcome and reports a change.
+func (b *Brain) setHealth(err error) {
+	h := Health{OK: err == nil, At: time.Now().UnixMilli()}
+	if err != nil {
+		h.Error = err.Error()
+	}
+	b.mu.Lock()
+	changed := b.health.At == 0 || b.health.OK != h.OK || b.health.Error != h.Error
+	b.health = h
+	b.mu.Unlock()
+	if changed && b.OnHealth != nil {
+		b.OnHealth(h)
+	}
 }
 
 // New loads the persona card and FAQ. Call config.Load first.
@@ -271,10 +306,16 @@ func (b *Brain) generate(ctx context.Context, cfg setup, prompt string, c Contac
 	if err != nil {
 		var apiErr *anthropic.Error
 		if errors.As(err, &apiErr) {
-			return Reply{}, meta, fmt.Errorf("claude %d: %w", apiErr.StatusCode, err)
+			err = fmt.Errorf("claude %d: %w", apiErr.StatusCode, err)
+		} else {
+			err = fmt.Errorf("claude: %w", err)
 		}
-		return Reply{}, meta, fmt.Errorf("claude: %w", err)
+		if ctx.Err() == nil { // a request we gave up on says nothing about Claude
+			b.setHealth(err)
+		}
+		return Reply{}, meta, err
 	}
+	b.setHealth(nil)
 	meta.Model = string(msg.Model)
 	meta.InputTokens = msg.Usage.InputTokens
 	meta.OutputTokens = msg.Usage.OutputTokens

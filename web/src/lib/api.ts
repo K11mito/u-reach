@@ -89,6 +89,14 @@ export interface State {
   stats: Stats
   hours_saved: number
   whatsapp: WhatsAppStatus
+  brain?: BrainHealth
+}
+
+/** Whether the last request reached Claude. */
+export interface BrainHealth {
+  ok: boolean
+  error?: string
+  at?: number
 }
 
 export interface WhatsAppStatus {
@@ -108,6 +116,21 @@ async function json<T>(r: Response): Promise<T> {
 
 /** The server's message for a failed request, without the status code. */
 export const errText = (e: unknown) => String(e).replace(/^Error: \d+ /, "").trim()
+
+/** A pipeline or Claude error in plain words, for John (the raw text is for debugging). */
+export function explainError(error = "") {
+  const e = error.toLowerCase()
+  if (e.includes("credit balance")) return "Claude's API credit has run out."
+  if (/claude 40[13]|authentication|api key/.test(e)) return "Claude rejected the API key."
+  if (/claude 429|rate limit/.test(e)) return "Claude is rate-limiting requests right now."
+  if (/claude 5\d\d|overloaded|timeout|deadline exceeded/.test(e)) return "Claude didn't answer in time."
+  if (/brain json|max_tokens|refused/.test(e)) return "Claude's answer couldn't be used."
+  if (e.startsWith("brain:") || e.startsWith("claude")) return "Claude couldn't be reached."
+  if (e.includes("isn't linked") || e.includes("not linked")) return "WhatsApp isn't linked."
+  if (e.startsWith("send ")) return "WhatsApp didn't accept the message."
+  const s = error.trim() || "Unknown error"
+  return /[.!?]$/.test(s) ? s : `${s}.`
+}
 
 // John's editable harness (the John page). The profile is who John is;
 // presets are how he sells; FAQ, link and playbook are shared.
@@ -277,6 +300,7 @@ type LiveEvent =
   | { type: "run"; data: Run }
   | { type: "campaign"; data: CampaignStatus & { contact_id: number } }
   | { type: "whatsapp"; data: WhatsAppStatus }
+  | { type: "brain"; data: BrainHealth }
   | { type: "reset"; data: null }
   | { type: "chat_reset"; data: { contact_id: number } }
   | { type: "ambassador_avatar"; data: { avatar: string } }
@@ -364,6 +388,8 @@ export function useLive() {
           window.location.reload()
         } else if (ev.type === "whatsapp") {
           setState((s) => (s ? { ...s, whatsapp: ev.data } : s))
+        } else if (ev.type === "brain") {
+          setState((s) => (s ? { ...s, brain: ev.data } : s))
         } else if (ev.type === "campaign") {
           setCampaign((prev) => ({ ...prev, [ev.data.contact_id]: { status: ev.data.status, error: ev.data.error } }))
         } else if (ev.type === "run") {

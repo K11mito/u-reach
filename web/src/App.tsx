@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
-import { ChartColumn, CircleHelp, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, UserRound } from "lucide-react"
+import { Bot, ChartColumn, CircleHelp, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useLive, type WhatsAppStatus } from "@/lib/api"
+import { explainError, useLive, type BrainHealth, type WhatsAppStatus } from "@/lib/api"
 import { Inbox } from "@/components/Inbox"
 import { Stage } from "@/components/Stage"
 import { Profile } from "@/components/Profile"
@@ -80,6 +80,13 @@ export default function App() {
     setPrevConnected(wa.connected)
     if (prevConnected !== undefined && wa.enabled) toast(wa.connected ? "WhatsApp connected" : "WhatsApp disconnected, reconnecting…", wa.connected ? "info" : "error")
   }
+  // …and when Claude stops answering, before leads pile up in Needs John.
+  const aiOK = state?.brain?.ok ?? true
+  const [prevAiOK, setPrevAiOK] = useState(aiOK)
+  if (aiOK !== prevAiOK) {
+    setPrevAiOK(aiOK)
+    toast(aiOK ? "John's AI is answering again" : `John's AI can't reply: ${explainError(state?.brain?.error)} Leads get a holding note.`, aiOK ? "info" : "error")
+  }
 
   if (!state) {
     return (
@@ -155,6 +162,7 @@ export default function App() {
                 {state.ambassador.mock_voice ? "Voice: mock (no clone set)" : "Your voice, ready"}
               </div>
               <WhatsAppPill wa={state.whatsapp} onLink={() => setLinkOpen(true)} />
+              <AiPill health={state.brain} onCheck={() => go("profile")} />
               {!connected && <div className="text-amber">Live updates reconnecting…</div>}
             </div>
           </div>
@@ -173,6 +181,22 @@ export default function App() {
       {linkOpen && <LinkWhatsApp wa={state.whatsapp} onClose={() => setLinkOpen(false)} />}
       <Toaster />
     </div>
+  )
+}
+
+function AiPill({ health, onCheck }: { health?: BrainHealth; onCheck: () => void }) {
+  if (!health || health.ok)
+    return (
+      <div className="flex items-center gap-2" title="Claude answered the last request">
+        <Bot className="size-3.5" /> AI replies on
+      </div>
+    )
+  return (
+    // It clears on the next request that works: Try John on the John page sends one.
+    <button onClick={onCheck} className="flex w-full items-start gap-2 rounded-lg bg-red-500/90 px-2 py-1.5 text-left font-semibold hover:bg-red-500" title={`${health.error}\n\nUse Try John on the John page to check again.`}>
+      <Bot className="mt-px size-3.5 shrink-0" />
+      <span>AI can't reply: {explainError(health.error)}</span>
+    </button>
   )
 }
 

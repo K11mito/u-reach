@@ -3,7 +3,7 @@ import { Bot, Hand, Link2, Megaphone, Mic, Reply, RotateCcw, Search, Send, Spark
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { api, clock, dayLabel, displayName, errText, timeAgo, type Contact, type Message, type Run, type Status } from "@/lib/api"
+import { api, clock, dayLabel, displayName, errText, explainError, timeAgo, type Contact, type Message, type Run, type Status } from "@/lib/api"
 import { fmtDur, Initials, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
 import { SimulateBox } from "./SimulateBox"
 import { toast } from "./Toast"
@@ -314,7 +314,7 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
             <Notice
               tone="red"
               title="The last reply failed"
-              body={`${explain(failed.error)} ${failed.error?.startsWith("brain:") ? "The lead got a holding note." : "Nothing reached the lead."}`}
+              body={`${explainError(failed.error)} ${failed.error?.startsWith("brain:") ? "The lead got a holding note." : "Nothing reached the lead."}`}
               detail={failed.error}
             >
               {!paused && (
@@ -442,19 +442,6 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
 /** Ends a reason with a full stop, so it reads as a sentence. */
 const sentence = (s: string) => (/[.!?]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`)
 
-/** A failed run's error in plain words; the raw text is shown small underneath. */
-function explain(error = "") {
-  const e = error.toLowerCase()
-  if (e.includes("credit balance")) return "Claude's API credit has run out."
-  if (/claude 40[13]|authentication|api key/.test(e)) return "Claude rejected the API key."
-  if (/claude 429|rate limit/.test(e)) return "Claude is rate-limiting requests right now."
-  if (/claude 5\d\d|overloaded|timeout|deadline exceeded/.test(e)) return "Claude didn't answer in time."
-  if (/brain json|max_tokens|refused/.test(e)) return "Claude's answer couldn't be used."
-  if (e.startsWith("brain:")) return "Claude couldn't be reached."
-  if (e.includes("isn't linked") || e.includes("not linked")) return "WhatsApp isn't linked."
-  if (e.startsWith("send ")) return "WhatsApp didn't accept the message."
-  return sentence(error || "Unknown error")
-}
 
 /** A compact card for a state John has to act on. */
 function Notice({ tone, title, body, detail, children }: { tone: "amber" | "red"; title: string; body: string; detail?: string; children?: ReactNode }) {

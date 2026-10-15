@@ -81,6 +81,12 @@ func main() {
 	}
 
 	hub := core.NewHub()
+	br.OnHealth = func(h brain.Health) {
+		if !h.OK {
+			log.Printf("brain: Claude is failing: %s", h.Error)
+		}
+		hub.Publish("brain", h)
+	}
 	c := &core.Core{
 		Store: st, Brain: br, Voice: el, Hub: hub, AudioDir: "data/audio",
 		VoiceID: voiceID, TTSModel: config.Get("TTS_MODEL", "eleven_flash_v2_5"), Settings: voice.DefaultSettings,
@@ -289,6 +295,7 @@ func (a *api) snapshot() (map[string]any, error) {
 		"stats":       stats,
 		"hours_saved": float64(stats.RepliesWeek*minPerReply) / 60,
 		"whatsapp":    waState,
+		"brain":       a.brain.Health(),
 	}, nil
 }
 
