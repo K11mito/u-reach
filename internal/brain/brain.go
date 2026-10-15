@@ -246,6 +246,8 @@ func capWords(text string, max int) (string, bool) {
 
 func userPrompt(c Contact, history []Turn) string {
 	var s strings.Builder
+	// The date lives here, not in the cached system prompt.
+	fmt.Fprintf(&s, "Today is %s.\n", time.Now().Format("Monday 2 January 2006"))
 	name := c.Name
 	if name == "" {
 		name = "(unknown; don't use a name)"
