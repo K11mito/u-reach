@@ -1,21 +1,23 @@
 import { useCallback, useEffect, useState } from "react"
-import { Clock, Inbox as InboxIcon, Link2, Megaphone, MonitorPlay, Mic, QrCode, TriangleAlert, UserRound } from "lucide-react"
+import { ChartColumn, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useCountUp, useLive, type WhatsAppStatus } from "@/lib/api"
+import { useLive, type WhatsAppStatus } from "@/lib/api"
 import { Inbox } from "@/components/Inbox"
 import { Stage } from "@/components/Stage"
 import { Profile } from "@/components/Profile"
 import { Campaign } from "@/components/Campaign"
+import { Analytics } from "@/components/Analytics"
 import { LinkWhatsApp } from "@/components/LinkWhatsApp"
 import { JohnAvatar } from "@/components/bits"
-import { Grain } from "@/components/Grain"
+import robot from "@/assets/nav-robot.webp"
+import banner from "@/assets/header-banner.webp"
 import { Toaster, toast } from "@/components/Toast"
 
-type Page = "inbox" | "stage" | "campaign" | "profile"
-const TITLES: Record<Page, string> = { inbox: "Inbox", stage: "Stage", campaign: "Campaign", profile: "John" }
+type Page = "inbox" | "stage" | "campaign" | "analytics" | "profile"
+const TITLES: Record<Page, string> = { inbox: "Inbox", stage: "Stage", campaign: "Campaign", analytics: "Analytics", profile: "John" }
 const pageFromPath = (): Page => {
   const p = window.location.pathname.replace(/^\//, "")
-  return (["stage", "campaign", "profile"].includes(p) ? p : "inbox") as Page
+  return (["stage", "campaign", "analytics", "profile"].includes(p) ? p : "inbox") as Page
 }
 
 export default function App() {
@@ -41,7 +43,7 @@ export default function App() {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      const map: Record<string, Page> = { "1": "inbox", "2": "stage", "3": "campaign", "4": "profile", p: "stage" }
+      const map: Record<string, Page> = { "1": "inbox", "2": "stage", "3": "campaign", "4": "analytics", "5": "profile", p: "stage" }
       if (map[e.key]) go(map[e.key])
     }
     window.addEventListener("keydown", key)
@@ -79,12 +81,13 @@ export default function App() {
     { id: "inbox" as const, label: "Inbox", icon: InboxIcon, badge: state.stats.needs_john },
     { id: "stage" as const, label: "Stage view", icon: MonitorPlay },
     { id: "campaign" as const, label: "Campaign", icon: Megaphone },
+    { id: "analytics" as const, label: "Analytics", icon: ChartColumn },
     { id: "profile" as const, label: "John", icon: UserRound },
   ]
 
   return (
     <div className="flex h-screen min-w-[1100px] gap-4 bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4">
-      <aside className="flex w-[clamp(260px,24vw,400px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/20">
+      <aside className="flex w-[clamp(240px,21vw,340px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/20">
         <div className="flex items-center gap-2.5 px-2 py-1">
           <div className="grid size-9 place-items-center rounded-xl bg-white/20 text-lg font-extrabold">U</div>
           <div>
@@ -109,7 +112,11 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="mt-auto space-y-3 rounded-2xl bg-white/10 p-3">
+        {/* Fills the free space above John's card; on short screens the top is cropped, keeping the robot. */}
+        <div className="relative mt-4 mb-3 min-h-0 flex-1">
+          <img src={robot} alt="" className="absolute inset-x-1 bottom-0 max-h-full w-[calc(100%-0.5rem)] object-cover object-[center_76%] [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
+        </div>
+        <div className="space-y-3 rounded-2xl bg-white/10 p-3">
           {/* John's photo opens his page: persona, presets and sales playbook. */}
           <button onClick={() => go("profile")} title="Edit how John's AI sells" className="-m-1 flex w-[calc(100%+0.5rem)] items-center gap-3 rounded-xl p-1 text-left transition hover:bg-white/10">
             <JohnAvatar size={40} src={state.ambassador.avatar} />
@@ -130,17 +137,20 @@ export default function App() {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col gap-4">
-        <div className="grid grid-cols-4 gap-4">
-          <Stat icon={Clock} label="Hours saved this week" value={state.hours_saved} decimals={1} accent hint="Each AI voice note replaces a ~15 minute call John would have made himself" />
-          <Stat icon={Mic} label="Voice notes this week" value={state.stats.replies_week} />
-          <Stat icon={Link2} label="Referral links sent" value={state.stats.links_sent} />
-          <Stat icon={TriangleAlert} label="Waiting for John" value={state.stats.needs_john} warn={state.stats.needs_john > 0} />
-        </div>
+        <header className="relative flex h-16 shrink-0 items-center overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-700 px-6 text-white shadow-lg shadow-indigo-500/20">
+          <div className="relative z-10">
+            <div className="text-lg leading-tight font-extrabold tracking-tight">U-topia built for YOU</div>
+            <div className="text-xs text-white/75">Simple. Yours. Ready when you are.</div>
+          </div>
+          {/* The banner art sits on the right and fades into the header on its left. */}
+          <img src={banner} alt="" className="absolute inset-y-0 right-0 h-full w-auto max-w-[70%] object-cover object-right [mask-image:linear-gradient(to_right,transparent,black_40%)]" />
+        </header>
         {page === "inbox" && (
           <Inbox contacts={state.contacts} last={state.last ?? {}} messages={messages} loadMessages={loadMessages} runs={runs} onCampaign={() => go("campaign")} />
         )}
         {page === "profile" && <Profile state={state} />}
         {page === "campaign" && <Campaign contacts={state.contacts} statuses={campaign} />}
+        {page === "analytics" && <Analytics state={state} />}
       </main>
       {linkOpen && <LinkWhatsApp wa={state.whatsapp} onClose={() => setLinkOpen(false)} />}
       <Toaster />
@@ -172,28 +182,4 @@ function WhatsAppPill({ wa, onLink }: { wa: WhatsAppStatus; onLink: () => void }
       <span className="size-2 animate-pulse rounded-full bg-amber" /> WhatsApp connecting…
     </div>
   )
-}
-
-function Stat({ icon: Icon, label, value, decimals = 0, accent, warn, hint }: { icon: typeof Clock; label: string; value: number; decimals?: number; accent?: boolean; warn?: boolean; hint?: string }) {
-  const shown = useCountUp(value)
-  const body = (
-    <div className="flex items-start justify-between gap-3" title={hint}>
-      <div className="min-w-0">
-        <div className={cn("flex items-center gap-1.5 truncate text-xs font-medium", accent ? "text-white/85" : "text-muted-foreground")}>
-          {warn && <span className="size-1.5 shrink-0 rounded-full bg-amber" />}
-          {label}
-        </div>
-        <div className="mt-2 text-[28px] leading-none font-semibold tracking-tight tabular-nums">{shown.toFixed(decimals)}</div>
-      </div>
-      <Icon className={cn("size-4 shrink-0", accent ? "text-white/80" : "text-muted-foreground/70")} />
-    </div>
-  )
-  // The headline number sits on a grainy gradient; the rest stay quiet.
-  if (accent)
-    return (
-      <Grain seed="hours-saved" palette="mint" className="rounded-xl p-4 text-white">
-        {body}
-      </Grain>
-    )
-  return <div className="rounded-xl border bg-card p-4">{body}</div>
 }
