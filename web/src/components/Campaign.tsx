@@ -4,8 +4,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { api, displayName, type CampaignStatus, type Contact, type Draft } from "@/lib/api"
+import { api, displayName, errText, type CampaignStatus, type Contact, type Draft } from "@/lib/api"
 import { Initials, StatusChip, VoiceNote } from "./bits"
+import { toast } from "./Toast"
+
+/** Seeded and simulated leads have made-up +99 numbers that are never messaged. */
+const isDemo = (c?: Contact) => !!c?.phone.startsWith("99")
 
 /** Outbound: personal voice-note openers in John's voice, approved before sending. */
 export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses: Record<number, CampaignStatus> }) {
@@ -24,13 +28,22 @@ export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses
     setDrafts(picked.map((id) => ({ contact_id: id, name: displayName(contacts.find((c) => c.id === id)), script: "", followup: "", audio_path: "", duration_ms: 0 })))
     try {
       setDrafts(await api.draft(picked))
+    } catch (e) {
+      // Without this the cards would keep spinning on "Writing…".
+      setDrafts((ds) => ds.map((d) => ({ ...d, error: `Couldn't write it: ${errText(e)}` })))
     } finally {
       setLoading(false)
     }
   }
+  const contactOf = (d: Draft) => contacts.find((c) => c.id === d.contact_id)
+  const sendable = drafts.filter((d) => !d.error && d.script && !isDemo(contactOf(d)))
   const send = async () => {
-    await api.sendCampaign(drafts.filter((d) => !d.error && d.script))
-    setSent(true)
+    try {
+      await api.sendCampaign(sendable)
+      setSent(true)
+    } catch (e) {
+      toast(`Couldn't send: ${errText(e)}`, "error")
+    }
   }
   const update = (id: number, patch: Partial<Draft>) => setDrafts((ds) => ds.map((d) => (d.contact_id === id ? { ...d, ...patch } : d)))
   const ordered = [...contacts].sort((a, b) => Number(b.status === "new") - Number(a.status === "new"))
@@ -50,7 +63,7 @@ export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses
               <Initials name={displayName(c)} src={c.avatar} size={34} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium">{displayName(c)}</div>
-                <div className="truncate text-xs text-muted-foreground">{c.context || `+${c.phone}`}</div>
+                <div className="truncate text-xs text-muted-foreground">{c.context || (isDemo(c) ? "Demo lead" : `+${c.phone}`)}</div>
               </div>
               <StatusChip status={c.status} bare />
             </label>
@@ -69,8 +82,8 @@ export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses
             <h2 className="text-[15px] font-semibold tracking-tight">Openers to approve</h2>
             <p className="text-xs text-muted-foreground">Listen, tweak the words if you like, then send. They go out a few seconds apart.</p>
           </div>
-          <Button onClick={send} disabled={!drafts.length || loading || sent || drafts.every((d) => !!d.error)} className="bg-wa-dark hover:bg-wa-dark/90">
-            <Send /> {sent ? "Sending…" : `Send ${drafts.filter((d) => !d.error).length || ""}`}
+          <Button onClick={send} disabled={!sendable.length || loading || sent} className="bg-wa-dark hover:bg-wa-dark/90">
+            <Send /> {sent ? "Sending…" : `Send ${sendable.length || ""}`}
           </Button>
         </div>
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
@@ -84,12 +97,13 @@ export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses
           )}
           {drafts.map((d) => {
             const st = statuses[d.contact_id]
+            const demo = isDemo(contactOf(d))
             return (
               <div key={d.contact_id} className="rounded-lg border p-4">
                 <div className="mb-3 flex items-center gap-3">
-                  <Initials name={d.name} size={36} />
+                  <Initials name={d.name} src={contactOf(d)?.avatar} size={36} />
                   <div className="flex-1 text-sm font-medium">{d.name}</div>
-                  {sent && <SendState st={st} />}
+                  {sent && (demo ? <span className="text-xs text-muted-foreground">not sent (demo lead)</span> : <SendState st={st} />)}
                   {!sent && (
                     <button onClick={() => setDrafts((ds) => ds.filter((x) => x.contact_id !== d.contact_id))} className="text-muted-foreground hover:text-foreground" title="Remove">
                       <X className="size-4" />
@@ -108,6 +122,11 @@ export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses
                       <VoiceNote src={edited[d.contact_id] ? undefined : d.audio_path} durationMs={d.duration_ms} seed={d.contact_id} outgoing />
                     </div>
                     {edited[d.contact_id] && <p className="text-xs text-amber-700">Edited: John's voice re-records it when you send.</p>}
+                    {demo && (
+                      <p className="text-xs text-muted-foreground">
+                        {d.name} is a demo lead with a made-up number, so this one won't be sent. Add a real number under their name to send it.
+                      </p>
+                    )}
                     <Textarea
                       value={d.script}
                       disabled={sent}
@@ -161,7 +180,7 @@ function AddContact() {
       setContext("")
       setOpen(false)
     } catch (e) {
-      setErr(String(e).replace(/^Error: \d+ /, ""))
+      setErr(errText(e))
     }
   }
   if (!open)
