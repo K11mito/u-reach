@@ -11,6 +11,7 @@ import { LinkWhatsApp } from "@/components/LinkWhatsApp"
 import { JohnAvatar } from "@/components/bits"
 import robot from "@/assets/nav-robot.webp"
 import banner from "@/assets/header-banner.webp"
+import logo from "@/assets/logo.webp"
 import { Toaster, toast } from "@/components/Toast"
 
 type Page = "inbox" | "stage" | "campaign" | "analytics" | "profile"
@@ -62,7 +63,7 @@ export default function App() {
     return (
       <div className="grid h-screen place-items-center text-muted-foreground">
         <div className="flex items-center gap-3">
-          <div className="grid size-9 animate-pulse place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 font-extrabold text-white">U</div>
+          <img src={logo} alt="" className="size-9 animate-pulse" />
           {connected ? "Loading…" : "Connecting to U-Reach…"}
         </div>
       </div>
@@ -89,7 +90,9 @@ export default function App() {
     <div className="flex h-screen min-w-[1100px] gap-4 bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4">
       <aside className="flex w-[clamp(220px,18vw,300px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/20">
         <div className="flex items-center gap-2.5 px-2 py-1">
-          <div className="grid size-9 place-items-center rounded-xl bg-white/20 text-lg font-extrabold">U</div>
+          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-white shadow-sm">
+            <img src={logo} alt="U-Reach" className="size-7" />
+          </div>
           <div>
             <div className="text-lg leading-tight font-extrabold tracking-tight">U-Reach</div>
             <div className="text-[11px] whitespace-nowrap text-white/65">for U.Center ambassadors</div>
@@ -114,7 +117,7 @@ export default function App() {
         </nav>
         {/* Fills the free space above John's card; on short screens the top is cropped, keeping the robot. */}
         <div className="relative mt-4 mb-3 min-h-0 flex-1">
-          <img src={robot} alt="" className="absolute bottom-0 left-1/2 max-h-full w-[80%] -translate-x-1/2 object-cover object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
+          <img src={robot} alt="" className="absolute bottom-0 left-3 max-h-full w-[80%] object-cover object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
         </div>
         <div className="space-y-3 rounded-2xl bg-white/10 p-3">
           {/* John's photo opens his page: persona, presets and sales playbook. */}
