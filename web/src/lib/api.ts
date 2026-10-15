@@ -101,11 +101,32 @@ export const api = {
     fetch(`/api/contacts/${id}/send`, { method: "POST", body: JSON.stringify({ text }) }).then(json),
   simulate: (name: string, phone: string, text: string) =>
     fetch("/api/simulate", { method: "POST", body: JSON.stringify({ name, phone, text }) }).then(json),
+  addContact: (name: string, phone: string, context: string) =>
+    fetch("/api/contacts", { method: "POST", body: JSON.stringify({ name, phone, context }) }).then(json<Contact>),
+  draft: (contact_ids: number[]) =>
+    fetch("/api/campaign/draft", { method: "POST", body: JSON.stringify({ contact_ids }) }).then(json<Draft[]>),
+  sendCampaign: (drafts: Draft[]) => fetch("/api/campaign/send", { method: "POST", body: JSON.stringify({ drafts }) }).then(json),
 }
+
+export interface Draft {
+  contact_id: number
+  name: string
+  script: string
+  followup: string
+  audio_path: string
+  duration_ms: number
+  error?: string
+}
+
+export type CampaignStatus = { status: "sending" | "sent" | "failed"; error?: string }
 
 export const displayName = (c?: Contact) => (c ? c.name || c.push_name || `+${c.phone}` : "")
 
-type LiveEvent = { type: "contact"; data: Contact } | { type: "message"; data: Message } | { type: "run"; data: Run }
+type LiveEvent =
+  | { type: "contact"; data: Contact }
+  | { type: "message"; data: Message }
+  | { type: "run"; data: Run }
+  | { type: "campaign"; data: CampaignStatus & { contact_id: number } }
 
 /** Loads dashboard state and keeps it live via SSE. */
 declare global {
@@ -119,6 +140,7 @@ export function useLive() {
   const [runs, setRuns] = useState<Run[]>(() => window.__BOOT__?.runs ?? [])
   const [messages, setMessages] = useState<Record<number, Message[]>>(() => window.__BOOT__?.messages ?? {})
   const [connected, setConnected] = useState(false)
+  const [campaign, setCampaign] = useState<Record<number, CampaignStatus>>({})
   const refetchTimer = useRef<number | undefined>(undefined)
 
   const refetch = useCallback(() => {
@@ -167,6 +189,8 @@ export function useLive() {
             }
           })
           refetch()
+        } else if (ev.type === "campaign") {
+          setCampaign((prev) => ({ ...prev, [ev.data.contact_id]: { status: ev.data.status, error: ev.data.error } }))
         } else if (ev.type === "run") {
           setRuns((prev) => {
             const i = prev.findIndex((r) => r.id === ev.data.id)
@@ -182,7 +206,7 @@ export function useLive() {
     }
   }, [refetch])
 
-  return { state, runs, messages, loadMessages, connected, refetch }
+  return { state, runs, messages, loadMessages, connected, refetch, campaign }
 }
 
 export function timeAgo(ms: number) {

@@ -5,6 +5,7 @@ import { useLive } from "@/lib/api"
 import { Inbox } from "@/components/Inbox"
 import { Stage } from "@/components/Stage"
 import { Profile } from "@/components/Profile"
+import { Campaign } from "@/components/Campaign"
 import { JohnAvatar } from "@/components/bits"
 
 type Page = "inbox" | "stage" | "campaign" | "profile"
@@ -14,7 +15,7 @@ const pageFromPath = (): Page => {
 }
 
 export default function App() {
-  const { state, runs, messages, loadMessages, connected } = useLive()
+  const { state, runs, messages, loadMessages, connected, campaign } = useLive()
   const [page, setPage] = useState<Page>(pageFromPath)
   const go = useCallback((p: Page) => {
     window.history.pushState(null, "", p === "inbox" ? "/" : `/${p}`)
@@ -91,9 +92,7 @@ export default function App() {
         </div>
         {page === "inbox" && <Inbox contacts={state.contacts} last={state.last ?? {}} messages={messages} loadMessages={loadMessages} runs={runs} />}
         {page === "profile" && <Profile state={state} />}
-        {page === "campaign" && (
-          <div className="grid flex-1 place-items-center rounded-2xl border bg-card text-muted-foreground">Campaign: personal voice-note openers (next up)</div>
-        )}
+        {page === "campaign" && <Campaign contacts={state.contacts} statuses={campaign} />}
       </main>
     </div>
   )
