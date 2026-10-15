@@ -1,0 +1,77 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Kyle's look: indigo/purple brand, WhatsApp green for "live" and voice notes,
+   rounded cards, friendly type. */
+:root {
+  --radius: 1rem;
+  --background: oklch(0.985 0.006 285);
+  --foreground: oklch(0.22 0.04 280);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.04 280);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.04 280);
+  --primary: oklch(0.51 0.23 277);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.025 285);
+  --secondary-foreground: oklch(0.35 0.12 280);
+  --muted: oklch(0.96 0.012 285);
+  --muted-foreground: oklch(0.52 0.03 280);
+  --accent: oklch(0.94 0.04 295);
+  --accent-foreground: oklch(0.38 0.16 295);
+  --destructive: oklch(0.6 0.22 25);
+  --border: oklch(0.91 0.015 285);
+  --input: oklch(0.91 0.015 285);
+  --ring: oklch(0.51 0.23 277);
+  --wa: oklch(0.72 0.17 152);
+  --wa-dark: oklch(0.55 0.13 160);
+  --wa-bubble: oklch(0.95 0.06 145);
+  --amber: oklch(0.8 0.15 75);
+}
+
+@theme inline {
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-wa: var(--wa);
+  --color-wa-dark: var(--wa-dark);
+  --color-wa-bubble: var(--wa-bubble);
+  --color-amber: var(--amber);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@keyframes eq {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+.animate-eq > span { animation: eq 0.9s ease-in-out infinite; transform-origin: bottom; }
