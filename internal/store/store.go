@@ -57,6 +57,7 @@ type Message struct {
 	AudioPath  string `json:"audio_path,omitempty"` // relative to data/audio
 	DurationMS int64  `json:"duration_ms,omitempty"`
 	RunID      int64  `json:"run_id,omitempty"`
+	Status     string `json:"status,omitempty"` // outbound: sent | delivered | read | played
 	CreatedAt  int64  `json:"created_at"`
 }
 
@@ -141,6 +142,8 @@ func Open(path string) (*Store, error) {
 	if _, err := db.Exec(schema); err != nil {
 		return nil, fmt.Errorf("schema: %w", err)
 	}
+	// Added after the first release; ignore "duplicate column" on existing DBs.
+	db.Exec(`ALTER TABLE messages ADD COLUMN status TEXT NOT NULL DEFAULT ''`)
 	return &Store{db: db}, nil
 }
 
@@ -300,9 +303,12 @@ func (s *Store) AddMessage(m Message) (Message, error) {
 	if m.WAID != "" {
 		waID = m.WAID
 	}
-	res, err := s.db.Exec(`INSERT INTO messages (contact_id, wa_id, direction, kind, source, text, audio_path, duration_ms, run_id, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		m.ContactID, waID, m.Direction, m.Kind, m.Source, m.Text, m.AudioPath, m.DurationMS, m.RunID, m.CreatedAt)
+	if m.Direction == "out" && m.Status == "" {
+		m.Status = "sent"
+	}
+	res, err := s.db.Exec(`INSERT INTO messages (contact_id, wa_id, direction, kind, source, text, audio_path, duration_ms, run_id, status, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		m.ContactID, waID, m.Direction, m.Kind, m.Source, m.Text, m.AudioPath, m.DurationMS, m.RunID, m.Status, m.CreatedAt)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			return m, ErrDuplicate
@@ -328,7 +334,7 @@ func (s *Store) SetMessageAudio(id int64, path string, durationMS int64) error {
 
 // Messages returns a contact's last n messages, oldest first.
 func (s *Store) Messages(contactID int64, n int) ([]Message, error) {
-	rows, err := s.db.Query(`SELECT id, contact_id, COALESCE(wa_id, ''), direction, kind, source, text, audio_path, duration_ms, run_id, created_at
+	rows, err := s.db.Query(`SELECT `+messageCols+`
 		FROM (SELECT * FROM messages WHERE contact_id = ? ORDER BY created_at DESC, id DESC LIMIT ?) ORDER BY created_at, id`, contactID, n)
 	if err != nil {
 		return nil, err
@@ -336,13 +342,45 @@ func (s *Store) Messages(contactID int64, n int) ([]Message, error) {
 	defer rows.Close()
 	var out []Message
 	for rows.Next() {
-		var m Message
-		if err := rows.Scan(&m.ID, &m.ContactID, &m.WAID, &m.Direction, &m.Kind, &m.Source, &m.Text, &m.AudioPath, &m.DurationMS, &m.RunID, &m.CreatedAt); err != nil {
+		m, err := scanMessage(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, m)
 	}
 	return out, rows.Err()
+}
+
+const messageCols = `id, contact_id, COALESCE(wa_id, ''), direction, kind, source, text, audio_path, duration_ms, run_id, status, created_at`
+
+func scanMessage(row interface{ Scan(...any) error }) (Message, error) {
+	var m Message
+	err := row.Scan(&m.ID, &m.ContactID, &m.WAID, &m.Direction, &m.Kind, &m.Source, &m.Text, &m.AudioPath, &m.DurationMS, &m.RunID, &m.Status, &m.CreatedAt)
+	return m, err
+}
+
+var statusRank = map[string]int{"": 0, "sent": 1, "delivered": 2, "read": 3, "played": 4}
+
+// SetDelivery upgrades an outbound message's receipt status (never
+// downgrades: a "read" arriving after "played" is ignored). It returns the
+// updated message when something changed.
+func (s *Store) SetDelivery(waID, status string) (Message, bool, error) {
+	m, err := scanMessage(s.db.QueryRow(`SELECT `+messageCols+` FROM messages WHERE wa_id = ? AND direction = 'out'`, waID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return m, false, nil
+	}
+	if err != nil || statusRank[status] <= statusRank[m.Status] {
+		return m, false, err
+	}
+	// Text messages are never "played"; read is as far as they go.
+	if status == "played" && m.Kind != "voice" {
+		status = "read"
+	}
+	if _, err := s.db.Exec(`UPDATE messages SET status = ? WHERE id = ?`, status, m.ID); err != nil {
+		return m, false, err
+	}
+	m.Status = status
+	return m, true, nil
 }
 
 // NewRun starts a pipeline run.
