@@ -67,7 +67,7 @@ func (c *Core) draft(ctx context.Context, id int64) Draft {
 // SendOpeners sends approved drafts one by one with a short random gap, like
 // a person working through their list. It returns immediately.
 func (c *Core) SendOpeners(drafts []Draft) {
-	go func() {
+	Go("campaign", func() {
 		for i, d := range drafts {
 			if i > 0 {
 				time.Sleep(time.Duration(4000+rand.IntN(5000)) * time.Millisecond)
@@ -79,13 +79,16 @@ func (c *Core) SendOpeners(drafts []Draft) {
 			}
 			c.Hub.Publish("campaign", map[string]any{"contact_id": d.ContactID, "status": "sent"})
 		}
-	}()
+	})
 }
 
 func (c *Core) sendOpener(ctx context.Context, d Draft) error {
 	ct, err := c.Store.Contact(d.ContactID)
 	if err != nil {
 		return err
+	}
+	if store.IsDemoNumber(ct.Phone) {
+		return fmt.Errorf("%s is a demo lead with a fake number; add a real number to send", ct.DisplayName())
 	}
 	to, err := types.ParseJID(ct.Chat)
 	if err != nil {

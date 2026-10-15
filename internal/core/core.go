@@ -63,9 +63,25 @@ type Core struct {
 	Debounce time.Duration
 	// MaxVoicePerHour caps AI voice notes per contact; beyond it replies go out as text.
 	MaxVoicePerHour int
+	// Avatar fetches a WhatsApp profile photo (nil when WhatsApp is off).
+	Avatar func(ctx context.Context, jid types.JID) ([]byte, error)
 
-	mu    sync.Mutex
-	chats map[int64]*chat
+	mu            sync.Mutex
+	chats         map[int64]*chat
+	avatarChecked map[int64]time.Time
+}
+
+// Go runs fn in a goroutine and turns a panic into a log line, so one bad
+// message can never take the whole server down mid-demo.
+func Go(name string, fn func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("PANIC in %s (recovered): %v", name, r)
+			}
+		}()
+		fn()
+	}()
 }
 
 type chat struct {
@@ -93,6 +109,9 @@ func (c *Core) Handle(m Msg) {
 	}
 	if created {
 		c.Hub.Publish("contact", contact)
+	}
+	if !m.Simulated {
+		c.FetchAvatar(contact)
 	}
 
 	kind := "text"
@@ -152,14 +171,21 @@ func (c *Core) fire(contactID int64) {
 	c.mu.Unlock()
 
 	go func() {
+		// Always release the chat, even if the run panics, so the lead isn't
+		// stuck behind a dead run.
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("PANIC in reply for contact %d (recovered): %v", contactID, r)
+			}
+			c.mu.Lock()
+			ch.running = false
+			again := len(ch.pending) > 0
+			c.mu.Unlock()
+			if again {
+				c.fire(contactID)
+			}
+		}()
 		c.run(contactID, batch)
-		c.mu.Lock()
-		ch.running = false
-		again := len(ch.pending) > 0
-		c.mu.Unlock()
-		if again {
-			c.fire(contactID)
-		}
 	}()
 }
 
@@ -418,6 +444,7 @@ func (c *Core) HandleOwn(m Msg) {
 	if created {
 		c.Hub.Publish("contact", contact)
 	}
+	c.FetchAvatar(contact)
 	kind := "text"
 	if m.Voice != nil {
 		kind = "voice"
@@ -471,6 +498,71 @@ func (c *Core) SetStatus(contactID int64, status string) error {
 	}
 	c.publishContact(contactID)
 	return nil
+}
+
+// FetchAvatar pulls a contact's WhatsApp profile photo in the background,
+// at most once an hour per contact. Demo numbers are never looked up.
+func (c *Core) FetchAvatar(ct store.Contact) {
+	if c.Avatar == nil || store.IsDemoNumber(ct.Phone) {
+		return
+	}
+	c.mu.Lock()
+	if c.avatarChecked == nil {
+		c.avatarChecked = map[int64]time.Time{}
+	}
+	if time.Since(c.avatarChecked[ct.ID]) < time.Hour {
+		c.mu.Unlock()
+		return
+	}
+	c.avatarChecked[ct.ID] = time.Now()
+	c.mu.Unlock()
+
+	Go("avatar", func() {
+		jid, err := types.ParseJID(ct.JID)
+		if err != nil {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		img, err := c.Avatar(ctx, jid)
+		if err != nil || img == nil {
+			if err != nil {
+				log.Printf("core: avatar for %s: %v", ct.DisplayName(), err)
+			}
+			return
+		}
+		rel := fmt.Sprintf("avatars/%d.jpg", ct.ID)
+		if err := writeFile(filepath.Join(c.AudioDir, rel), img); err != nil {
+			return
+		}
+		c.Store.SetAvatar(ct.ID, rel+fmt.Sprintf("?v=%d", time.Now().Unix()))
+		c.publishContact(ct.ID)
+	})
+}
+
+// FetchOwnAvatar saves the linked account's own photo as John's avatar.
+func (c *Core) FetchOwnAvatar(own types.JID) {
+	if c.Avatar == nil || own.IsEmpty() {
+		return
+	}
+	Go("own avatar", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		img, err := c.Avatar(ctx, own)
+		if err != nil || img == nil {
+			return
+		}
+		if writeFile(filepath.Join(c.AudioDir, "avatars", "john.jpg"), img) == nil {
+			c.Hub.Publish("ambassador_avatar", map[string]string{"avatar": fmt.Sprintf("avatars/john.jpg?v=%d", time.Now().Unix())})
+		}
+	})
+}
+
+func writeFile(path string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
 }
 
 // ResetChat wipes one conversation (e.g. the presenter's own chat between
