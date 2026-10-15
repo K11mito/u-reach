@@ -22,10 +22,26 @@ const pageFromPath = (): Page => {
   return (["stage", "campaign", "analytics", "profile", "help"].includes(p) ? p : "inbox") as Page
 }
 
+// Big screens at 100% browser zoom render the dashboard small. Scale it up
+// there, like 120% zoom, so every page matches; laptops that already render
+// larger (or a browser already zoomed in) get no extra scale.
+const uiScale = () => Math.min(1.2, Math.max(1, window.innerWidth / 1600))
+
+function useUiScale() {
+  const [scale, setScale] = useState(uiScale)
+  useEffect(() => {
+    const resize = () => setScale(uiScale())
+    window.addEventListener("resize", resize)
+    return () => window.removeEventListener("resize", resize)
+  }, [])
+  return scale
+}
+
 export default function App() {
   const { state, runs, messages, loadMessages, connected, campaign } = useLive()
   const [page, setPage] = useState<Page>(pageFromPath)
   const [linkOpen, setLinkOpen] = useState(false)
+  const scale = useUiScale()
   const go = useCallback((p: Page) => {
     window.history.pushState(null, "", p === "inbox" ? "/" : `/${p}`)
     setPage(p)
@@ -94,7 +110,11 @@ export default function App() {
   ]
 
   return (
-    <div className="flex h-screen min-w-[960px] flex-col gap-4 bg-gradient-to-r from-[oklch(0.95_0.035_300)] to-[oklch(0.95_0.035_245)] p-4">
+    // Laid out at 1/scale of the window, then scaled up to fill it. The transform also anchors the modal and toasts to this box.
+    <div
+      className="flex min-w-[960px] origin-top-left flex-col gap-4 bg-gradient-to-r from-[oklch(0.95_0.035_300)] to-[oklch(0.95_0.035_245)] p-4"
+      style={{ width: `${100 / scale}vw`, height: `${100 / scale}vh`, transform: scale === 1 ? undefined : `scale(${scale})` }}
+    >
       <BrandHeader />
 
       <div className="flex min-h-0 flex-1 gap-4">
