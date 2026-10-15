@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { BookOpenText, Check, Link2, Mic, Pencil, Plus, UserRoundPen, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { HarnessPreset, HarnessSnapshot, HarnessStyle, State } from "@/lib/api"
+import type { Autonomy as AutonomyLevel, HarnessPreset, HarnessSnapshot, HarnessStyle, State } from "@/lib/api"
 import { JohnAvatar } from "../bits"
 import { Grain } from "../Grain"
+import { Autonomy } from "./Autonomy"
 
 const TIMING: Record<HarnessStyle["link_timing"], string> = {
   first_reply: "link in the first reply",
@@ -14,7 +15,7 @@ const TIMING: Record<HarnessStyle["link_timing"], string> = {
 /** One line describing how a preset sells. */
 export function styleSummary(s: HarnessStyle) {
   const len = s.max_words <= 45 ? "Very short notes" : s.max_words <= 60 ? "Short notes" : s.max_words <= 90 ? "Medium notes" : "Long notes"
-  return `${len} (${s.min_words}–${s.max_words} words) · ${TIMING[s.link_timing]} · ${s.language === "match" ? "replies in the lead's language" : "English"}`
+  return `${len} (${s.min_words}–${s.max_words} words) · ${TIMING[s.link_timing]}`
 }
 
 /**
@@ -28,6 +29,7 @@ export function Hero({
   onEditPreset,
   onEditProfile,
   onNewPreset,
+  onAutonomy,
 }: {
   state: State
   snap: HarnessSnapshot
@@ -35,6 +37,7 @@ export function Hero({
   onEditPreset: (p: HarnessPreset) => void
   onEditProfile: () => void
   onNewPreset: (name: string) => Promise<void>
+  onAutonomy: (level: AutonomyLevel) => Promise<boolean>
 }) {
   const a = state.ambassador
   const p = snap.profile
@@ -115,6 +118,9 @@ export function Hero({
             <b className="font-semibold">{active.name}:</b> {styleSummary(active.harness.style)}
           </p>
         )}
+      </div>
+      <div className="relative mt-5 border-t border-white/20 pt-5">
+        <Autonomy value={snap.autonomy} levels={snap.levels} onChange={onAutonomy} />
       </div>
     </Grain>
   )

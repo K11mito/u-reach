@@ -74,6 +74,10 @@ export function Profile({ state }: { state: State }) {
   if (view.kind === "about") return <ProfileEditor snap={snap} run={run} onBack={() => open({ kind: "home" })} />
 
   const activate = (p: HarnessPreset) => p.id !== snap.active_id && run(harnessApi.activate(p.id), `John now sells with “${p.name}”`)
+  const setAutonomy = (level: HarnessSnapshot["autonomy"]) => {
+    const l = snap.levels.find((x) => x.key === level)
+    return run(harnessApi.setAutonomy(level), l ? `${l.label}: ${l.summary}` : undefined)
+  }
   const newPreset = async (name: string) => {
     const active = snap.presets.find((p) => p.id === snap.active_id) ?? snap.presets[0]
     try {
@@ -88,7 +92,7 @@ export function Profile({ state }: { state: State }) {
 
   return (
     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 pb-6">
-      <Hero state={state} snap={snap} onActivate={activate} onEditPreset={(p) => open({ kind: "preset", id: p.id })} onEditProfile={() => open({ kind: "about" })} onNewPreset={newPreset} />
+      <Hero state={state} snap={snap} onActivate={activate} onEditPreset={(p) => open({ kind: "preset", id: p.id })} onEditProfile={() => open({ kind: "about" })} onNewPreset={newPreset} onAutonomy={setAutonomy} />
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
         <div className="space-y-4">
           <Playbook snap={snap} onChange={setSnap} />

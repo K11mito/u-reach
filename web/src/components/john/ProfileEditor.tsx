@@ -107,6 +107,16 @@ export function ProfileEditor({ snap, run, onBack }: { snap: HarnessSnapshot; ru
 
           <Section title="His own words" hint="Real quotes and images keep the AI close to how he actually talks." icon={Quote}>
             <div className="space-y-4">
+              <div className="grid gap-5 xl:grid-cols-2">
+                <div>
+                  <Label hint="{name} becomes the lead's first name">Openers</Label>
+                  <ListEditor items={draft.openers} onChange={(v) => set({ openers: v })} placeholder="Hey {name}! John here…" addLabel="Add opener" />
+                </div>
+                <div>
+                  <Label>Closers</Label>
+                  <ListEditor items={draft.closers} onChange={(v) => set({ closers: v })} placeholder="Shall we jump on a quick call?" addLabel="Add closer" />
+                </div>
+              </div>
               <div>
                 <Label>Lines he has really said</Label>
                 <ListEditor items={draft.sample_lines} onChange={(v) => set({ sample_lines: v })} addLabel="Add a line" />
@@ -123,7 +133,7 @@ export function ProfileEditor({ snap, run, onBack }: { snap: HarnessSnapshot; ru
             <ListEditor items={draft.never} onChange={(v) => set({ never: v })} placeholder="e.g. Never promises income." addLabel="Add a rule" />
             <div className="mt-5 rounded-lg bg-secondary/70 p-3">
               <div className="mb-2 flex items-center gap-1.5 text-xs font-medium">
-                <Lock className="size-3.5" /> Always handed to you
+                <Lock className="size-3.5" /> Handed to you at “{snap.levels.find((l) => l.key === snap.autonomy)?.label ?? "Balanced"}” autonomy
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {snap.always_handoff.map((t) => (
@@ -132,7 +142,7 @@ export function ProfileEditor({ snap, run, onBack }: { snap: HarnessSnapshot; ru
                   </span>
                 ))}
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">The AI sends a short holding note and the chat waits in your Inbox. This safety net is built in and can't be switched off.</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">The AI sends a short holding note and the chat waits in your Inbox. Move the autonomy slider on John's card to change this list; replies that promise income always come to you.</p>
             </div>
           </Section>
         </div>
