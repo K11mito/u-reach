@@ -237,6 +237,23 @@ func (s *Store) CreateContact(c Contact) (Contact, error) {
 	return s.Contact(c.ID)
 }
 
+// UpsertByPhone creates a contact for a phone number, or renames an existing
+// one. Used for campaign recipients (teammates' phones under demo names).
+func (s *Store) UpsertByPhone(phone, name, context string) (Contact, error) {
+	jid := phone + "@s.whatsapp.net"
+	c, err := s.ContactByJID(jid)
+	if errors.Is(err, sql.ErrNoRows) {
+		return s.CreateContact(Contact{JID: jid, Chat: jid, Phone: phone, Name: name, Context: context})
+	}
+	if err != nil {
+		return c, err
+	}
+	if _, err := s.db.Exec(`UPDATE contacts SET name = ?, context = ? WHERE id = ?`, name, context, c.ID); err != nil {
+		return c, err
+	}
+	return s.Contact(c.ID)
+}
+
 // SetStatus changes a contact's status chip.
 func (s *Store) SetStatus(id int64, status, reason string) error {
 	_, err := s.db.Exec(`UPDATE contacts SET status = ?, handoff_reason = ? WHERE id = ?`, status, reason, id)
