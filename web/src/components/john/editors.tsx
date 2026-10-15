@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react"
-import { Plus, X } from "lucide-react"
+import { ArrowLeft, Check, Loader2, Plus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 /** A titled card on the John page. `hint` says how the AI uses it. */
@@ -144,5 +144,54 @@ export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boo
     >
       <span className={cn("absolute top-0.5 size-4 rounded-full bg-white shadow transition-all", on ? "left-[18px]" : "left-0.5")} />
     </button>
+  )
+}
+
+/** The top bar of a John sub-page: back, title, save state. */
+export function EditorBar({
+  onBack,
+  title,
+  extra,
+  dirty,
+  saving,
+  onSave,
+  onDiscard,
+}: {
+  onBack: () => void
+  title: ReactNode
+  extra?: ReactNode
+  dirty: boolean
+  saving: boolean
+  onSave: () => void
+  onDiscard: () => void
+}) {
+  return (
+    <div className={cn("rounded-xl border bg-card p-3 transition-colors", dirty && "border-amber/60 bg-amber/[0.06]")}>
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
+          <ArrowLeft className="size-4" /> John
+        </button>
+        <span className="h-6 w-px bg-border" />
+        <div className="min-w-0 flex-1">{title}</div>
+        {extra}
+        {dirty ? (
+          <>
+            <span className="hidden items-center gap-1.5 text-xs font-medium text-amber-900 lg:inline-flex">
+              <span className="size-2 rounded-full bg-amber" /> Unsaved
+            </span>
+            <button onClick={onDiscard} className="h-8 rounded-lg px-3 text-sm font-medium hover:bg-secondary">
+              Discard
+            </button>
+            <button onClick={onSave} disabled={saving} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Save
+            </button>
+          </>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-2 text-xs text-muted-foreground">
+            <Check className="size-3.5" /> Saved
+          </span>
+        )}
+      </div>
+    </div>
   )
 }

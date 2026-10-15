@@ -1,13 +1,16 @@
 import { useState } from "react"
 import { Link2, Loader2, Send, Sparkles, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { errText, harnessApi, type TryResult } from "@/lib/api"
+import { errText, harnessApi, type Harness, type HarnessProfile, type TryResult } from "@/lib/api"
 import { Section } from "./editors"
 
 const SAMPLES = ["Hey John, what is U.Center?", "Is this safe? I lost money on an exchange before", "How much does it cost to join?", "Can I use it to send money home to the Philippines?"]
 
-/** Ask John something with the current harness. Nothing is saved or sent. */
-export function TryIt({ dirty }: { dirty: boolean }) {
+/**
+ * Ask John something. With a draft it answers with those unsaved edits;
+ * without one, with what's live. Nothing is saved or sent.
+ */
+export function TryIt({ draft, title = "Try John", hint = "Hear how he'd answer right now. Nothing is sent to WhatsApp." }: { draft?: { profile?: HarnessProfile; preset?: Harness }; title?: string; hint?: string }) {
   const [name, setName] = useState("Raj")
   const [msg, setMsg] = useState("")
   const [busy, setBusy] = useState(false)
@@ -20,7 +23,7 @@ export function TryIt({ dirty }: { dirty: boolean }) {
     setBusy(true)
     setErr("")
     try {
-      setRes(await harnessApi.tryIt(name, text))
+      setRes(await harnessApi.tryIt(name, text, draft))
     } catch (e) {
       setRes(null)
       setErr(errText(e))
@@ -30,8 +33,7 @@ export function TryIt({ dirty }: { dirty: boolean }) {
   }
 
   return (
-    <Section title="Try John" hint="Hear how he'd answer with the saved settings. Nothing is sent to WhatsApp." icon={Sparkles}>
-      {dirty && <p className="mb-3 rounded-md bg-amber/15 px-3 py-2 text-xs text-amber-900">Save your changes first: John answers with the saved version.</p>}
+    <Section title={title} hint={hint} icon={Sparkles}>
       <div className="flex gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Lead name" className="w-24 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring" />
         <input
@@ -62,7 +64,9 @@ export function TryIt({ dirty }: { dirty: boolean }) {
       {res && (
         <div className="mt-4 space-y-2">
           <div className="ml-6 rounded-2xl rounded-br-md bg-wa-bubble px-4 py-3 text-sm leading-relaxed">
-            <span className="mb-1 block text-[11px] font-semibold text-wa-dark">🎤 Voice note · {res.words} words · ~{Math.round(res.words / 2.5)}s</span>
+            <span className="mb-1 block text-[11px] font-semibold text-wa-dark">
+              🎤 Voice note · {res.words} words · ~{Math.round(res.words / 2.5)}s
+            </span>
             {res.reply.spoken_script}
           </div>
           {res.reply.followup_text && <div className="ml-6 rounded-2xl rounded-br-md bg-wa-bubble px-4 py-2.5 text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{res.reply.followup_text}</div>}
@@ -77,7 +81,9 @@ export function TryIt({ dirty }: { dirty: boolean }) {
               <Flag>No link yet</Flag>
             )}
             {res.trimmed && <Flag>Trimmed to length</Flag>}
-            <Flag>{(res.latency_ms / 1000).toFixed(1)}s · {res.model}</Flag>
+            <Flag>
+              {(res.latency_ms / 1000).toFixed(1)}s · {res.model}
+            </Flag>
           </div>
         </div>
       )}

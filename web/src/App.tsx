@@ -25,6 +25,8 @@ export default function App() {
   const go = useCallback((p: Page) => {
     window.history.pushState(null, "", p === "inbox" ? "/" : `/${p}`)
     setPage(p)
+    // Lets a page with sub-views (John's editors) return to its top level.
+    window.dispatchEvent(new PopStateEvent("popstate"))
   }, [])
   useEffect(() => {
     const pop = () => setPage(pageFromPath())

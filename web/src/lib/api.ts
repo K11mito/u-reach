@@ -109,21 +109,24 @@ async function json<T>(r: Response): Promise<T> {
 /** The server's message for a failed request, without the status code. */
 export const errText = (e: unknown) => String(e).replace(/^Error: \d+ /, "").trim()
 
-// John's editable harness (the John page).
-export interface HarnessPersona {
+// John's editable harness (the John page). The profile is who John is;
+// presets are how he sells; FAQ, link and playbook are shared.
+export interface HarnessProfile {
   name: string
   short_name: string
   role: string
   background: string[]
-  voice: { tone: string; rhythm: string; english: string; brand_words: string }
-  openers: string[]
-  signature_phrases: string[]
-  metaphors: string[]
   values: string[]
-  closers: string[]
-  never: string[]
+  voice: { tone: string; rhythm: string; english: string; brand_words: string }
+  signature_phrases: string[]
   sample_lines: string[]
+  metaphors: string[]
+  never: string[]
+}
+export interface Approach {
   how_he_sells: string[]
+  openers: string[]
+  closers: string[]
 }
 export type LinkTiming = "first_reply" | "when_interested" | "when_asked"
 export interface HarnessStyle {
@@ -133,7 +136,7 @@ export interface HarnessStyle {
   language: "english" | "match"
 }
 export interface Harness {
-  persona: HarnessPersona
+  approach: Approach
   style: HarnessStyle
 }
 export interface HarnessPreset {
@@ -156,6 +159,7 @@ export interface PlaybookDoc {
   created_at: number
 }
 export interface HarnessSnapshot {
+  profile: HarnessProfile
   active_id: number
   presets: HarnessPreset[]
   faq: string
@@ -178,7 +182,8 @@ const send = (method: string, url: string, body?: unknown) =>
 
 export const harnessApi = {
   get: () => fetch("/api/harness").then(json<HarnessSnapshot>),
-  saveActive: (h: Harness) => send("PUT", "/api/harness/active", h),
+  saveProfile: (p: HarnessProfile) => send("PUT", "/api/harness/profile", p),
+  savePreset: (id: number, h: Harness) => send("PUT", `/api/harness/presets/${id}`, h),
   saveAs: (name: string, description: string, harness: Harness) => send("POST", "/api/harness/presets", { name, description, harness }),
   activate: (id: number) => send("POST", `/api/harness/presets/${id}/activate`),
   reset: (id: number) => send("POST", `/api/harness/presets/${id}/reset`),
@@ -194,8 +199,9 @@ export const harnessApi = {
   docText: (id: number) => fetch(`/api/harness/documents/${id}`).then(json<{ text: string }>),
   setDocActive: (id: number, active: boolean) => send("PATCH", `/api/harness/documents/${id}`, { active }),
   removeDoc: (id: number) => send("DELETE", `/api/harness/documents/${id}`),
-  tryIt: (name: string, message: string) =>
-    fetch("/api/harness/try", { method: "POST", body: JSON.stringify({ name, message }) }).then(json<TryResult>),
+  /** John's reply to a pretend message; pass unsaved drafts to try them first. */
+  tryIt: (name: string, message: string, draft?: { profile?: HarnessProfile; preset?: Harness }) =>
+    fetch("/api/harness/try", { method: "POST", body: JSON.stringify({ name, message, ...draft }) }).then(json<TryResult>),
 }
 
 export const api = {
