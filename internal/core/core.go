@@ -282,7 +282,11 @@ func (c *Core) run(contactID int64, batch []pending) {
 	}
 	c.Store.Remember(contactID, reply.Remember)
 	status := "sent"
-	if reply.Handoff {
+	if reply.OptOut {
+		status = "opt_out"
+		c.Store.SetStatus(contactID, store.StatusNeedsJohn, "Asked not to be contacted")
+		c.Store.AddEvent(contactID, "opt_out", nil)
+	} else if reply.Handoff {
 		status = "handoff"
 		c.Store.SetStatus(contactID, store.StatusNeedsJohn, reply.HandoffReason)
 		c.Store.AddEvent(contactID, "handoff", map[string]string{"reason": reply.HandoffReason})
