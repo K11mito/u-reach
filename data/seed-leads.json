@@ -1,7 +1,7 @@
 [
   {
     "name": "Somchai",
-    "phone": "66812340001",
+    "phone": "999000000001",
     "context": "Met at the U.Center meetup in Bangkok",
     "status": "auto",
     "memory": ["Lives in Bangkok", "Runs a small coffee shop"],
@@ -15,7 +15,7 @@
   },
   {
     "name": "Priya",
-    "phone": "61412340002",
+    "phone": "999000000002",
     "context": "Friend of Daniel, lives in Melbourne",
     "status": "needs_john",
     "handoff_reason": "Asked how much she could earn per month",
@@ -30,7 +30,7 @@
   },
   {
     "name": "Daniel",
-    "phone": "61412340003",
+    "phone": "999000000003",
     "context": "Old colleague from Sydney",
     "status": "auto",
     "memory": ["Lives in Sydney", "Already uses Revolut"],
@@ -44,7 +44,7 @@
   },
   {
     "name": "Mei Lin",
-    "phone": "6591230004",
+    "phone": "999000000004",
     "context": "Met at a fintech event in Singapore",
     "status": "auto",
     "memory": ["Lives in Singapore", "Worried about crypto safety"],
@@ -56,7 +56,7 @@
   },
   {
     "name": "Carlos",
-    "phone": "5215512340005",
+    "phone": "999000000005",
     "context": "Cousin of a team member, Mexico City",
     "status": "human",
     "memory": ["Lives in Mexico City", "Prefers to talk in Spanish"],
@@ -70,7 +70,7 @@
   },
   {
     "name": "Fatima",
-    "phone": "923001230006",
+    "phone": "999000000006",
     "context": "Friend from Lahore, studies in Bangkok",
     "status": "auto",
     "memory": ["Student in Bangkok", "Family in Lahore"],
@@ -83,7 +83,7 @@
   },
   {
     "name": "Ben",
-    "phone": "447700900007",
+    "phone": "999000000007",
     "context": "Friend of a friend in London",
     "status": "needs_john",
     "handoff_reason": "Asked whether it's a pyramid scheme",
@@ -95,7 +95,7 @@
   },
   {
     "name": "Kenji",
-    "phone": "819012340008",
+    "phone": "999000000008",
     "context": "Met on the flight to Bangkok",
     "status": "auto",
     "memory": ["From Osaka", "Travels a lot for work"],
@@ -107,7 +107,7 @@
   },
   {
     "name": "Nok",
-    "phone": "66812340009",
+    "phone": "999000000009",
     "context": "Neighbour in Sukhumvit",
     "status": "auto",
     "memory": ["Lives near Sukhumvit", "Curious about the Flow Summit"],
@@ -119,7 +119,7 @@
   },
   {
     "name": "Anna",
-    "phone": "4915112340010",
+    "phone": "999000000010",
     "context": "Friend from the Chiang Mai yoga retreat",
     "status": "new",
     "memory": [],
