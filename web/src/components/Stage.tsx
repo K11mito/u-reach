@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { AudioLines, BrainCircuit, Check, Ear, MessageCircle, Send, Smartphone, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { clock, displayName, type Contact, type Message, type Run, type State } from "@/lib/api"
-import { Equalizer, Initials, VoiceNote } from "./bits"
+import { clock, displayName, useCountUp, type Contact, type Message, type Run, type State } from "@/lib/api"
+import { Equalizer, Initials, Linkified, Ticks, VoiceNote } from "./bits"
 
 const STAGES = [
   { key: "received_at", label: "Received", sub: "message in", icon: MessageCircle },
@@ -53,7 +53,7 @@ export function Stage({
   const texts = reply.filter((m) => m.kind === "text")
   const brain = useMemo(() => {
     try {
-      return run?.brain ? (JSON.parse(run.brain) as { spoken_script: string; handoff: boolean }) : null
+      return run?.brain ? (JSON.parse(run.brain) as { spoken_script: string; handoff: boolean; handoff_reason: string; opt_out: boolean }) : null
     } catch {
       return null
     }
@@ -75,17 +75,17 @@ export function Stage({
           </div>
         </div>
         <div className="flex items-center gap-8">
-          <Counter label="hours saved this week" value={state.hours_saved.toFixed(1)} />
-          <Counter label="voice notes this week" value={String(state.stats.replies_week)} />
+          <Counter label="hours saved this week" value={state.hours_saved} decimals={1} />
+          <Counter label="voice notes this week" value={state.stats.replies_week} />
           <button onClick={onExit} className="rounded-full p-2 text-white/50 hover:bg-white/10 hover:text-white" title="Exit (Esc)">
             <X />
           </button>
         </div>
       </header>
 
-      <main className="grid min-h-0 flex-1 grid-cols-[1fr_400px] gap-10 px-10 py-8">
+      <main className="grid min-h-0 flex-1 grid-cols-[1fr_clamp(260px,27vw,420px)] gap-8 px-10 py-8 2xl:gap-10">
         <section className="flex min-h-0 flex-col gap-6">
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-5 gap-2 xl:gap-3">
             {STAGES.map((s, i) => {
               const at = run ? run[s.key] : 0
               const prev = i > 0 && run ? run[STAGES[i - 1].key] : 0
@@ -105,12 +105,12 @@ export function Stage({
                     <div className={cn("grid size-10 place-items-center rounded-2xl", done ? "bg-wa text-white" : active ? "bg-white text-indigo-700" : "bg-white/10 text-white/50")}>
                       {done && i > 0 ? <Check className="size-5" /> : <Icon className={cn("size-5", active && "animate-pulse")} />}
                     </div>
-                    <span className="font-mono text-sm tabular-nums text-white/80">
+                    <span className="font-mono text-xs tabular-nums text-white/80 xl:text-sm">
                       {i === 0 ? (at ? clock(at) : "") : ms ? `${(ms / 1000).toFixed(1)}s` : ""}
                     </span>
                   </div>
-                  <div className="mt-3 text-lg font-bold">{s.label}</div>
-                  <div className="text-xs text-white/60">{s.sub}</div>
+                  <div className="mt-3 text-base font-bold xl:text-lg">{s.label}</div>
+                  <div className="truncate text-xs text-white/60">{s.sub}</div>
                 </div>
               )
             })}
@@ -133,13 +133,19 @@ export function Stage({
                   </div>
                 ))}
               </Panel>
-              <Panel title={brain?.handoff ? "John's reply · handed to John" : "John's reply"} john>
+              <Panel title="John's reply" john>
+                {brain?.handoff && (
+                  <div className="rounded-2xl bg-amber/20 px-4 py-2.5 text-sm font-semibold text-amber ring-1 ring-amber/40">
+                    ⚑ Handed to the real John{brain.handoff_reason ? `: ${brain.handoff_reason}` : ""}
+                  </div>
+                )}
                 {note ? (
-                  <div className="space-y-3">
-                    <div className="rounded-2xl rounded-tr-md bg-wa-bubble px-4 py-3 text-foreground shadow-lg">
-                      <VoiceNote src={note.audio_path} durationMs={note.duration_ms} seed={note.id} outgoing big />
+                  <div className="rounded-2xl rounded-tr-md bg-wa-bubble px-4 py-3 text-foreground shadow-lg">
+                    <VoiceNote src={note.audio_path} durationMs={note.duration_ms} seed={note.id} outgoing big />
+                    <div className="mt-1 flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
+                      {note.status === "played" && <span className="font-semibold text-sky-600">{displayName(contact)} listened</span>}
+                      <Ticks status={note.status} voice />
                     </div>
-                    <p className="text-lg leading-relaxed text-white/85 italic">“{note.text}”</p>
                   </div>
                 ) : run.status === "running" ? (
                   <div className="flex items-center gap-3 text-xl text-wa">
@@ -147,14 +153,15 @@ export function Stage({
                   </div>
                 ) : run.status === "failed" ? (
                   <p className="text-amber">Couldn't reply: {run.error}</p>
-                ) : (
-                  brain && <p className="text-lg text-white/85">{brain.spoken_script}</p>
-                )}
+                ) : null}
                 {texts.map((m) => (
                   <div key={m.id} className="rounded-2xl rounded-tr-md bg-wa-bubble px-4 py-3 text-base whitespace-pre-wrap text-foreground shadow-lg [overflow-wrap:anywhere]">
-                    {m.text}
+                    <Linkified text={m.text.trim()} />
                   </div>
                 ))}
+                {(note?.text || (!note && run.status !== "running" && brain?.spoken_script)) && (
+                  <p className="text-base leading-relaxed text-white/75 italic">“{note?.text || brain?.spoken_script}”</p>
+                )}
               </Panel>
             </div>
           )}
@@ -184,10 +191,11 @@ export function Stage({
   )
 }
 
-function Counter({ label, value }: { label: string; value: string }) {
+function Counter({ label, value, decimals = 0 }: { label: string; value: number; decimals?: number }) {
+  const shown = useCountUp(value, 1400)
   return (
     <div className="text-right">
-      <div className="text-4xl font-extrabold tabular-nums">{value}</div>
+      <div className="text-4xl font-extrabold tabular-nums">{shown.toFixed(decimals)}</div>
       <div className="text-xs tracking-wide text-white/60 uppercase">{label}</div>
     </div>
   )
