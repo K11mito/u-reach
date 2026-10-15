@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -528,6 +530,39 @@ func (c *Client) MarkRead(ctx context.Context, in Inbound) {
 // DownloadAudio fetches and decrypts an inbound voice note.
 func (c *Client) DownloadAudio(ctx context.Context, a *waE2E.AudioMessage) ([]byte, error) {
 	return c.WA().Download(ctx, a)
+}
+
+// ProfilePicture downloads a user's WhatsApp profile photo. It returns
+// (nil, nil) when they have none or hide it from us.
+func (c *Client) ProfilePicture(ctx context.Context, jid types.JID) ([]byte, error) {
+	info, err := c.WA().GetProfilePictureInfo(ctx, jid, &whatsmeow.GetProfilePictureParams{})
+	if errors.Is(err, whatsmeow.ErrProfilePictureNotSet) || errors.Is(err, whatsmeow.ErrProfilePictureUnauthorized) || (err == nil && info == nil) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, info.URL, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("profile picture: %s", resp.Status)
+	}
+	return io.ReadAll(io.LimitReader(resp.Body, 5<<20))
+}
+
+// OwnJID is the linked account's own JID (empty while unlinked).
+func (c *Client) OwnJID() types.JID {
+	if id := c.WA().Store.ID; id != nil {
+		return id.ToNonAD()
+	}
+	return types.EmptyJID
 }
 
 // PhoneJID builds a JID for an outbound message to a phone number.
