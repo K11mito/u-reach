@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ChartColumn, CircleHelp, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, Telescope, UserRound } from "lucide-react"
+import { ChartColumn, CircleHelp, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLive, type WhatsAppStatus } from "@/lib/api"
 import { Inbox } from "@/components/Inbox"
@@ -135,15 +135,10 @@ export default function App() {
                 {!!n.badge && <span className="min-w-5 rounded-full bg-amber-100 px-1.5 text-center text-[11px] font-semibold text-amber-800 tabular-nums">{n.badge}</span>}
               </button>
             ))}
-            {/* Not built yet. */}
-            <button disabled className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/40">
-              <Telescope className="size-4" />
-              <span className="flex-1 text-left">Research</span>
-            </button>
           </nav>
           {/* Fills the free space above John's card; on short screens the top is cropped, keeping the robot, and on very short ones (zoomed in) it hides. */}
           <div className="relative mt-4 mb-3 min-h-0 flex-1">
-            <img src={robot} alt="" className="absolute bottom-0 -left-3 max-h-full w-[80%] object-cover [@media(max-height:680px)]:hidden object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
+            <img src={robot} alt="" className="absolute bottom-0 -left-3 max-h-full w-[68%] object-cover [@media(max-height:680px)]:hidden object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
           </div>
           <div className="space-y-3 rounded-2xl bg-white/10 p-3">
             {/* John's photo opens his page: persona, presets and sales playbook. */}
