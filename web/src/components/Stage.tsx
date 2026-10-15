@@ -155,7 +155,7 @@ export function Stage({
   const total = run && end ? (end - run.received_at) / 1000 : 0
 
   return (
-    <div className="fixed inset-0 flex flex-col gap-4 overflow-hidden bg-background bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4">
+    <div className="fixed inset-0 flex flex-col gap-4 overflow-hidden bg-gradient-to-r from-[oklch(0.95_0.035_300)] to-[oklch(0.95_0.035_245)] p-4">
       <BrandHeader />
 
       <div ref={area} className="relative min-h-0 flex-1">

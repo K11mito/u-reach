@@ -16,7 +16,7 @@ export function BrandHeader() {
         </div>
       </div>
       <div className="relative z-10 ml-6 border-l border-white/15 pl-6 text-xl font-extrabold tracking-tight">Let's Go! Let's Grow!</div>
-      <img src={banner} alt="" className="absolute inset-y-0 right-0 h-full w-auto max-w-[70%] object-cover object-right opacity-80 [mask-image:linear-gradient(to_right,transparent,black_40%)]" />
+      <img src={banner} alt="" className="absolute inset-y-0 right-0 h-full w-auto max-w-[70%] object-cover object-right opacity-60 [mask-image:linear-gradient(to_right,transparent,black_40%)]" />
     </header>
   )
 }

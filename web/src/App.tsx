@@ -87,7 +87,7 @@ export default function App() {
   ]
 
   return (
-    <div className="flex h-screen min-w-[960px] flex-col gap-4 bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4">
+    <div className="flex h-screen min-w-[960px] flex-col gap-4 bg-gradient-to-r from-[oklch(0.95_0.035_300)] to-[oklch(0.95_0.035_245)] p-4">
       <BrandHeader />
 
       <div className="flex min-h-0 flex-1 gap-4">
@@ -116,7 +116,7 @@ export default function App() {
           </nav>
           {/* Fills the free space above John's card; on short screens the top is cropped, keeping the robot, and on very short ones (zoomed in) it hides. */}
           <div className="relative mt-4 mb-3 min-h-0 flex-1">
-            <img src={robot} alt="" className="absolute bottom-0 -left-3 max-h-full w-[80%] object-cover [@media(max-height:680px)]:hidden object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
+            <img src={robot} alt="" className="absolute bottom-0 -left-3 max-h-full w-[80%] object-cover [@media(max-height:680px)]:hidden object-[center_76%] opacity-6  0 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
           </div>
           <div className="space-y-3 rounded-2xl bg-white/10 p-3">
             {/* John's photo opens his page: persona, presets and sales playbook. */}
