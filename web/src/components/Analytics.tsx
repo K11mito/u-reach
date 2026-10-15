@@ -13,17 +13,33 @@ const usd = (v: number) => (v >= 0.01 ? `$${v.toFixed(2)}` : v > 0 ? `$${v.toFix
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
 const running = (xs: number[]) => xs.map((_, i) => sum(xs.slice(0, i + 1)))
 
+// The last numbers fetched, kept across visits: the page shows them at once
+// and refreshes quietly in the background instead of flashing a spinner.
+let cached: Data | null = null
+let inflight: Promise<Data> | null = null
+function fetchAnalytics() {
+  inflight ??= api
+    .analytics()
+    .then((d) => (cached = d))
+    .finally(() => (inflight = null))
+  return inflight
+}
+
+/** Warms the cache so the first visit to the page is instant too. */
+export function prefetchAnalytics() {
+  fetchAnalytics().catch(() => {})
+}
+
 /** John's last two weeks: the funnel, and what U-Reach costs to run. */
 export function Analytics({ state }: { state: State }) {
-  const [data, setData] = useState<Data | null>(null)
+  const [data, setData] = useState<Data | null>(cached)
   const [error, setError] = useState("")
 
   // Spend is live, so keep it fresh while the page is open.
   useEffect(() => {
     let alive = true
     const load = () =>
-      api
-        .analytics()
+      fetchAnalytics()
         .then((d) => alive && (setData(d), setError("")))
         .catch((e) => alive && setError(String(e)))
     load()

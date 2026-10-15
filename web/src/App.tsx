@@ -6,7 +6,7 @@ import { Inbox } from "@/components/Inbox"
 import { Stage } from "@/components/Stage"
 import { Profile } from "@/components/Profile"
 import { Campaign } from "@/components/Campaign"
-import { Analytics } from "@/components/Analytics"
+import { Analytics, prefetchAnalytics } from "@/components/Analytics"
 import { Help } from "@/components/Help"
 import { LinkWhatsApp } from "@/components/LinkWhatsApp"
 import { BrandHeader } from "@/components/BrandHeader"
@@ -40,6 +40,11 @@ export default function App() {
   useEffect(() => {
     document.title = `U-Reach · ${TITLES[page]}`
   }, [page])
+  useEffect(() => {
+    // A few seconds after opening, so it never competes with the first paint.
+    const t = window.setTimeout(prefetchAnalytics, 3000)
+    return () => window.clearTimeout(t)
+  }, [])
 
   // Number keys switch pages; P presents (Stage view). Ignored while typing.
   useEffect(() => {
