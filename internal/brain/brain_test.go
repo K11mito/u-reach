@@ -1,6 +1,7 @@
 package brain
 
 import (
+	"math"
 	"strings"
 	"testing"
 )
@@ -60,5 +61,23 @@ func TestLinkWhenAsked(t *testing.T) {
 	b.Configure(Config{Style: Style{MinWords: 20, MaxWords: 30}})
 	if r := b.enforce(Reply{SpokenScript: long}, Contact{}, lead("hi"), &m); len(strings.Fields(r.SpokenScript)) > 50 {
 		t.Fatalf("style cap should be max words plus slack, got %d", len(strings.Fields(r.SpokenScript)))
+	}
+}
+
+func TestCostUSD(t *testing.T) {
+	for _, tc := range []struct {
+		m    Meta
+		want float64
+	}{
+		{Meta{Model: "claude-opus-5-5", InputTokens: 1_000_000}, 4},
+		{Meta{Model: "claude-opus-5-5", OutputTokens: 1_000_000}, 20},
+		{Meta{Model: "claude-opus-5-5", CacheRead: 1_000_000, CacheWrite: 1_000_000}, 0.20 + 5},
+		{Meta{Model: "claude-opus-5-20260101", InputTokens: 1_000_000}, 5}, // dated, not mistaken for 5.5
+		{Meta{Model: "claude-sonnet-5-5", InputTokens: 1_000_000}, 2},
+		{Meta{Model: "something-new", InputTokens: 1_000_000}, 4}, // priced as the default
+	} {
+		if got := tc.m.CostUSD(); math.Abs(got-tc.want) > 1e-9 {
+			t.Errorf("%s: got %v, want %v", tc.m.Model, got, tc.want)
+		}
 	}
 }

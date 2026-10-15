@@ -129,7 +129,8 @@ type Meta struct {
 type Brain struct {
 	Model       string
 	Effort      string
-	ReferralURL string // read through Referral(); set through Configure
+	ReferralURL string     // read through Referral(); set through Configure
+	OnUsage     func(Meta) // called after every billed request, e.g. to record spend
 
 	client anthropic.Client
 	mu     sync.RWMutex
@@ -287,6 +288,9 @@ func (b *Brain) generate(ctx context.Context, cfg setup, prompt string, c Contac
 	meta.OutputTokens = msg.Usage.OutputTokens
 	meta.CacheRead = msg.Usage.CacheReadInputTokens
 	meta.CacheWrite = msg.Usage.CacheCreationInputTokens
+	if b.OnUsage != nil {
+		b.OnUsage(meta) // billed even if the reply is refused or cut off below
+	}
 
 	switch msg.StopReason {
 	case anthropic.BetaStopReasonRefusal:

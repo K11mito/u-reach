@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -200,6 +201,17 @@ type Subscription struct {
 	VoiceLimit     int    `json:"voice_limit"`
 	CanUseIVC      bool   `json:"can_use_instant_voice_cloning"`
 	NextResetUnix  int64  `json:"next_character_count_reset_unix"`
+	NextInvoice    struct {
+		AmountDueCents int `json:"amount_due_cents"`
+	} `json:"next_invoice"`
+}
+
+// USDPerCredit is what one credit costs on the current plan.
+func (s Subscription) USDPerCredit() float64 {
+	if s.CharacterLimit == 0 {
+		return 0
+	}
+	return float64(s.NextInvoice.AmountDueCents) / 100 / float64(s.CharacterLimit)
 }
 
 // Credits left this period.
@@ -213,6 +225,35 @@ func (e *Eleven) Subscription(ctx context.Context) (Subscription, error) {
 	}
 	var s Subscription
 	return s, json.Unmarshal(raw, &s)
+}
+
+// Usage returns the credits used in each interval ("hour" or "day") from
+// start to end, as reported by ElevenLabs. It costs no credits.
+func (e *Eleven) Usage(ctx context.Context, start, end time.Time, interval string) ([]time.Time, []float64, error) {
+	q := url.Values{}
+	q.Set("start_unix", strconv.FormatInt(start.UnixMilli(), 10))
+	q.Set("end_unix", strconv.FormatInt(end.UnixMilli(), 10))
+	q.Set("aggregation_interval", interval)
+	raw, err := e.do(ctx, http.MethodGet, apiBase+"/v1/usage/character-stats?"+q.Encode(), "", nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("usage: %w", err)
+	}
+	var r struct {
+		Time  []int64              `json:"time"`
+		Usage map[string][]float64 `json:"usage"`
+	}
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return nil, nil, fmt.Errorf("usage: %w", err)
+	}
+	times := make([]time.Time, len(r.Time))
+	for i, t := range r.Time {
+		times[i] = time.UnixMilli(t)
+	}
+	used := r.Usage["All"]
+	if len(used) != len(times) {
+		used = make([]float64, len(times))
+	}
+	return times, used, nil
 }
 
 func (e *Eleven) do(ctx context.Context, method, u, ctype string, body io.Reader) ([]byte, error) {
