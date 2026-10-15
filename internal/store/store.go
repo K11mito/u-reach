@@ -34,9 +34,14 @@ type Contact struct {
 	Status        string   `json:"status"`
 	HandoffReason string   `json:"handoff_reason"`
 	LinkSentAt    int64    `json:"link_sent_at"`
+	Avatar        string   `json:"avatar,omitempty"` // WhatsApp profile photo, relative to data/audio
 	CreatedAt     int64    `json:"created_at"`
 	LastMessageAt int64    `json:"last_message_at"`
 }
+
+// IsDemoNumber reports whether a phone number is a fake seeded/simulated one
+// (country codes 99x are reserved or unused), which must never be messaged.
+func IsDemoNumber(phone string) bool { return strings.HasPrefix(phone, "99") }
 
 // DisplayName is the name to show and say.
 func (c Contact) DisplayName() string {
@@ -144,6 +149,7 @@ func Open(path string) (*Store, error) {
 	}
 	// Added after the first release; ignore "duplicate column" on existing DBs.
 	db.Exec(`ALTER TABLE messages ADD COLUMN status TEXT NOT NULL DEFAULT ''`)
+	db.Exec(`ALTER TABLE contacts ADD COLUMN avatar TEXT NOT NULL DEFAULT ''`)
 	return &Store{db: db}, nil
 }
 
@@ -157,13 +163,13 @@ func (s *Store) Reset() error {
 
 func Now() int64 { return time.Now().UnixMilli() }
 
-const contactCols = `id, jid, chat, phone, name, push_name, context, memory, status, handoff_reason, link_sent_at, created_at, last_message_at`
+const contactCols = `id, jid, chat, phone, name, push_name, context, memory, status, handoff_reason, link_sent_at, avatar, created_at, last_message_at`
 
 func scanContact(row interface{ Scan(...any) error }) (Contact, error) {
 	var c Contact
 	var mem string
 	err := row.Scan(&c.ID, &c.JID, &c.Chat, &c.Phone, &c.Name, &c.PushName, &c.Context, &mem,
-		&c.Status, &c.HandoffReason, &c.LinkSentAt, &c.CreatedAt, &c.LastMessageAt)
+		&c.Status, &c.HandoffReason, &c.LinkSentAt, &c.Avatar, &c.CreatedAt, &c.LastMessageAt)
 	if err == nil {
 		json.Unmarshal([]byte(mem), &c.Memory)
 	}
@@ -263,6 +269,12 @@ func (s *Store) UpsertByPhone(phone, name, context string) (Contact, error) {
 func (s *Store) ResetContact(id int64) error {
 	_, err := s.db.Exec(`DELETE FROM messages WHERE contact_id = ?; DELETE FROM runs WHERE contact_id = ?; DELETE FROM events WHERE contact_id = ?;
 		UPDATE contacts SET status = 'new', handoff_reason = '', memory = '[]', link_sent_at = 0, last_message_at = 0 WHERE id = ?`, id, id, id, id)
+	return err
+}
+
+// SetAvatar records where a contact's profile photo is stored.
+func (s *Store) SetAvatar(id int64, path string) error {
+	_, err := s.db.Exec(`UPDATE contacts SET avatar = ? WHERE id = ?`, path, id)
 	return err
 }
 
