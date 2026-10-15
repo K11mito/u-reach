@@ -33,22 +33,15 @@ const (
 	LinkWhenAsked      = "when_asked"      // only when they ask how to join (enforced in code)
 )
 
-// Reply language.
-const (
-	LangEnglish = "english"
-	LangMatch   = "match" // the lead's language; the cloned voice is multilingual
-)
-
 // Style is how John replies. Each dashboard preset carries one.
 type Style struct {
 	MinWords   int    `json:"min_words"`
 	MaxWords   int    `json:"max_words"`
 	LinkTiming string `json:"link_timing"`
-	Language   string `json:"language"`
 }
 
 // DefaultStyle is the original tuning: 50 to 90 words, link in the first reply.
-var DefaultStyle = Style{MinWords: 50, MaxWords: 90, LinkTiming: LinkFirstReply, Language: LangEnglish}
+var DefaultStyle = Style{MinWords: 50, MaxWords: 90, LinkTiming: LinkFirstReply}
 
 // Normalized fills unset fields from DefaultStyle and keeps lengths sane.
 func (st Style) Normalized() Style {
@@ -65,9 +58,6 @@ func (st Style) Normalized() Style {
 	default:
 		st.LinkTiming = DefaultStyle.LinkTiming
 	}
-	if st.Language != LangMatch {
-		st.Language = LangEnglish
-	}
 	return st
 }
 
@@ -81,6 +71,7 @@ type Config struct {
 	Playbook    []Doc  // active sales playbook documents
 	Style       Style
 	ReferralURL string
+	Autonomy    string // low | medium | high; see autonomy.go
 }
 
 // Contact is what we know about the lead.
@@ -132,10 +123,11 @@ type Brain struct {
 	ReferralURL string     // read through Referral(); set through Configure
 	OnUsage     func(Meta) // called after every billed request, e.g. to record spend
 
-	client anthropic.Client
-	mu     sync.RWMutex
-	system string
-	style  Style
+	client   anthropic.Client
+	mu       sync.RWMutex
+	system   string
+	style    Style
+	autonomy string
 }
 
 // New loads the persona card and FAQ. Call config.Load first.
@@ -165,7 +157,7 @@ func (b *Brain) Configure(c Config) {
 	c.Style = c.Style.Normalized()
 	system := systemPrompt(c)
 	b.mu.Lock()
-	b.system, b.style, b.ReferralURL = system, c.Style, c.ReferralURL
+	b.system, b.style, b.ReferralURL, b.autonomy = system, c.Style, c.ReferralURL, NormalizeAutonomy(c.Autonomy)
 	b.mu.Unlock()
 }
 
@@ -219,19 +211,19 @@ func (b *Brain) Reply(ctx context.Context, c Contact, history []Turn) (Reply, Me
 // Live replies keep using the configured version.
 func (b *Brain) Preview(ctx context.Context, cfg Config, c Contact, history []Turn) (Reply, Meta, error) {
 	cfg.Style = cfg.Style.Normalized()
-	return b.generate(ctx, setup{system: systemPrompt(cfg), style: cfg.Style, referral: cfg.ReferralURL}, userPrompt(c, history), c, history)
+	return b.generate(ctx, setup{system: systemPrompt(cfg), style: cfg.Style, referral: cfg.ReferralURL, autonomy: NormalizeAutonomy(cfg.Autonomy)}, userPrompt(c, history), c, history)
 }
 
 // setup is one consistent view of the config, taken once per reply.
 type setup struct {
-	system, referral string
-	style            Style
+	system, referral, autonomy string
+	style                      Style
 }
 
 func (b *Brain) current() setup {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	return setup{system: b.system, style: b.style.Normalized(), referral: b.ReferralURL}
+	return setup{system: b.system, style: b.style.Normalized(), referral: b.ReferralURL, autonomy: NormalizeAutonomy(b.autonomy)}
 }
 
 // Opener writes John's first, unprompted voice note to someone he knows
@@ -331,10 +323,17 @@ func enforce(cfg setup, r Reply, c Contact, history []Turn, meta *Meta) Reply {
 	style, referral := cfg.style, cfg.referral
 
 	if !r.Handoff {
-		if kw := handoffRe.FindString(latest); kw != "" {
+		if kw := handoffTrigger(cfg.autonomy, latest); kw != "" {
 			meta.ForcedHandoff = strings.ToLower(kw)
 			r.Handoff = true
 			r.HandoffReason = "asked about " + meta.ForcedHandoff
+			r.SpokenScript = holdingLine(c.Name)
+			r.FollowupText = ""
+		} else if promise := promiseRe.FindString(r.SpokenScript + "\n" + r.FollowupText); promise != "" {
+			// The model drifted into an income claim: never send it.
+			meta.ForcedHandoff = "income claim: " + strings.ToLower(promise)
+			r.Handoff = true
+			r.HandoffReason = "reply mentioned income; John should answer personally"
 			r.SpokenScript = holdingLine(c.Name)
 			r.FollowupText = ""
 		}
@@ -447,10 +446,6 @@ func systemPrompt(c Config) string {
 		closing = "- Don't push your link. End with one warm question about them or an offer of a quick call. Send the link only when they ask how to join or ask for it."
 		linkRule = "include_referral: true only when the lead asks how to join or asks for the link. The system enforces this."
 	}
-	language := "- Reply in English."
-	if st.Language == LangMatch {
-		language = "- Reply in the language the lead writes in (John's cloned voice speaks it). If unsure, use English."
-	}
 	length := fmt.Sprintf("- %d to %d words, about %d to %d seconds. Shorter is better than rushed.", st.MinWords, st.MaxWords, st.MinWords*2/5, st.MaxWords*2/5)
 
 	return `You write WhatsApp voice notes as John, a U.Center ambassador. Your words are spoken aloud by a clone of John's own voice and sent to a lead who messaged him. They must sound exactly like John talking into his phone: warm, personal, and excited to bring this person into U-topia with him as their sponsor.
@@ -472,9 +467,9 @@ How to write spoken_script:
 - Don't repeat lines you already said earlier in this conversation; vary how you open and close.
 - Only state facts that are in the FAQ or the sales playbook. If neither covers something, say you'll walk them through it on a quick call. Never invent numbers, dates, features or promises.
 - Never sound like a brochure or a support bot. Never say "I'd be happy to help", "Great question", "As an AI", or "Feel free to reach out".
-` + language + `
+- Reply in English.
 
-Handoff: if the lead asks about earnings, income, commissions, returns, payments or withdrawals, anything legal or regulatory, complaints, or whether it's a scam or pyramid, set handoff to true. Then spoken_script is only a short, warm holding line (20 to 40 words) saying John will get back to them personally. Do not answer the question. Put the topic in handoff_reason.
+` + handoffPrompt(c.Autonomy) + `
 
 Opt-out: if the lead asks you to stop messaging them or clearly says they're not interested, set opt_out to true. Then spoken_script is one or two kind sentences with no pitch, followup_text is empty, and include_referral is false.
 

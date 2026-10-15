@@ -56,13 +56,13 @@ func TestProfileAndPresetsReachTheBrain(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := snap.Presets[0].Harness
-	h.Approach.HowHeSells = append(h.Approach.HowHeSells, "He always mentions the Bangkok meetup.")
-	h.Style = brain.Style{MinWords: 30, MaxWords: 45, LinkTiming: brain.LinkWhenAsked, Language: brain.LangMatch}
+	h.Approach += "\n\nHe always mentions the Bangkok meetup."
+	h.Style = brain.Style{MinWords: 30, MaxWords: 45, LinkTiming: brain.LinkWhenAsked}
 	if err := s.SavePreset(snap.Presets[0].ID, h); err != nil {
 		t.Fatal(err)
 	}
 	p := br.SystemPrompt()
-	for _, want := range []string{"Let's make it happen.", "He always mentions the Bangkok meetup.", "30 to 45 words", "Don't push your link", "language the lead writes in"} {
+	for _, want := range []string{"Let's make it happen.", "He always mentions the Bangkok meetup.", "30 to 45 words", "Don't push your link", "Reply in English."} {
 		if !strings.Contains(p, want) {
 			t.Fatalf("prompt missing %q", want)
 		}
@@ -77,7 +77,7 @@ func TestProfileAndPresetsReachTheBrain(t *testing.T) {
 
 	// Editing a preset that isn't in use doesn't change live replies.
 	call := snap.Presets[3]
-	call.Harness.Approach.Closers = []string{"Ring me tonight?"}
+	call.Harness.Approach = "He always closes with: Ring me tonight?"
 	if err := s.SavePreset(call.ID, call.Harness); err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestPreviewConfigUsesDraftsWithoutSaving(t *testing.T) {
 	s, br, _ := newService(t)
 	snap, _ := s.Snapshot()
 	draft := snap.Presets[1].Harness
-	draft.Approach.Openers = []string{"Yo {name}!"}
+	draft.Approach = "He always opens with Yo {name}!"
 	prof := snap.Profile
 	prof.Role = "Draft role"
 	cfg, err := s.PreviewConfig(&prof, &draft)
@@ -130,7 +130,7 @@ func TestLegacyPresetsKeepTheirEdits(t *testing.T) {
 		t.Fatal(err)
 	}
 	snap, _ := s.Snapshot()
-	if snap.Profile.Role != "Edited role" || snap.Presets[0].ID != id || snap.Presets[0].Harness.Approach.HowHeSells[0] != "Old step" || snap.Presets[0].Harness.Style.LinkTiming != brain.LinkWhenAsked {
+	if snap.Profile.Role != "Edited role" || snap.Presets[0].ID != id || snap.Presets[0].Harness.Approach != "Old step\n\nWays he likes to close:\n- Old closer" || snap.Presets[0].Harness.Style.LinkTiming != brain.LinkWhenAsked {
 		t.Fatalf("legacy preset should convert: %+v %+v", snap.Profile.Role, snap.Presets[0].Harness)
 	}
 }
@@ -209,5 +209,61 @@ func TestPresetLifecycle(t *testing.T) {
 	}
 	if err := s.SetFAQ(" "); !errors.Is(err, ErrInvalid) {
 		t.Fatal("FAQ can't be empty")
+	}
+}
+
+func TestAutonomySetting(t *testing.T) {
+	s, br, _ := newService(t)
+	snap, _ := s.Snapshot()
+	if snap.Autonomy != brain.AutonomyMedium || len(snap.Levels) != 3 || snap.AlwaysHandoff[0] != "Earnings, income and commissions" {
+		t.Fatalf("default should be balanced: %q %v", snap.Autonomy, snap.AlwaysHandoff)
+	}
+	if err := s.SetAutonomy(brain.AutonomyHigh); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(br.SystemPrompt(), "end to end") {
+		t.Fatal("full autonomy should reach the prompt")
+	}
+	if snap, _ = s.Snapshot(); snap.Autonomy != brain.AutonomyHigh || !strings.Contains(snap.AlwaysHandoff[0], "Legal threats") {
+		t.Fatalf("snapshot should show the new level: %q %v", snap.Autonomy, snap.AlwaysHandoff)
+	}
+	// Previews use the live autonomy too.
+	cfg, _ := s.PreviewConfig(nil, nil)
+	if cfg.Autonomy != brain.AutonomyHigh {
+		t.Fatal("preview should use the saved autonomy")
+	}
+	if err := s.SetAutonomy("reckless"); !errors.Is(err, ErrInvalid) {
+		t.Fatal("unknown level must be rejected")
+	}
+}
+
+// Presets saved with list-shaped approaches (before the free-text editor)
+// become text, and John's openers and closers move into his profile.
+func TestListApproachBecomesText(t *testing.T) {
+	st, err := store.Open(filepath.Join(t.TempDir(), "lists.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	st.SetSetting(settingProfile, `{"name":"John Klensch","role":"Ambassador"}`)
+	id, _ := st.AddPreset(store.Preset{Key: "curious", Name: "Curious first", Harness: `{"approach":{"how_he_sells":["Ask first.","Then pitch."],"openers":["Hey {name}! John here, so good to hear from you.","Hi {name}! Thanks for reaching out, I love that you asked.","Hey {name}, John here. Great to hear from you."],"closers":["Where are you based?"]},"style":{"min_words":35,"max_words":60,"link_timing":"when_interested","language":"match"}}`})
+	st.SetSetting(settingActive, "1")
+	br := &brain.Brain{}
+	s, err := New(st, br, "../../data/persona/john.json", "../../data/faq.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	snap, _ := s.Snapshot()
+	if got := snap.Presets[0].Harness.Approach; snap.Presets[0].ID != id || got != "Ask first.\n\nThen pitch.\n\nWays he likes to close:\n- Where are you based?" {
+		t.Fatalf("list approach should become text (John's own openers dropped): %q", got)
+	}
+	if len(snap.Profile.Openers) == 0 || len(snap.Profile.Closers) == 0 {
+		t.Fatal("profile should get John's openers and closers")
+	}
+	if p := br.SystemPrompt(); !strings.Contains(p, `"how_he_sells": "Ask first.`) || !strings.Contains(p, "Hey {name}! John here") {
+		t.Fatal("prompt should carry the approach text and the profile's openers")
+	}
+	if err := s.SavePreset(id, Harness{Approach: "   "}); !errors.Is(err, ErrInvalid) {
+		t.Fatal("an empty approach is invalid")
 	}
 }

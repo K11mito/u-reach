@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -57,19 +58,32 @@ type Profile struct {
 	SampleLines      []string `json:"sample_lines"`
 	Metaphors        []string `json:"metaphors"`
 	Never            []string `json:"never"`
+	Openers          []string `json:"openers"`
+	Closers          []string `json:"closers"`
 }
 
-// Approach is how John sells in one preset.
-type Approach struct {
-	HowHeSells []string `json:"how_he_sells"`
-	Openers    []string `json:"openers"`
-	Closers    []string `json:"closers"`
-}
-
-// Harness is what a preset holds.
+// Harness is what a preset holds: how John sells with it, in plain words,
+// and his reply style.
 type Harness struct {
-	Approach Approach    `json:"approach"`
+	Approach string      `json:"approach"`
 	Style    brain.Style `json:"style"`
+}
+
+// card is the persona card the brain reads: the profile plus a preset's approach.
+type card struct {
+	Name             string   `json:"name"`
+	ShortName        string   `json:"short_name"`
+	Role             string   `json:"role"`
+	Background       []string `json:"background"`
+	Voice            Voice    `json:"voice"`
+	Openers          []string `json:"openers"`
+	SignaturePhrases []string `json:"signature_phrases"`
+	Metaphors        []string `json:"metaphors"`
+	Values           []string `json:"values"`
+	Closers          []string `json:"closers"`
+	Never            []string `json:"never"`
+	SampleLines      []string `json:"sample_lines"`
+	HowHeSells       string   `json:"how_he_sells"`
 }
 
 // Preset is a named sales approach John can switch to.
@@ -97,14 +111,16 @@ type DocInfo struct {
 
 // Snapshot is everything the dashboard's John page shows.
 type Snapshot struct {
-	Profile       Profile   `json:"profile"`
-	ActiveID      int64     `json:"active_id"`
-	Presets       []Preset  `json:"presets"`
-	FAQ           string    `json:"faq"`
-	ReferralURL   string    `json:"referral_url"`
-	Documents     []DocInfo `json:"documents"`
-	PlaybookMax   int       `json:"playbook_max_chars"`
-	AlwaysHandoff []string  `json:"always_handoff"`
+	Profile       Profile       `json:"profile"`
+	ActiveID      int64         `json:"active_id"`
+	Presets       []Preset      `json:"presets"`
+	FAQ           string        `json:"faq"`
+	ReferralURL   string        `json:"referral_url"`
+	Documents     []DocInfo     `json:"documents"`
+	PlaybookMax   int           `json:"playbook_max_chars"`
+	AlwaysHandoff []string      `json:"always_handoff"` // at the current autonomy
+	Autonomy      string        `json:"autonomy"`
+	Levels        []brain.Level `json:"levels"`
 }
 
 const (
@@ -112,6 +128,7 @@ const (
 	settingProfile  = "profile"
 	settingFAQ      = "faq"
 	settingReferral = "referral_url"
+	settingAutonomy = "autonomy"
 
 	// MaxDocChars caps one document (~30k tokens); MaxPlaybookChars caps all
 	// active documents together so every reply stays fast and affordable.
@@ -156,6 +173,14 @@ func New(st *store.Store, br *brain.Brain, personaPath, faqPath string) (*Servic
 				}
 			}
 		}
+		if err := s.putProfile(p); err != nil {
+			return nil, err
+		}
+	} else if p, err := s.profile(); err != nil {
+		return nil, err
+	} else if len(p.Openers) == 0 && len(p.Closers) == 0 {
+		// Openers and closers used to live in each preset; they're John's own words.
+		p.Openers, p.Closers = base.Openers, base.Closers
 		if err := s.putProfile(p); err != nil {
 			return nil, err
 		}
@@ -206,7 +231,8 @@ func New(st *store.Store, br *brain.Brain, personaPath, faqPath string) (*Servic
 func (s *Service) Snapshot() (Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	snap := Snapshot{PlaybookMax: MaxPlaybookChars, AlwaysHandoff: alwaysHandoff}
+	snap := Snapshot{PlaybookMax: MaxPlaybookChars, Autonomy: s.autonomy(), Levels: brain.Levels}
+	snap.AlwaysHandoff = brain.LevelOf(snap.Autonomy).HandsOff
 	var err error
 	if snap.Profile, err = s.profile(); err != nil {
 		return snap, err
@@ -216,7 +242,7 @@ func (s *Service) Snapshot() (Snapshot, error) {
 		return snap, err
 	}
 	for _, r := range rows {
-		p, err := toPreset(r)
+		p, err := s.toPreset(r)
 		if err != nil {
 			return snap, err
 		}
@@ -278,7 +304,9 @@ func (s *Service) SetProfile(p Profile) error {
 func (s *Service) SavePreset(id int64, h Harness) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	h.validate()
+	if err := h.validate(); err != nil {
+		return err
+	}
 	row, err := s.st.Preset(id)
 	if err != nil {
 		return err
@@ -310,7 +338,9 @@ func (s *Service) SaveAs(name, description string, h Harness) (int64, error) {
 	if name == "" {
 		return 0, fmt.Errorf("%w: give the preset a name", ErrInvalid)
 	}
-	h.validate()
+	if err := h.validate(); err != nil {
+		return 0, err
+	}
 	id, err := s.addPreset("", name, strings.TrimSpace(description), h)
 	if err != nil {
 		return 0, err
@@ -333,7 +363,7 @@ func (s *Service) Rename(id int64, name, description string) error {
 	if err != nil {
 		return err
 	}
-	p, err := toPreset(row)
+	p, err := s.toPreset(row)
 	if err != nil {
 		return err
 	}
@@ -396,6 +426,24 @@ func (s *Service) SetFAQ(text string) error {
 		return err
 	}
 	return s.apply()
+}
+
+// SetAutonomy sets how much the AI handles before handing a chat to John.
+func (s *Service) SetAutonomy(level string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if brain.NormalizeAutonomy(level) != level {
+		return fmt.Errorf("%w: autonomy is low, medium or high", ErrInvalid)
+	}
+	if err := s.st.SetSetting(settingAutonomy, level); err != nil {
+		return err
+	}
+	return s.apply()
+}
+
+func (s *Service) autonomy() string {
+	v, _, _ := s.st.Setting(settingAutonomy)
+	return brain.NormalizeAutonomy(v)
 }
 
 // SetReferral replaces John's referral link ("" turns links off).
@@ -499,7 +547,9 @@ func (s *Service) PreviewConfig(profile *Profile, preset *Harness) (brain.Config
 		}
 	}
 	if preset != nil {
-		preset.validate()
+		if err := preset.validate(); err != nil {
+			return brain.Config{}, err
+		}
 	}
 	return s.config(profile, preset)
 }
@@ -551,7 +601,7 @@ func (s *Service) config(profile *Profile, preset *Harness) (brain.Config, error
 			playbook = append(playbook, brain.Doc{Name: d.Name, Text: d.Text})
 		}
 	}
-	return brain.Config{Persona: string(persona), FAQ: faq, Playbook: playbook, Style: preset.Style, ReferralURL: referral}, nil
+	return brain.Config{Persona: string(persona), FAQ: faq, Playbook: playbook, Style: preset.Style, ReferralURL: referral, Autonomy: s.autonomy()}, nil
 }
 
 func (s *Service) profile() (Profile, error) {
@@ -606,7 +656,7 @@ func (s *Service) active() (Preset, error) {
 	} else if err != nil {
 		return Preset{}, err
 	}
-	return toPreset(row)
+	return s.toPreset(row)
 }
 
 func (s *Service) activeChars() (int, error) {
@@ -639,19 +689,47 @@ func (s *Service) updatePreset(id int64, name, description string, h Harness) er
 	return s.st.UpdatePreset(store.Preset{ID: id, Name: name, Description: description, Harness: string(raw)})
 }
 
-func toPreset(r store.Preset) (Preset, error) {
+func (s *Service) toPreset(r store.Preset) (Preset, error) {
 	p := Preset{ID: r.ID, Key: r.Key, Name: r.Name, Description: r.Description, UpdatedAt: r.UpdatedAt}
-	if legacy, ok := legacyPersona(r.Harness); ok {
-		var old struct {
-			Style brain.Style `json:"style"`
-		}
-		json.Unmarshal([]byte(r.Harness), &old)
-		p.Harness = Harness{Approach: approachOf(legacy), Style: old.Style}
-	} else if err := json.Unmarshal([]byte(r.Harness), &p.Harness); err != nil {
+	var raw struct {
+		Persona  *Persona        `json:"persona"`  // before the profile was split out
+		Approach json.RawMessage `json:"approach"` // a string now; lists before
+		Style    brain.Style     `json:"style"`
+	}
+	if err := json.Unmarshal([]byte(r.Harness), &raw); err != nil {
 		return p, fmt.Errorf("preset %d: %w", r.ID, err)
 	}
-	p.Harness.validate()
+	p.Harness.Style = raw.Style
+	switch {
+	case raw.Persona != nil:
+		p.Harness.Approach = s.approachText(raw.Persona.HowHeSells, raw.Persona.Openers, raw.Persona.Closers)
+	case len(raw.Approach) > 0 && raw.Approach[0] == '{':
+		var old struct {
+			HowHeSells []string `json:"how_he_sells"`
+			Openers    []string `json:"openers"`
+			Closers    []string `json:"closers"`
+		}
+		json.Unmarshal(raw.Approach, &old)
+		p.Harness.Approach = s.approachText(old.HowHeSells, old.Openers, old.Closers)
+	default:
+		json.Unmarshal(raw.Approach, &p.Harness.Approach)
+	}
+	p.Harness.normalize()
 	return p, nil
+}
+
+// approachText turns an older list-shaped approach into the free text a
+// preset holds now. Openers and closers that differ from John's own are kept
+// in the text, since they now live in his profile.
+func (s *Service) approachText(how, openers, closers []string) string {
+	text := strings.Join(clean(how), "\n\n")
+	if o := clean(openers); len(o) > 0 && !slices.Equal(o, clean(s.base.Openers)) {
+		text += "\n\nWays he likes to open:\n- " + strings.Join(o, "\n- ")
+	}
+	if c := clean(closers); len(c) > 0 && !slices.Equal(c, clean(s.base.Closers)) {
+		text += "\n\nWays he likes to close:\n- " + strings.Join(c, "\n- ")
+	}
+	return strings.TrimSpace(text)
 }
 
 // legacyPersona reads a preset saved before the profile was split out.
@@ -667,17 +745,14 @@ func legacyPersona(raw string) (Persona, bool) {
 
 func profileOf(p Persona) Profile {
 	return Profile{Name: p.Name, ShortName: p.ShortName, Role: p.Role, Background: p.Background, Values: p.Values, Voice: p.Voice,
-		SignaturePhrases: p.SignaturePhrases, SampleLines: p.SampleLines, Metaphors: p.Metaphors, Never: p.Never}
+		SignaturePhrases: p.SignaturePhrases, SampleLines: p.SampleLines, Metaphors: p.Metaphors, Never: p.Never,
+		Openers: p.Openers, Closers: p.Closers}
 }
 
-func approachOf(p Persona) Approach {
-	return Approach{HowHeSells: p.HowHeSells, Openers: p.Openers, Closers: p.Closers}
-}
-
-func merge(p Profile, a Approach) Persona {
-	return Persona{Name: p.Name, ShortName: p.ShortName, Role: p.Role, Background: p.Background, Voice: p.Voice,
-		Openers: a.Openers, SignaturePhrases: p.SignaturePhrases, Metaphors: p.Metaphors, Values: p.Values,
-		Closers: a.Closers, Never: p.Never, SampleLines: p.SampleLines, HowHeSells: a.HowHeSells}
+func merge(p Profile, approach string) card {
+	return card{Name: p.Name, ShortName: p.ShortName, Role: p.Role, Background: p.Background, Voice: p.Voice,
+		Openers: p.Openers, SignaturePhrases: p.SignaturePhrases, Metaphors: p.Metaphors, Values: p.Values,
+		Closers: p.Closers, Never: p.Never, SampleLines: p.SampleLines, HowHeSells: approach}
 }
 
 // validate trims the profile and checks what the brain relies on.
@@ -686,17 +761,23 @@ func (p *Profile) validate() error {
 	if p.Name == "" {
 		return fmt.Errorf("%w: John needs a name", ErrInvalid)
 	}
-	for _, l := range []*[]string{&p.Background, &p.Values, &p.SignaturePhrases, &p.SampleLines, &p.Metaphors, &p.Never} {
+	for _, l := range []*[]string{&p.Background, &p.Values, &p.SignaturePhrases, &p.SampleLines, &p.Metaphors, &p.Never, &p.Openers, &p.Closers} {
 		*l = clean(*l)
 	}
 	return nil
 }
 
-// validate drops empty list items and keeps the style in range.
-func (h *Harness) validate() {
-	for _, l := range []*[]string{&h.Approach.HowHeSells, &h.Approach.Openers, &h.Approach.Closers} {
-		*l = clean(*l)
+// validate checks a preset before it's saved or tried.
+func (h *Harness) validate() error {
+	h.normalize()
+	if h.Approach == "" {
+		return fmt.Errorf("%w: describe how John sells with this preset", ErrInvalid)
 	}
+	return nil
+}
+
+func (h *Harness) normalize() {
+	h.Approach = strings.TrimSpace(h.Approach)
 	h.Style = h.Style.Normalized()
 }
 
@@ -717,6 +798,3 @@ func info(d store.Document) DocInfo {
 	}
 	return DocInfo{ID: d.ID, Name: d.Name, Kind: d.Kind, Bytes: d.Bytes, Words: len(strings.Fields(d.Text)), Chars: utf8.RuneCountInString(d.Text), Active: d.Active, Preview: preview, CreatedAt: d.CreatedAt}
 }
-
-// alwaysHandoff mirrors the brain's safety net, shown read-only in the dashboard.
-var alwaysHandoff = []string{"Earnings, income and commissions", "Returns, profits and guarantees", "Payments, refunds and withdrawals", "Legal, tax and regulation", "Scam or pyramid questions"}

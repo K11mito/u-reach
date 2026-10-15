@@ -44,6 +44,13 @@ func (a *api) routeHarness(mux *http.ServeMux) {
 		}
 		return a.harness.Rename(id, body.Name, body.Description)
 	}))
+	mux.HandleFunc("PUT /api/harness/autonomy", a.harnessDo(func(_ int64, r *http.Request) error {
+		var body struct{ Level string }
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			return err
+		}
+		return a.harness.SetAutonomy(body.Level)
+	}))
 	mux.HandleFunc("PUT /api/harness/faq", a.harnessDo(func(_ int64, r *http.Request) error {
 		var body struct{ Text string }
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {

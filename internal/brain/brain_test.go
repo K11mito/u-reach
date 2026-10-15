@@ -81,3 +81,78 @@ func TestCostUSD(t *testing.T) {
 		}
 	}
 }
+
+// The autonomy slider moves what goes to John; income claims never go out.
+func TestAutonomyLevels(t *testing.T) {
+	lead := func(s string) []Turn { return []Turn{{FromLead: true, Text: s}} }
+	run := func(level, msg, script string) (Reply, Meta) {
+		b := &Brain{}
+		b.Configure(Config{Autonomy: level, ReferralURL: "https://u.center/?ref=john"})
+		var m Meta
+		return b.enforce(Reply{SpokenScript: script, IncludeReferral: true}, Contact{Name: "Raj"}, lead(msg), &m), m
+	}
+	cases := []struct {
+		level, msg string
+		handoff    bool
+	}{
+		{AutonomyLow, "is it safe to put money in?", true},
+		{AutonomyMedium, "is it safe to put money in?", false},
+		{AutonomyHigh, "is it safe to put money in?", false},
+		{AutonomyLow, "how do I pay for the package?", true},
+		{AutonomyMedium, "how much can I earn?", true},
+		{AutonomyHigh, "how much can I earn?", false},
+		{AutonomyHigh, "be honest, is this a pyramid scheme?", false},
+		{AutonomyMedium, "be honest, is this a pyramid scheme?", true},
+		{AutonomyHigh, "you scammed me, I want a refund", true},
+		{AutonomyHigh, "my lawyer will contact you", true},
+		{AutonomyLow, "hi John! what is U.Center?", false},
+		{"", "how much can I earn?", true}, // unset means balanced
+	}
+	for _, c := range cases {
+		r, m := run(c.level, c.msg, "Hey Raj! It depends on you, let's talk on a quick call.")
+		if r.Handoff != c.handoff {
+			t.Errorf("%s / %q: handoff=%v, want %v (forced by %q)", c.level, c.msg, r.Handoff, c.handoff, m.ForcedHandoff)
+		}
+	}
+
+	for _, script := range []string{"You can easily earn five thousand dollars a month!", "People make $2,000 a week with this.", "It's real passive income.", "You could make thousands from home."} {
+		r, m := run(AutonomyHigh, "tell me more", script)
+		if !r.Handoff || r.IncludeReferral || !strings.HasPrefix(m.ForcedHandoff, "income claim") || strings.Contains(r.SpokenScript, "earn") {
+			t.Errorf("income claim %q must be blocked: %+v %q", script, r, m.ForcedHandoff)
+		}
+	}
+	for _, script := range []string{"You can get started with one hundred dollars.", "You just make one payment, that's it.", "Packages start at one hundred dollars."} {
+		if r, m := run(AutonomyHigh, "how much is it?", script); r.Handoff {
+			t.Errorf("not an income claim %q, forced by %q", script, m.ForcedHandoff)
+		}
+	}
+
+	if p := systemPrompt(Config{Autonomy: AutonomyHigh}); !strings.Contains(p, "end to end") || strings.Contains(p, "When in doubt, hand off") {
+		t.Fatal("full autonomy prompt")
+	}
+	if p := systemPrompt(Config{Autonomy: AutonomyLow}); !strings.Contains(p, "When in doubt, hand off") {
+		t.Fatal("cautious prompt")
+	}
+	if p := systemPrompt(Config{}); !strings.Contains(p, "Handoff: if the lead asks about earnings") {
+		t.Fatal("balanced prompt should keep the original rules")
+	}
+}
+
+// A more cautious level hands John everything a bolder one does, and more.
+func TestAutonomyLevelsAreNested(t *testing.T) {
+	msgs := []string{
+		"what is U.Center?", "is it safe?", "how do I pay?", "how much can I earn?", "is this a pyramid?",
+		"my lawyer will contact you", "I lost my money", "I want a refund", "the police are involved", "can we meet tomorrow?",
+		"this is an emergency", "you scammed me", "what are the fees?", "I'm worried", "tell me more",
+	}
+	rank := map[string]int{AutonomyLow: 0, AutonomyMedium: 1, AutonomyHigh: 2}
+	for _, m := range msgs {
+		for bold, rb := range rank {
+			for careful, rc := range rank {
+				if rc < rb && handoffTrigger(bold, m) != "" && handoffTrigger(careful, m) == "" {
+					t.Errorf("%q goes to John at %s but not at the more cautious %s", m, bold, careful)
+				}
+			}
+		}
+	}
+}
