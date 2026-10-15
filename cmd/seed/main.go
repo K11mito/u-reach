@@ -4,6 +4,7 @@
 //
 //	go run ./cmd/seed                  # text only, no ElevenLabs credits
 //	go run ./cmd/seed -render-audio    # also render the seeded voice notes once (asks first)
+//	go run ./cmd/seed -add             # only add leads that are missing, keeping live chats
 package main
 
 import (
@@ -26,16 +27,23 @@ func main() {
 	dbPath := flag.String("db", "data/ureach.db", "app database")
 	render := flag.Bool("render-audio", false, "render seeded AI voice notes with ElevenLabs (cached; asks first)")
 	yes := flag.Bool("yes", false, "don't ask before wiping live data or spending credits")
+	add := flag.Bool("add", false, "only add seeded leads that are missing; keeps live chats")
 	flag.Parse()
 
 	st, err := store.Open(*dbPath)
 	must(err)
 	defer st.Close()
 
-	if live := seed.LiveMessages(st); live > 0 && !*yes {
-		confirm(fmt.Sprintf("%s has %d live (non-seed) messages. Wipe them and reseed?", *dbPath, live))
+	referral := config.Get("REFERRAL_URL", "https://example.com/join/john")
+	var res seed.Result
+	if *add {
+		res, err = seed.Add(st, *file, referral)
+	} else {
+		if live := seed.LiveMessages(st); live > 0 && !*yes {
+			confirm(fmt.Sprintf("%s has %d live (non-seed) messages. Wipe them and reseed?", *dbPath, live))
+		}
+		res, err = seed.Load(st, *file, referral)
 	}
-	res, err := seed.Load(st, *file, config.Get("REFERRAL_URL", "https://example.com/join/john"))
 	must(err)
 	fmt.Printf("seeded %d leads, %d messages, %d AI voice notes\n", res.Leads, res.Messages, len(res.VoiceNotes))
 

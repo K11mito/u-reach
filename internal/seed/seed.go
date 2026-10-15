@@ -1,13 +1,17 @@
 // Package seed loads the fake leads and past conversations from
 // data/seed-leads.json, so the dashboard looks lived-in. Used by cmd/seed and
-// by the dashboard's "Reset demo" button.
+// by the dashboard's "Reset demo" button. Lead photos live in
+// data/seed-avatars and are copied next to the audio the dashboard serves.
 package seed
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,6 +32,7 @@ type lead struct {
 	Context       string    `json:"context"`
 	Status        string    `json:"status"`
 	HandoffReason string    `json:"handoff_reason"`
+	Avatar        string    `json:"avatar"` // file in data/seed-avatars
 	Memory        []string  `json:"memory"`
 	Messages      []message `json:"messages"`
 }
@@ -47,18 +52,71 @@ type Result struct {
 
 // Load wipes app data (never the WhatsApp session) and loads the seed file.
 func Load(st *store.Store, path, referral string) (Result, error) {
-	raw, err := os.ReadFile(path)
+	leads, err := read(path)
 	if err != nil {
 		return Result{}, err
-	}
-	var leads []lead
-	if err := json.Unmarshal(raw, &leads); err != nil {
-		return Result{}, fmt.Errorf("%s: %w", path, err)
 	}
 	if err := st.Reset(); err != nil {
 		return Result{}, err
 	}
+	return insert(st, path, referral, leads)
+}
 
+// Add loads only the seeded leads that aren't in the database yet, keeping
+// live chats. Existing seeded leads just get their photo if they lack one.
+func Add(st *store.Store, path, referral string) (Result, error) {
+	leads, err := read(path)
+	if err != nil {
+		return Result{}, err
+	}
+	var missing []lead
+	for _, l := range leads {
+		c, err := st.ContactByJID(l.Phone + "@s.whatsapp.net")
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			missing = append(missing, l)
+		case err != nil:
+			return Result{}, err
+		case c.Avatar == "" && l.Avatar != "":
+			if err := setAvatar(st, path, c.ID, l.Avatar); err != nil {
+				return Result{}, err
+			}
+		}
+	}
+	return insert(st, path, referral, missing)
+}
+
+func read(path string) ([]lead, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var leads []lead
+	if err := json.Unmarshal(raw, &leads); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return leads, nil
+}
+
+// setAvatar copies a lead's photo into data/audio/avatars/seed, which the
+// dashboard serves, and points the contact at it.
+func setAvatar(st *store.Store, path string, id int64, file string) error {
+	dir := filepath.Dir(path)
+	img, err := os.ReadFile(filepath.Join(dir, "seed-avatars", file))
+	if err != nil {
+		return err
+	}
+	dst := filepath.Join(dir, "audio", "avatars", "seed", file)
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(dst, img, 0o644); err != nil {
+		return err
+	}
+	return st.SetAvatar(id, "avatars/seed/"+file)
+}
+
+func insert(st *store.Store, path, referral string, leads []lead) (Result, error) {
 	now := time.Now()
 	var res Result
 	for _, l := range leads {
@@ -73,6 +131,11 @@ func Load(st *store.Store, path, referral string) (Result, error) {
 		created, err := st.CreateContact(c)
 		if err != nil {
 			return res, err
+		}
+		if l.Avatar != "" {
+			if err := setAvatar(st, path, created.ID, l.Avatar); err != nil {
+				return res, err
+			}
 		}
 		for _, m := range l.Messages {
 			dir, source := "out", "seed"
