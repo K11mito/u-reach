@@ -719,4 +719,4 @@ func info(d store.Document) DocInfo {
 }
 
 // alwaysHandoff mirrors the brain's safety net, shown read-only in the dashboard.
-var alwaysHandoff = []string{"Earnings, income and commissions", "Returns, profits and guarantees", "Payments, refunds and withdrawals", "Legal, tax and regulation", "Scam or pyramid questions"}
+var alwaysHandoff = []string{"Payments, refunds or accounts gone wrong", "Legal, tax and regulatory advice", "Complaints, or asking for John himself", "Questions the knowledge base can't answer safely"}

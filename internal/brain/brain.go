@@ -314,9 +314,19 @@ func (b *Brain) generate(ctx context.Context, cfg setup, prompt string, c Contac
 
 var (
 	urlRe = regexp.MustCompile(`https?://\S+|www\.\S+`)
-	// Topics John answers personally. The model is told the same; this is the
-	// net for when it doesn't listen.
-	handoffRe = regexp.MustCompile(`(?i)\b(earn\w*|income|commissions?|profits?|returns?|roi|passive|guarantee\w*|refund\w*|withdraw\w*|payouts?|salary|lawsuit|legal|illegal|scam|ponzi|pyramid|tax(es)?)\b`)
+	// Messages only a person can deal with: money that went wrong, or legal
+	// trouble. The model is told the same; this is the net for when it
+	// doesn't listen. Everything else, earnings and "is it a scam" included,
+	// the AI answers from the knowledge base.
+	handoffRe = regexp.MustCompile(`(?i)\b(refund\w*|chargebacks?|lawsuits?|lawyers?|attorneys?|sue|police|hacked|scammed|stolen)\b`)
+	// Replies that would promise money. The model is told never to; if one
+	// slips through anyway it's swapped for a holding line and John takes over.
+	incomeClaimRe = regexp.MustCompile(`(?i)\b(` +
+		// "earn/make" plus an amount of money
+		`(earn|earned|earning|make|made|making)( up to| over| around| about| at least)? (\$\s?\d[\d,.]*|\d[\d,.]*\s?(k|dollars?|usd|usdt|bucks|baht|euros?|pounds?|%|percent)|(one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|several|hundreds of|thousands of)( hundred| thousand)?( dollars?| bucks| usd| usdt| baht| euros?| pounds?)|a lot of money|good money|serious money|big money|a fortune|six figures)` +
+		// money per period, or a rate of return
+		`|(dollars?|usd|usdt|bucks|baht|euros?|pounds?) (a|per|every) (day|week|month)|(\d+ ?%|percent) (a|per|every) (day|week|month|year)|double (your|their) (money|investment)` +
+		`)`)
 	linkAskRe = regexp.MustCompile(`(?i)\b(link|sign ?up|register|join|enrol+)\b`)
 	sentEndRe = regexp.MustCompile(`[.!?…](["')\]]?)(\s|$)`)
 )
@@ -334,10 +344,17 @@ func enforce(cfg setup, r Reply, c Contact, history []Turn, meta *Meta) Reply {
 		if kw := handoffRe.FindString(latest); kw != "" {
 			meta.ForcedHandoff = strings.ToLower(kw)
 			r.Handoff = true
-			r.HandoffReason = "asked about " + meta.ForcedHandoff
+			r.HandoffReason = "mentioned " + meta.ForcedHandoff
 			r.SpokenScript = holdingLine(c.Name)
 			r.FollowupText = ""
 		}
+	}
+	if claim := incomeClaimRe.FindString(r.SpokenScript + " " + r.FollowupText); claim != "" {
+		meta.ForcedHandoff = "income claim: " + strings.ToLower(claim)
+		r.Handoff = true
+		r.HandoffReason = "reply promised money (" + strings.ToLower(claim) + "); check what to tell them"
+		r.SpokenScript = holdingLine(c.Name)
+		r.FollowupText = ""
 	}
 	if r.Handoff || r.OptOut {
 		r.IncludeReferral = false
@@ -459,9 +476,9 @@ func systemPrompt(c Config) string {
 ` + c.Persona + `
 </persona>
 
-<faq>
+<knowledge_base>
 ` + c.FAQ + `
-</faq>
+</knowledge_base>
 ` + playbook.String() + `
 How to write spoken_script:
 - Write for the ear: short sentences, contractions, John's own openers, phrases and rhythm from the persona. No lists, no markdown, no emojis, no URLs. Write numbers as words.
@@ -470,11 +487,20 @@ How to write spoken_script:
 ` + closing + `
 ` + length + `
 - Don't repeat lines you already said earlier in this conversation; vary how you open and close.
-- Only state facts that are in the FAQ or the sales playbook. If neither covers something, say you'll walk them through it on a quick call. Never invent numbers, dates, features or promises.
+- The knowledge base and the sales playbook are your facts: answer from them with confidence, the way someone who knows this inside out would. If a detail isn't covered, say what you do know and offer to go through the rest on a quick call. Never invent numbers, dates, features or promises.
 - Never sound like a brochure or a support bot. Never say "I'd be happy to help", "Great question", "As an AI", or "Feel free to reach out".
 ` + language + `
 
-Handoff: if the lead asks about earnings, income, commissions, returns, payments or withdrawals, anything legal or regulatory, complaints, or whether it's a scam or pyramid, set handoff to true. Then spoken_script is only a short, warm holding line (20 to 40 words) saying John will get back to them personally. Do not answer the question. Put the topic in handoff_reason.
+Answer, don't defer. The whole point is to save John time, so you answer questions yourself, including prices, packages, rewards and earnings, risks, and whether it's legit, the way the knowledge base says to talk about them.
+
+Honesty, always: never promise or estimate income, earnings or returns, and never say what anyone has earned. Never call the membership an investment or say what points or a membership might be worth. Never say U-topia is a bank, regulated or licensed, and never give a legal verdict like "it's legal" or "it's not a pyramid"; describe how it works and let them decide.
+
+Handoff is rare: set it to true only when you're truly stuck.
+1. Something only a person can fix: a payment, purchase, transfer or account that went wrong, a refund, or lost access.
+2. They want legal, tax or regulatory advice, or ask whether it's allowed where they live.
+3. They're upset or complaining, or ask to speak to John himself.
+4. They ask something important the knowledge base can't answer and a guess could mislead them, like whether the card works in their specific country.
+When you hand off, still help: say what you can, warmly, then say John will get back to them personally on the rest (20 to 50 words). Put the topic in handoff_reason.
 
 Opt-out: if the lead asks you to stop messaging them or clearly says they're not interested, set opt_out to true. Then spoken_script is one or two kind sentences with no pitch, followup_text is empty, and include_referral is false.
 

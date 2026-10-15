@@ -11,10 +11,26 @@ func TestEnforce(t *testing.T) {
 	b := &Brain{ReferralURL: "https://example.com/join/john"}
 	lead := func(s string) []Turn { return []Turn{{FromLead: true, Text: s}} }
 
+	// Earnings questions are answered, not handed off, as long as nothing is promised.
 	var m Meta
-	r := b.enforce(Reply{SpokenScript: "You can make a lot. See https://x.y", IncludeReferral: true}, Contact{Name: "Priya"}, lead("how much can I earn?"), &m)
-	if !r.Handoff || m.ForcedHandoff != "earn" || r.IncludeReferral || strings.Contains(r.SpokenScript, "lot") {
-		t.Fatalf("earnings question must force a handoff: %+v %+v", r, m)
+	honest := "When someone joins through your link, you earn a direct commission. Nobody can promise anyone an income."
+	r := b.enforce(Reply{SpokenScript: honest, IncludeReferral: true}, Contact{Name: "Priya"}, lead("how much can I earn? is this a scam?"), &m)
+	if r.Handoff || m.ForcedHandoff != "" || r.SpokenScript != honest {
+		t.Fatalf("an honest answer about earnings must go out as written: %+v %+v", r, m)
+	}
+
+	// A reply that promises money is swapped for a holding line.
+	m = Meta{}
+	r = b.enforce(Reply{SpokenScript: "Honestly, people make two thousand dollars a month. See https://x.y", IncludeReferral: true}, Contact{Name: "Priya"}, lead("how much can I earn?"), &m)
+	if !r.Handoff || !strings.HasPrefix(m.ForcedHandoff, "income claim") || r.IncludeReferral || strings.Contains(r.SpokenScript, "thousand") {
+		t.Fatalf("an income promise must force a handoff: %+v %+v", r, m)
+	}
+
+	// Money gone wrong still goes to John whatever the model says.
+	m = Meta{}
+	r = b.enforce(Reply{SpokenScript: "Sure thing!", IncludeReferral: true}, Contact{Name: "Ben"}, lead("I paid but nothing arrived, I want a refund"), &m)
+	if !r.Handoff || m.ForcedHandoff != "refund" || r.IncludeReferral {
+		t.Fatalf("a refund request must force a handoff: %+v %+v", r, m)
 	}
 
 	m = Meta{}
@@ -78,6 +94,32 @@ func TestCostUSD(t *testing.T) {
 	} {
 		if got := tc.m.CostUSD(); math.Abs(got-tc.want) > 1e-9 {
 			t.Errorf("%s: got %v, want %v", tc.m.Model, got, tc.want)
+		}
+	}
+}
+
+func TestIncomeClaims(t *testing.T) {
+	for _, s := range []string{
+		"You could make two thousand dollars a month.",
+		"People earn $500 every week.",
+		"Some earn 30% a year on it.",
+		"You'll be earning six figures.",
+		"It can double your money.",
+		"I made five hundred dollars last week.",
+	} {
+		if !incomeClaimRe.MatchString(s) {
+			t.Errorf("should flag: %q", s)
+		}
+	}
+	for _, s := range []string{
+		"When someone joins through your link, you earn a direct commission on their membership.",
+		"Starter is twenty-five dollars and Bronze is one hundred dollars, one time, no monthly subscription.",
+		"Let's make one quick call this week, and make it simple.",
+		"Nobody can promise anyone an income; it depends on what you do.",
+		"Sending money home is free and arrives in seconds.",
+	} {
+		if incomeClaimRe.MatchString(s) {
+			t.Errorf("should not flag: %q (matched %q)", s, incomeClaimRe.FindString(s))
 		}
 	}
 }

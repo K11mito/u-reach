@@ -132,7 +132,7 @@ export function ProfileEditor({ snap, run, onBack }: { snap: HarnessSnapshot; ru
                   </span>
                 ))}
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">The AI sends a short holding note and the chat waits in your Inbox. This safety net is built in and can't be switched off.</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">Everything else, earnings and "is it legit" included, the AI answers itself. For these it answers what it can, says you'll follow up, and the chat waits in your Inbox. Income promises are always blocked. Built in; can't be switched off.</p>
             </div>
           </Section>
         </div>
