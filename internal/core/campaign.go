@@ -54,7 +54,7 @@ func (c *Core) draft(ctx context.Context, id int64) Draft {
 		return d
 	}
 	d.Script = r.SpokenScript
-	d.Followup = strings.TrimSpace(strings.TrimSuffix(r.FollowupText, c.Brain.ReferralURL))
+	d.Followup = strings.TrimSpace(strings.TrimSuffix(r.FollowupText, c.Brain.Referral()))
 	vn, mp3, err := c.speak(ctx, 0, d.Script)
 	if err != nil {
 		d.Error = "voice: " + err.Error()
@@ -111,11 +111,11 @@ func (c *Core) sendOpener(ctx context.Context, d Draft) error {
 	c.addOut(ct.ID, 0, waID, "voice", d.Script, mp3, int64(vn.Duration*1000))
 
 	text := strings.TrimSpace(d.Followup)
-	if c.Brain.ReferralURL != "" {
+	if c.Brain.Referral() != "" {
 		if text == "" {
 			text = "Here's my link:"
 		}
-		text += "\n" + c.Brain.ReferralURL
+		text += "\n" + c.Brain.Referral()
 	}
 	if text != "" {
 		time.Sleep(1200 * time.Millisecond)

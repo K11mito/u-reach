@@ -147,6 +147,9 @@ func Open(path string) (*Store, error) {
 	if _, err := db.Exec(schema); err != nil {
 		return nil, fmt.Errorf("schema: %w", err)
 	}
+	if _, err := db.Exec(harnessSchema); err != nil {
+		return nil, fmt.Errorf("harness schema: %w", err)
+	}
 	// Added after the first release; ignore "duplicate column" on existing DBs.
 	db.Exec(`ALTER TABLE messages ADD COLUMN status TEXT NOT NULL DEFAULT ''`)
 	db.Exec(`ALTER TABLE contacts ADD COLUMN avatar TEXT NOT NULL DEFAULT ''`)

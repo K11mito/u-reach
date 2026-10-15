@@ -1,131 +1,231 @@
-import { useState } from "react"
-import { BadgeCheck, Copy, Link2, Loader2, Mic, MonitorPlay, Quote, RotateCcw } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import { ChevronDown, Copy, Link2, Loader2, Mic, MonitorPlay, RotateCcw, ScrollText } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { api, type State } from "@/lib/api"
-import { JohnAvatar, VoiceNote } from "./bits"
+import { cn } from "@/lib/utils"
+import { api, errText, harnessApi, type HarnessPreset, type HarnessSnapshot, type State } from "@/lib/api"
+import { VoiceNote } from "./bits"
 import { toast } from "./Toast"
+import { Section, TextField } from "./john/editors"
+import { Hero } from "./john/Hero"
+import { Playbook } from "./john/Playbook"
+import { PresetEditor } from "./john/PresetEditor"
+import { ProfileEditor } from "./john/ProfileEditor"
+import { TryIt } from "./john/TryIt"
 
-/** John's voice and persona: Kyle's "Your voice, ready" step, already done. */
+// Sub-pages live in the URL hash so the browser's back button works.
+type View = { kind: "home" } | { kind: "preset"; id: number } | { kind: "about" }
+const viewFromHash = (): View => {
+  const m = window.location.hash.match(/^#preset\/(\d+)$/)
+  if (m) return { kind: "preset", id: Number(m[1]) }
+  return window.location.hash === "#about" ? { kind: "about" } : { kind: "home" }
+}
+const hashOf = (v: View) => (v.kind === "preset" ? `#preset/${v.id}` : v.kind === "about" ? "#about" : "")
+
+/**
+ * John's page. The card at the top is who he is and which preset he sells
+ * with; presets and his profile open their own editors. Below are the things
+ * shared by every preset: the sales playbook, his facts and his link.
+ */
 export function Profile({ state }: { state: State }) {
-  const a = state.ambassador
-  const p = a.persona
-  const copy = () =>
-    navigator.clipboard
-      .writeText(a.referral_url)
-      .then(() => toast("Referral link copied"))
-      .catch(() => toast("Couldn't copy", "error"))
+  const [snap, setSnap] = useState<HarnessSnapshot | null>(null)
+  const [view, setView] = useState<View>(viewFromHash)
+
+  const load = useCallback(() => harnessApi.get().then(setSnap).catch((e) => toast(errText(e), "error")), [])
+  useEffect(() => {
+    load()
+    const on = () => load()
+    const pop = () => setView(viewFromHash())
+    window.addEventListener("ureach:harness", on)
+    window.addEventListener("popstate", pop)
+    return () => {
+      window.removeEventListener("ureach:harness", on)
+      window.removeEventListener("popstate", pop)
+    }
+  }, [load])
+
+  const open = (v: View) => {
+    window.history.pushState(null, "", `/profile${hashOf(v)}`)
+    setView(v)
+  }
+  const run = async (p: Promise<HarnessSnapshot>, ok?: string) => {
+    try {
+      setSnap(await p)
+      if (ok) toast(ok)
+      return true
+    } catch (e) {
+      toast(errText(e), "error")
+      return false
+    }
+  }
+
+  if (!snap) {
+    return (
+      <div className="grid flex-1 place-items-center text-sm text-muted-foreground">
+        <Loader2 className="size-5 animate-spin" />
+      </div>
+    )
+  }
+
+  const editing = view.kind === "preset" ? snap.presets.find((p) => p.id === view.id) : undefined
+  if (editing) {
+    // key: a different preset starts a fresh form.
+    return <PresetEditor key={editing.id} snap={snap} preset={editing} run={run} onBack={() => open({ kind: "home" })} onEditProfile={() => open({ kind: "about" })} />
+  }
+  if (view.kind === "about") return <ProfileEditor snap={snap} run={run} onBack={() => open({ kind: "home" })} />
+
+  const activate = (p: HarnessPreset) => p.id !== snap.active_id && run(harnessApi.activate(p.id), `John now sells with “${p.name}”`)
+  const newPreset = async (name: string) => {
+    const active = snap.presets.find((p) => p.id === snap.active_id) ?? snap.presets[0]
+    try {
+      const s = await harnessApi.saveAs(name, `Started from “${active.name}”`, active.harness)
+      setSnap(s)
+      toast(`Created “${name}”. Make it yours.`)
+      open({ kind: "preset", id: s.active_id })
+    } catch (e) {
+      toast(errText(e), "error")
+    }
+  }
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[minmax(320px,380px)_1fr] gap-4 overflow-hidden">
-      <div className="space-y-4 overflow-y-auto pr-1">
-        <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 p-6 text-white shadow-lg">
-          <JohnAvatar size={72} src={a.avatar} />
-          <div className="mt-4 text-2xl font-extrabold">{p?.name ?? a.name}</div>
-          <div className="text-sm text-white/80">{p?.role}</div>
-          <div className="mt-5 space-y-2 rounded-xl bg-white/10 p-3 text-sm">
-            <div className="flex items-center gap-2">
-              <BadgeCheck className="size-4 shrink-0 text-wa" /> Intake: persona built from one YouTube talk
-            </div>
-            <div className="flex items-center gap-2">
-              <Mic className="size-4 shrink-0 text-wa" /> {a.mock_voice ? "Voice clone not selected yet" : "Your voice, ready"}
-            </div>
-          </div>
-          <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/10 p-2 pl-3 text-sm">
-            <Link2 className="size-4 shrink-0 text-wa" />
-            <span className="min-w-0 flex-1 truncate">{a.referral_url || "No referral link set"}</span>
-            {a.referral_url && (
-              <button onClick={copy} className="rounded-lg bg-white/15 p-1.5 hover:bg-white/25" aria-label="Copy referral link" title="Copy link">
-                <Copy className="size-3.5" />
-              </button>
-            )}
-          </div>
-          <div className="mt-3 text-[11px] text-white/60">
-            Voice {a.voice_id || "none"} · {a.tts_model} · brain {a.brain_model}
-          </div>
+    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 pb-6">
+      <Hero state={state} snap={snap} onActivate={activate} onEditPreset={(p) => open({ kind: "preset", id: p.id })} onEditProfile={() => open({ kind: "about" })} onNewPreset={newPreset} />
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
+        <div className="space-y-4">
+          <Playbook snap={snap} onChange={setSnap} />
+          <Facts snap={snap} run={run} />
         </div>
-
-        {(a.samples?.original || a.samples?.clone) && (
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
-            <div className="mb-3 font-bold">John's voice</div>
-            {a.samples.original && (
-              <div className="mb-3">
-                <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                  <MonitorPlay className="size-3.5 text-red-500" /> The real John, from his YouTube talk
-                </div>
-                <div className="rounded-2xl bg-muted px-3 py-2">
-                  <VoiceNote src={a.samples.original} durationMs={14000} seed={11} />
-                </div>
-              </div>
-            )}
-            {a.samples.clone && (
-              <div>
-                <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                  <Mic className="size-3.5 text-wa-dark" /> His AI voice, saying something new
-                </div>
-                <div className="rounded-2xl bg-wa-bubble px-3 py-2">
-                  <VoiceNote src={a.samples.clone} durationMs={9000} seed={22} outgoing />
-                </div>
-                <p className="mt-1.5 text-xs text-muted-foreground italic">“{a.clone_line}”</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {p?.sample_lines && (
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
-            <div className="mb-3 flex items-center gap-2 font-bold">
-              <Quote className="size-4 text-primary" /> In John's own words
-            </div>
-            <div className="space-y-2">
-              {p.sample_lines.slice(0, 6).map((l) => (
-                <p key={l} className="rounded-xl bg-secondary/60 px-3 py-2 text-sm text-secondary-foreground italic">
-                  “{l}”
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="grid min-h-0 auto-rows-min grid-cols-2 gap-4 overflow-y-auto pr-1">
-        <Card title="How John sells" items={p?.how_he_sells} />
-        <Card title="Signature phrases" items={p?.signature_phrases} chips />
-        <Card title="Background" items={p?.background} />
-        <Card title="Never" items={p?.never} />
-        <DemoTools />
-        <div className="col-span-2 rounded-2xl border bg-card p-5 shadow-sm">
-          <div className="mb-1 font-bold">What the assistant may say</div>
-          <p className="mb-3 text-xs text-muted-foreground">Anything not on this page, it hands to John. Money, legal and "is this a pyramid" questions always go to him.</p>
-          <pre className="max-h-96 overflow-y-auto rounded-xl bg-muted/50 p-4 font-sans text-sm whitespace-pre-wrap text-foreground/80">{a.faq}</pre>
+        <div className="space-y-4">
+          <TryIt />
+          <Referral snap={snap} run={run} />
+          <Voice state={state} />
+          <DemoTools />
         </div>
       </div>
     </div>
   )
 }
 
-function Card({ title, items, chips }: { title: string; items?: string[]; chips?: boolean }) {
-  if (!items?.length) return null
+type Run = (p: Promise<HarnessSnapshot>, ok?: string) => Promise<boolean>
+
+function Referral({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
+  const [url, setUrl] = useState(snap.referral_url)
+  useEffect(() => setUrl(snap.referral_url), [snap.referral_url])
+  const changed = url.trim() !== snap.referral_url
+  const save = () => run(harnessApi.setReferral(url), "Referral link saved")
   return (
-    <div className="rounded-2xl border bg-card p-5 shadow-sm">
-      <div className="mb-3 font-bold">{title}</div>
-      {chips ? (
-        <div className="flex flex-wrap gap-1.5">
-          {items.map((i) => (
-            <span key={i} className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">
-              {i}
-            </span>
-          ))}
-        </div>
+    <Section title="Referral link" hint="Sent as a text after his voice note. Leads who join through it get John as their sponsor." icon={Link2}>
+      <div className="flex gap-2">
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && changed && save()}
+          placeholder="https://u.center/?ref=…"
+          className="h-9 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 font-mono text-[13px] outline-none focus:border-ring focus:ring-[3px] focus:ring-ring/30"
+        />
+        {changed ? (
+          <Button onClick={save}>Save</Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={!url}
+            onClick={() =>
+              navigator.clipboard
+                .writeText(url)
+                .then(() => toast("Referral link copied"))
+                .catch(() => toast("Couldn't copy", "error"))
+            }
+            aria-label="Copy link"
+            title="Copy link"
+          >
+            <Copy />
+          </Button>
+        )}
+      </div>
+    </Section>
+  )
+}
+
+/** The facts the AI may state: a short preview that opens into an editor. */
+function Facts({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState(snap.faq)
+  useEffect(() => setText(snap.faq), [snap.faq])
+  const changed = text !== snap.faq
+  const topics = snap.faq.split("\n").filter((l) => l.startsWith("## ")).map((l) => l.slice(3))
+  return (
+    <Section
+      title="Facts John can share"
+      hint="The only facts the AI states, in every preset. Anything else, he offers to cover on a call."
+      icon={ScrollText}
+      action={
+        open ? (
+          <div className="flex gap-1">
+            {changed && (
+              <Button variant="ghost" size="sm" onClick={() => setText(snap.faq)}>
+                Discard
+              </Button>
+            )}
+            <Button size="sm" variant={changed ? "default" : "outline"} onClick={async () => (!changed || (await run(harnessApi.setFAQ(text), "Facts saved"))) && setOpen(false)}>
+              {changed ? "Save" : "Done"}
+            </Button>
+          </div>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+            Edit facts
+          </Button>
+        )
+      }
+    >
+      {open ? (
+        <>
+          <div className="max-h-[32rem] overflow-y-auto rounded-lg">
+            <TextField value={text} onChange={setText} rows={14} mono />
+          </div>
+          <div className="mt-1.5 text-right text-[11px] text-muted-foreground tabular-nums">{text.split(/\s+/).filter(Boolean).length.toLocaleString()} words · Markdown</div>
+        </>
       ) : (
-        <ul className="space-y-2 text-sm text-muted-foreground">
-          {items.map((i) => (
-            <li key={i} className="flex gap-2">
-              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
-              {i}
-            </li>
-          ))}
-        </ul>
+        <button onClick={() => setOpen(true)} className="group w-full text-left">
+          <div className="flex flex-wrap gap-1.5">
+            {topics.map((t) => (
+              <span key={t} className="rounded-md bg-secondary px-2 py-1 text-xs text-foreground/80">
+                {t}
+              </span>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-foreground">
+            {snap.faq.split(/\s+/).filter(Boolean).length.toLocaleString()} words across {topics.length} topics <ChevronDown className="size-3" />
+          </div>
+        </button>
       )}
-    </div>
+    </Section>
+  )
+}
+
+function Voice({ state }: { state: State }) {
+  const a = state.ambassador
+  if (!a.samples?.original && !a.samples?.clone) return null
+  return (
+    <Section title="His voice" hint="The real John next to his clone." icon={Mic}>
+      <div className="space-y-2">
+        {a.samples.original && (
+          <div className="rounded-xl bg-secondary px-3 py-2">
+            <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+              <MonitorPlay className="size-3.5 text-red-500" /> The real John
+            </div>
+            <VoiceNote src={a.samples.original} durationMs={14000} seed={11} />
+          </div>
+        )}
+        {a.samples.clone && (
+          <div className="rounded-xl bg-wa-bubble px-3 py-2">
+            <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-wa-dark">
+              <Mic className="size-3.5" /> His AI voice
+            </div>
+            <VoiceNote src={a.samples.clone} durationMs={9000} seed={22} outgoing />
+          </div>
+        )}
+      </div>
+    </Section>
   )
 }
 
@@ -133,22 +233,22 @@ function Card({ title, items, chips }: { title: string; items?: string[]; chips?
 function DemoTools() {
   const [busy, setBusy] = useState(false)
   const reset = async () => {
-    if (!window.confirm("Reset to the demo leads? This deletes every conversation since the last reset. WhatsApp stays linked.")) return
+    if (!window.confirm("Reset to the demo leads? This deletes every conversation since the last reset. WhatsApp stays linked, and John's settings are kept.")) return
     setBusy(true)
     try {
       await api.resetDemo() // every open dashboard reloads on the "reset" event
     } catch (e) {
-      toast(`Reset failed: ${e}`, "error")
+      toast(`Reset failed: ${errText(e)}`, "error")
       setBusy(false)
     }
   }
   return (
-    <div className="col-span-2 flex items-center gap-4 rounded-2xl border border-dashed bg-card/60 p-5">
+    <div className={cn("flex items-center gap-4 rounded-xl border border-dashed p-4")}>
       <div className="min-w-0 flex-1">
-        <div className="font-bold">Demo tools</div>
-        <p className="text-xs text-muted-foreground">Between rehearsals: restore the 10 seeded leads and clear live chats. Seeded voice notes come from the cache, so it's free.</p>
+        <div className="text-sm font-semibold">Demo tools</div>
+        <p className="text-xs text-muted-foreground">Restore the 10 seeded leads between rehearsals. John's settings stay.</p>
       </div>
-      <Button variant="outline" onClick={reset} disabled={busy} className="rounded-full">
+      <Button variant="outline" size="sm" onClick={reset} disabled={busy}>
         {busy ? <Loader2 className="animate-spin" /> : <RotateCcw />} Reset demo
       </Button>
     </div>

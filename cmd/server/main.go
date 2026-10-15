@@ -31,6 +31,7 @@ import (
 	"ureach/internal/brain"
 	"ureach/internal/config"
 	"ureach/internal/core"
+	"ureach/internal/harness"
 	"ureach/internal/seed"
 	"ureach/internal/store"
 	"ureach/internal/voice"
@@ -54,6 +55,8 @@ func main() {
 	must(err)
 	defer st.Close()
 	br, err := brain.New("data/persona/john.json", "data/faq.md")
+	must(err)
+	hs, err := harness.New(st, br, "data/persona/john.json", "data/faq.md")
 	must(err)
 	el := voice.New()
 	voiceID := config.Get("JOHN_VOICE_ID", "")
@@ -124,7 +127,7 @@ func main() {
 		prepareVoiceSamples(ctx, el, voiceID, c.TTSModel)
 	}()
 
-	api := &api{core: c, store: st, brain: br, wa: waClient, voiceID: voiceID}
+	api := &api{core: c, store: st, brain: br, harness: hs, wa: waClient, voiceID: voiceID}
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/events", hub)
 	mux.HandleFunc("GET /api/state", api.state)
@@ -139,6 +142,7 @@ func main() {
 	mux.HandleFunc("POST /api/contacts", api.addContact)
 	mux.HandleFunc("POST /api/campaign/draft", api.campaignDraft)
 	mux.HandleFunc("POST /api/campaign/send", api.campaignSend)
+	api.routeHarness(mux)
 	mux.Handle("GET /audio/", http.StripPrefix("/audio/", http.FileServer(http.Dir("data/audio"))))
 	mux.Handle("GET /", spa(api.boot))
 
@@ -206,6 +210,7 @@ type api struct {
 	core    *core.Core
 	store   *store.Store
 	brain   *brain.Brain
+	harness *harness.Service
 	wa      *wa.Client
 	voiceID string
 }
@@ -243,8 +248,6 @@ func (a *api) snapshot() (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	persona, _ := os.ReadFile("data/persona/john.json")
-	faq, _ := os.ReadFile("data/faq.md")
 	waState := waStatus(a.wa)
 	last := map[int64]store.Message{}
 	for _, c := range contacts {
@@ -259,9 +262,9 @@ func (a *api) snapshot() (map[string]any, error) {
 			"voice_id":     a.voiceID,
 			"tts_model":    a.core.TTSModel,
 			"brain_model":  a.brain.Model,
-			"referral_url": a.brain.ReferralURL,
-			"persona":      json.RawMessage(orJSON(persona)),
-			"faq":          string(faq),
+			"referral_url": a.brain.Referral(),
+			"persona":      a.harness.ActivePersonaJSON(),
+			"faq":          a.harness.FAQ(),
 			"mock_voice":   a.core.Voice.Mock,
 			"samples":      samples(),
 			"avatar":       ownAvatar(),
@@ -424,7 +427,7 @@ func (a *api) qrPNG(w http.ResponseWriter, r *http.Request) {
 // untouched, and seeded audio comes from the TTS cache (free after the first time).
 func (a *api) resetDemo(w http.ResponseWriter, r *http.Request) {
 	a.core.Reset()
-	res, err := seed.Load(a.store, "data/seed-leads.json", a.brain.ReferralURL)
+	res, err := seed.Load(a.store, "data/seed-leads.json", a.brain.Referral())
 	if err != nil {
 		httpErr(w, err)
 		return

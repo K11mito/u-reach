@@ -12,7 +12,7 @@ import { Grain } from "@/components/Grain"
 import { Toaster, toast } from "@/components/Toast"
 
 type Page = "inbox" | "stage" | "campaign" | "profile"
-const TITLES: Record<Page, string> = { inbox: "Inbox", stage: "Stage", campaign: "Campaign", profile: "Profile" }
+const TITLES: Record<Page, string> = { inbox: "Inbox", stage: "Stage", campaign: "Campaign", profile: "John" }
 const pageFromPath = (): Page => {
   const p = window.location.pathname.replace(/^\//, "")
   return (["stage", "campaign", "profile"].includes(p) ? p : "inbox") as Page
@@ -25,6 +25,8 @@ export default function App() {
   const go = useCallback((p: Page) => {
     window.history.pushState(null, "", p === "inbox" ? "/" : `/${p}`)
     setPage(p)
+    // Lets a page with sub-views (John's editors) return to its top level.
+    window.dispatchEvent(new PopStateEvent("popstate"))
   }, [])
   useEffect(() => {
     const pop = () => setPage(pageFromPath())
@@ -77,7 +79,7 @@ export default function App() {
     { id: "inbox" as const, label: "Inbox", icon: InboxIcon, badge: state.stats.needs_john },
     { id: "stage" as const, label: "Stage view", icon: MonitorPlay },
     { id: "campaign" as const, label: "Campaign", icon: Megaphone },
-    { id: "profile" as const, label: "Profile", icon: UserRound },
+    { id: "profile" as const, label: "John", icon: UserRound },
   ]
 
   return (
@@ -108,13 +110,14 @@ export default function App() {
           ))}
         </nav>
         <div className="mt-auto space-y-3 rounded-2xl bg-white/10 p-3">
-          <div className="flex items-center gap-3">
+          {/* John's photo opens his page: persona, presets and sales playbook. */}
+          <button onClick={() => go("profile")} title="Edit how John's AI sells" className="-m-1 flex w-[calc(100%+0.5rem)] items-center gap-3 rounded-xl p-1 text-left transition hover:bg-white/10">
             <JohnAvatar size={40} src={state.ambassador.avatar} />
             <div className="min-w-0">
               <div className="truncate font-bold">John Klensch</div>
               <div className="text-xs text-white/70">U.Center ambassador</div>
             </div>
-          </div>
+          </button>
           <div className="space-y-1.5 text-xs">
             <div className="flex items-center gap-2">
               <Mic className="size-3.5" />
