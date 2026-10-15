@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -19,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -82,8 +84,9 @@ func main() {
 		must(err)
 		defer waClient.Close()
 		c.Gateway = waGateway{waClient}
-		waClient.OnMessage = func(in wa.Inbound) { c.Handle(fromWA(waClient, in)) }
-		waClient.OnOwnMessage = func(in wa.Inbound) { c.HandleOwn(fromWA(waClient, in)) }
+		c.Avatar = waClient.ProfilePicture
+		waClient.OnMessage = func(in wa.Inbound) { core.Go("inbound", func() { c.Handle(fromWA(waClient, in)) }) }
+		waClient.OnOwnMessage = func(in wa.Inbound) { core.Go("own message", func() { c.HandleOwn(fromWA(waClient, in)) }) }
 		waClient.OnReceipt = func(ids []types.MessageID, kind string) {
 			s := make([]string, len(ids))
 			for i, id := range ids {
@@ -91,7 +94,14 @@ func main() {
 			}
 			c.HandleReceipt(s, kind)
 		}
-		waClient.OnStatus = func() { hub.Publish("whatsapp", waStatus(waClient)) }
+		var ownAvatarOnce sync.Once
+		waClient.OnStatus = func() {
+			st := waStatus(waClient)
+			hub.Publish("whatsapp", st)
+			if st["connected"] == true {
+				ownAvatarOnce.Do(func() { c.FetchOwnAvatar(waClient.OwnJID()) })
+			}
+		}
 		go func() {
 			if err := waClient.Connect(ctx, ""); err != nil {
 				log.Printf("whatsapp: %v", err)
@@ -244,6 +254,7 @@ func (a *api) snapshot() (map[string]any, error) {
 			"faq":          string(faq),
 			"mock_voice":   a.core.Voice.Mock,
 			"samples":      samples(),
+			"avatar":       ownAvatar(),
 			"clone_line":   cloneLine,
 		},
 		"contacts":    nonNil(contacts),
@@ -350,6 +361,13 @@ func prepareVoiceSamples(ctx context.Context, el *voice.Eleven, voiceID, model s
 	}
 }
 
+func ownAvatar() string {
+	if fi, err := os.Stat("data/audio/avatars/john.jpg"); err == nil {
+		return fmt.Sprintf("avatars/john.jpg?v=%d", fi.ModTime().Unix())
+	}
+	return ""
+}
+
 func samples() map[string]string {
 	out := map[string]string{}
 	for k, p := range map[string]string{"original": sampleOriginal, "clone": sampleClone} {
@@ -428,6 +446,7 @@ func (a *api) addContact(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, err)
 		return
 	}
+	a.core.FetchAvatar(c)
 	a.core.Hub.Publish("contact", c)
 	writeJSON(w, c)
 }
