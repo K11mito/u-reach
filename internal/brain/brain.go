@@ -220,6 +220,7 @@ func (b *Brain) enforce(r Reply, c Contact, history []Turn, meta *Meta) Reply {
 	}
 	if r.Handoff || r.OptOut {
 		r.IncludeReferral = false
+		r.FollowupText = "" // the voice note already says John will follow up
 	}
 
 	r.SpokenScript = strings.TrimSpace(urlRe.ReplaceAllString(r.SpokenScript, ""))
