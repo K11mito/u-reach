@@ -3,15 +3,16 @@ module ureach
 go 1.26.0
 
 require (
+	github.com/anthropics/anthropic-sdk-go v1.81.0
 	github.com/mdp/qrterminal/v3 v3.2.1
 	go.mau.fi/whatsmeow v0.0.0-20261015105041-df33a485cc46
 	google.golang.org/protobuf v1.36.12
 	modernc.org/sqlite v1.60.1
+	rsc.io/qr v0.2.0
 )
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
-	github.com/anthropics/anthropic-sdk-go v1.81.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/beeper/argo-go v1.1.2 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
@@ -52,5 +53,4 @@ require (
 	modernc.org/libc v1.77.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	rsc.io/qr v0.2.0 // indirect
 )

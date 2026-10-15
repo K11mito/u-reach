@@ -23,6 +23,7 @@ import (
 
 	"go.mau.fi/whatsmeow/types"
 	waLog "go.mau.fi/whatsmeow/util/log"
+	"rsc.io/qr"
 
 	"ureach/internal/brain"
 	"ureach/internal/config"
@@ -80,6 +81,15 @@ func main() {
 		defer waClient.Close()
 		c.Gateway = waGateway{waClient}
 		waClient.OnMessage = func(in wa.Inbound) { c.Handle(fromWA(waClient, in)) }
+		waClient.OnOwnMessage = func(in wa.Inbound) { c.HandleOwn(fromWA(waClient, in)) }
+		waClient.OnReceipt = func(ids []types.MessageID, kind string) {
+			s := make([]string, len(ids))
+			for i, id := range ids {
+				s[i] = string(id)
+			}
+			c.HandleReceipt(s, kind)
+		}
+		waClient.OnStatus = func() { hub.Publish("whatsapp", waStatus(waClient)) }
 		go func() {
 			if err := waClient.Connect(ctx, ""); err != nil {
 				log.Printf("whatsapp: %v", err)
@@ -95,6 +105,7 @@ func main() {
 	mux.HandleFunc("POST /api/contacts/{id}/status", api.setStatus)
 	mux.HandleFunc("POST /api/contacts/{id}/send", api.send)
 	mux.HandleFunc("GET /api/runs", api.runs)
+	mux.HandleFunc("GET /api/whatsapp/qr.png", api.qrPNG)
 	mux.HandleFunc("POST /api/simulate", api.simulate)
 	mux.HandleFunc("POST /api/contacts", api.addContact)
 	mux.HandleFunc("POST /api/campaign/draft", api.campaignDraft)
@@ -205,14 +216,7 @@ func (a *api) snapshot() (map[string]any, error) {
 	}
 	persona, _ := os.ReadFile("data/persona/john.json")
 	faq, _ := os.ReadFile("data/faq.md")
-	waState := map[string]any{"enabled": a.wa != nil, "connected": false}
-	if a.wa != nil {
-		waState["connected"] = a.wa.WA.IsConnected() && a.wa.WA.IsLoggedIn()
-		if id := a.wa.WA.Store.ID; id != nil {
-			waState["phone"] = id.User
-		}
-		waState["push_name"] = a.wa.WA.Store.PushName
-	}
+	waState := waStatus(a.wa)
 	last := map[int64]store.Message{}
 	for _, c := range contacts {
 		if m, _ := a.store.Messages(c.ID, 1); len(m) == 1 {
@@ -287,6 +291,38 @@ func (a *api) send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]bool{"ok": true})
+}
+
+// waStatus is the WhatsApp link state for the dashboard.
+func waStatus(c *wa.Client) map[string]any {
+	if c == nil {
+		return map[string]any{"enabled": false, "connected": false, "linked": false}
+	}
+	st := c.Status()
+	return map[string]any{"enabled": true, "connected": st.Connected, "linked": st.Linked, "phone": st.Phone,
+		"push_name": st.PushName, "has_qr": st.HasQR, "logged_out": st.LoggedOut}
+}
+
+// qrPNG renders the current pairing QR so John can link from the dashboard.
+func (a *api) qrPNG(w http.ResponseWriter, r *http.Request) {
+	if a.wa == nil {
+		http.NotFound(w, r)
+		return
+	}
+	code := a.wa.Status().QR
+	if code == "" {
+		http.NotFound(w, r)
+		return
+	}
+	q, err := qr.Encode(code, qr.L)
+	if err != nil {
+		httpErr(w, err)
+		return
+	}
+	q.Scale = 8
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Write(q.PNG())
 }
 
 // addContact saves a phone number under a name (e.g. a teammate as "Raj").
