@@ -257,9 +257,7 @@ function Spend({ data }: { data: Data }) {
               : `${Math.round(el.credits_used ?? 0).toLocaleString()} of ${(el.credits_limit ?? 0).toLocaleString()} credits used this month, at ${usd((el.usd_per_credit ?? 0) * 1000)} per 1,000.`}
           </Provider>
           <Provider color={C.claude} name="Claude" sub="Writes each reply" value={usd(claude.usd_window ?? 0)}>
-            {claude.calls
-              ? `${claude.calls} calls since ${since}, about ${usd(claude.usd_per_call ?? 0)} each.`
-              : "Priced per call from token usage, starting with the next reply."}
+            <ClaudeNote c={claude} since={since} />
           </Provider>
         </div>
         <div>
@@ -283,6 +281,21 @@ function Spend({ data }: { data: Data }) {
       </div>
     </Card>
   )
+}
+
+/** Says exactly what the Claude number covers: measured calls, and estimates for replies from before tracking. */
+function ClaudeNote({ c, since }: { c: Data["spend"]["claude"]; since: string }) {
+  const earlier = c.earlier_replies ?? 0
+  const replies = (n: number) => `${n} earlier ${n === 1 ? "reply" : "replies"}`
+  if (c.calls)
+    return (
+      <>
+        {c.calls} {c.calls === 1 ? "call" : "calls"} measured since {since}, about {usd(c.usd_per_call ?? 0)} each.
+        {earlier > 0 && ` Includes ${replies(earlier)} from before then, estimated at that rate.`}
+      </>
+    )
+  if (earlier > 0) return <>Measured per call since {since}. {replies(earlier)} from before then get estimated once the first call is measured.</>
+  return <>Measured per call from its token usage at Anthropic's prices.</>
 }
 
 function Provider({ color, name, sub, value, children }: { color: string; name: string; sub: string; value: string; children: ReactNode }) {

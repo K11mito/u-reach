@@ -5,6 +5,7 @@ import (
 	"hash/fnv"
 	"math"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -191,26 +192,60 @@ func (a *api) spend() ([]spendHour, map[string]any) {
 	}
 	u.Unlock()
 
-	claude := map[string]any{"tracked_since": a.store.FirstAPICall("anthropic")}
-	if calls, err := a.store.APICalls("anthropic", 0); err != nil {
+	since := a.usageSince()
+	claude := map[string]any{"tracked_since": since}
+	calls, err := a.store.APICalls("anthropic", 0)
+	if err != nil {
 		claude["error"] = err.Error()
-	} else {
-		var total, window float64
-		for _, c := range calls {
-			total += c.CostUSD
-			if i, ok := bucket(time.UnixMilli(c.CreatedAt)); ok {
-				hours[i].Claude += c.CostUSD
-				window += c.CostUSD
-			}
-		}
-		claude["calls"] = len(calls)
-		claude["usd_total"] = total
-		claude["usd_window"] = window
-		if len(calls) > 0 {
-			claude["usd_per_call"] = total / float64(len(calls))
+		return hours, map[string]any{"elevenlabs": eleven, "claude": claude}
+	}
+	var total, window, perCall float64
+	for _, c := range calls {
+		total += c.CostUSD
+		if i, ok := bucket(time.UnixMilli(c.CreatedAt)); ok {
+			hours[i].Claude += c.CostUSD
+			window += c.CostUSD
 		}
 	}
+	if len(calls) > 0 {
+		perCall = total / float64(len(calls))
+	}
+	// Replies from before tracking existed weren't priced. Count them, and
+	// once a call has been measured, estimate each at the average.
+	var earlier int
+	var estimated float64
+	if runs, err := a.store.Runs(1000); err == nil {
+		for _, r := range runs {
+			if r.ThoughtAt == 0 || r.ThoughtAt >= since {
+				continue
+			}
+			earlier++
+			if perCall > 0 {
+				estimated += perCall
+				if i, ok := bucket(time.UnixMilli(r.ThoughtAt)); ok {
+					hours[i].Claude += perCall
+					window += perCall
+				}
+			}
+		}
+	}
+	claude["calls"] = len(calls)
+	claude["usd_per_call"] = perCall
+	claude["usd_total"] = total + estimated
+	claude["usd_window"] = window
+	claude["earlier_replies"] = earlier
+	claude["usd_estimated"] = estimated
 	return hours, map[string]any{"elevenlabs": eleven, "claude": claude}
+}
+
+// usageSince is when spend tracking began (Unix ms).
+func (a *api) usageSince() int64 {
+	if v, ok, _ := a.store.Setting("usage_since"); ok {
+		if ms, err := strconv.ParseInt(v, 10, 64); err == nil {
+			return ms
+		}
+	}
+	return a.store.FirstAPICall("anthropic")
 }
 
 // responseTime is how long real replies took, message in to voice note out.

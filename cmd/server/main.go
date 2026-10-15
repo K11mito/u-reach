@@ -56,6 +56,11 @@ func main() {
 	defer st.Close()
 	br, err := brain.New("data/persona/john.json", "data/faq.md")
 	must(err)
+	// Spend tracking starts with the first run of a build that has it; replies
+	// from before then are estimated on the analytics page.
+	if _, ok, _ := st.Setting("usage_since"); !ok {
+		st.SetSetting("usage_since", strconv.FormatInt(store.Now(), 10))
+	}
 	br.OnUsage = func(m brain.Meta) {
 		if err := st.AddAPICall(store.APICall{Provider: "anthropic", Model: m.Model, InputTokens: m.InputTokens, OutputTokens: m.OutputTokens,
 			CacheRead: m.CacheRead, CacheWrite: m.CacheWrite, CostUSD: m.CostUSD()}); err != nil {

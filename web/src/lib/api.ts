@@ -216,7 +216,7 @@ export interface Analytics {
   hours: { t: number; elevenlabs: number; claude: number }[] // USD per hour
   spend: {
     elevenlabs: { usd_window?: number; credits_window?: number; credits_used?: number; credits_limit?: number; usd_per_credit?: number; plan?: string; error?: string }
-    claude: { usd_window?: number; usd_total?: number; calls?: number; usd_per_call?: number; tracked_since?: number; error?: string }
+    claude: { usd_window?: number; usd_total?: number; calls?: number; usd_per_call?: number; tracked_since?: number; earlier_replies?: number; usd_estimated?: number; error?: string }
   }
   response: { replies?: number; avg_ms?: number }
 }
