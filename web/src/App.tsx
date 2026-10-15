@@ -8,6 +8,7 @@ import { Profile } from "@/components/Profile"
 import { Campaign } from "@/components/Campaign"
 import { LinkWhatsApp } from "@/components/LinkWhatsApp"
 import { JohnAvatar } from "@/components/bits"
+import { Grain } from "@/components/Grain"
 import { Toaster, toast } from "@/components/Toast"
 
 type Page = "inbox" | "stage" | "campaign" | "profile"
@@ -172,15 +173,29 @@ function WhatsAppPill({ wa, onLink }: { wa: WhatsAppStatus; onLink: () => void }
 
 function Stat({ icon: Icon, label, value, decimals = 0, accent, warn, hint }: { icon: typeof Clock; label: string; value: number; decimals?: number; accent?: boolean; warn?: boolean; hint?: string }) {
   const shown = useCountUp(value)
-  return (
-    <div title={hint} className={cn("flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-sm", accent && "border-transparent bg-gradient-to-br from-wa to-wa-dark text-white")}>
-      <div className={cn("grid size-11 shrink-0 place-items-center rounded-xl", accent ? "bg-white/20" : warn ? "bg-amber/25 text-amber-800" : "bg-secondary text-primary")}>
-        <Icon className="size-5" />
+  const body = (
+    <>
+      <div className={cn("grid size-10 shrink-0 place-items-center rounded-lg", accent ? "bg-white/20 text-white" : warn ? "bg-amber/20 text-amber-800" : "bg-secondary text-foreground/70")}>
+        <Icon className="size-[18px]" />
       </div>
       <div className="min-w-0">
-        <div className="text-2xl font-extrabold tabular-nums">{shown.toFixed(decimals)}</div>
+        <div className="text-2xl font-semibold tracking-tight tabular-nums">{shown.toFixed(decimals)}</div>
         <div className={cn("truncate text-xs", accent ? "text-white/85" : "text-muted-foreground")}>{label}</div>
       </div>
+    </>
+  )
+  // The headline number sits on a grainy gradient; the rest stay quiet.
+  if (accent)
+    return (
+      <Grain seed="hours-saved" palette="mint" className="flex items-center gap-4 rounded-xl p-4 text-white" style={{}}>
+        <div className="flex items-center gap-4" title={hint}>
+          {body}
+        </div>
+      </Grain>
+    )
+  return (
+    <div title={hint} className="flex items-center gap-4 rounded-xl border bg-card p-4">
+      {body}
     </div>
   )
 }

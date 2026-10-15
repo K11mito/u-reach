@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Pause, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Grain } from "./Grain"
 import type { Status } from "@/lib/api"
 
 const STATUS: Record<Status, { label: string; className: string }> = {
@@ -19,8 +20,6 @@ export function StatusChip({ status, className }: { status: Status; className?: 
     </span>
   )
 }
-
-const HUES = [265, 290, 220, 330, 200, 160, 20, 45]
 
 /** A contact's WhatsApp photo, or their initials when there isn't one. */
 export function Initials({ name, size = 40, className, src }: { name: string; size?: number; className?: string; src?: string }) {
@@ -42,14 +41,10 @@ export function Initials({ name, size = 40, className, src }: { name: string; si
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase())
     .join("")
-  const hue = HUES[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % HUES.length]
   return (
-    <div
-      className={cn("grid shrink-0 place-items-center rounded-full font-bold text-white", className)}
-      style={{ width: size, height: size, fontSize: size * 0.38, background: `linear-gradient(135deg, oklch(0.65 0.17 ${hue}), oklch(0.5 0.2 ${hue + 25}))` }}
-    >
-      {letters || "?"}
-    </div>
+    <Grain seed={name} className={cn("grid shrink-0 place-items-center rounded-full font-semibold text-white", className)} style={{ width: size, height: size, fontSize: size * 0.38 }}>
+      <span className="drop-shadow-[0_1px_1px_rgb(0_0_0/0.15)]">{letters || "?"}</span>
+    </Grain>
   )
 }
 
@@ -67,12 +62,9 @@ export function JohnAvatar({ size = 40, src }: { size?: number; src?: string }) 
       />
     )
   return (
-    <div
-      className="grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 font-extrabold text-white shadow-md shadow-indigo-500/30"
-      style={{ width: size, height: size, fontSize: size * 0.42 }}
-    >
-      J
-    </div>
+    <Grain seed="John Klensch" palette="dusk" className="grid shrink-0 place-items-center rounded-full font-semibold text-white" style={{ width: size, height: size, fontSize: size * 0.42 }}>
+      <span>J</span>
+    </Grain>
   )
 }
 

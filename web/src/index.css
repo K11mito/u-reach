@@ -3,40 +3,42 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Kyle's look: indigo/purple brand, WhatsApp green for "live" and voice notes,
-   rounded cards, friendly type. */
+/* Neutral, editorial base. Colour comes from the grain gradients and a
+   little WhatsApp green for "live"; everything else is ink on paper. */
 :root {
-  --radius: 1rem;
-  --background: oklch(0.985 0.006 285);
-  --foreground: oklch(0.22 0.04 280);
+  --radius: 0.75rem;
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.19 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.04 280);
+  --card-foreground: oklch(0.19 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.04 280);
-  --primary: oklch(0.51 0.23 277);
+  --popover-foreground: oklch(0.19 0 0);
+  --primary: oklch(0.2 0 0);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0.025 285);
-  --secondary-foreground: oklch(0.35 0.12 280);
-  --muted: oklch(0.96 0.012 285);
-  --muted-foreground: oklch(0.52 0.03 280);
-  --accent: oklch(0.94 0.04 295);
-  --accent-foreground: oklch(0.38 0.16 295);
-  --destructive: oklch(0.6 0.22 25);
-  --border: oklch(0.91 0.015 285);
-  --input: oklch(0.91 0.015 285);
-  --ring: oklch(0.51 0.23 277);
-  --wa: oklch(0.72 0.17 152);
-  --wa-dark: oklch(0.55 0.13 160);
-  --wa-bubble: oklch(0.95 0.06 145);
-  --amber: oklch(0.8 0.15 75);
+  --secondary: oklch(0.965 0 0);
+  --secondary-foreground: oklch(0.25 0 0);
+  --muted: oklch(0.965 0 0);
+  --muted-foreground: oklch(0.52 0 0);
+  --accent: oklch(0.955 0 0);
+  --accent-foreground: oklch(0.19 0 0);
+  --destructive: oklch(0.58 0.2 27);
+  --border: oklch(0.92 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.7 0 0);
+  --wa: oklch(0.72 0.16 152);
+  --wa-dark: oklch(0.5 0.12 156);
+  --wa-bubble: oklch(0.962 0.035 150);
+  --amber: oklch(0.78 0.14 72);
+  --blue: oklch(0.62 0.15 255);
 }
 
 @theme inline {
-  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
-  --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: calc(var(--radius) - 4px);
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 6px);
+  --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -59,6 +61,7 @@
   --color-wa-dark: var(--wa-dark);
   --color-wa-bubble: var(--wa-bubble);
   --color-amber: var(--amber);
+  --color-blue: var(--blue);
 }
 
 @layer base {
@@ -67,11 +70,52 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "cv11";
   }
 }
 
-@keyframes eq {
-  0%, 100% { transform: scaleY(0.35); }
-  50% { transform: scaleY(1); }
+/* Film grain over the grain gradients, at screen resolution. Children sit
+   above it so text stays crisp. */
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  opacity: 0.35;
+  mix-blend-mode: overlay;
 }
-.animate-eq > span { animation: eq 0.9s ease-in-out infinite; transform-origin: bottom; }
+.grain > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.animate-eq > span {
+  animation: eq 0.9s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    background-position: 50% 50%;
+  }
+  50% {
+    background-position: 60% 40%;
+  }
+}
+.animate-drift {
+  background-size: 140%;
+  animation: drift 6s ease-in-out infinite;
+}
