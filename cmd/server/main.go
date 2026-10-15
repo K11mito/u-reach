@@ -186,7 +186,7 @@ func (a *api) state(w http.ResponseWriter, r *http.Request) {
 		}
 		waState["push_name"] = a.wa.WA.Store.PushName
 	}
-	minPerReply := atoi(config.Get("MIN_SAVED_PER_REPLY", "5"))
+	minPerReply := atoi(config.Get("MIN_SAVED_PER_REPLY", "15"))
 	writeJSON(w, map[string]any{
 		"ambassador": map[string]any{
 			"name":         "John Klensch",
