@@ -328,7 +328,9 @@ export function useLive() {
     }, 400)
   }, [])
 
+  const loaded = useRef(new Set<number>(Object.keys(window.__BOOT__?.messages ?? {}).map(Number)))
   const loadMessages = useCallback((id: number) => {
+    loaded.current.add(id)
     api.messages(id).then((m) => setMessages((prev) => ({ ...prev, [id]: m }))).catch(() => {})
   }, [])
 
@@ -337,10 +339,21 @@ export function useLive() {
     api.runs().then(setRuns).catch(() => {})
     let es: EventSource | null = null
     let retry: number | undefined
+    let dropped = false
     const connect = () => {
       es = new EventSource("/api/events")
-      es.onopen = () => setConnected(true)
+      es.onopen = () => {
+        setConnected(true)
+        if (!dropped) return
+        // Events sent while we were disconnected (a server restart, a
+        // Wi-Fi blip, a sleeping laptop) are gone: catch up on everything.
+        dropped = false
+        api.state().then(setState).catch(() => {})
+        api.runs().then(setRuns).catch(() => {})
+        loaded.current.forEach((id) => loadMessages(id))
+      }
       es.onerror = () => {
+        dropped = true
         setConnected(false)
         es?.close()
         retry = window.setTimeout(connect, 2000)
@@ -376,6 +389,7 @@ export function useLive() {
         } else if (ev.type === "chat_reset") {
           // The lead is removed everywhere; a new message brings them back fresh.
           const id = ev.data.contact_id
+          loaded.current.delete(id)
           setState((s) => (s ? { ...s, contacts: s.contacts.filter((c) => c.id !== id) } : s))
           setMessages((prev) => {
             const next = { ...prev }
@@ -405,7 +419,7 @@ export function useLive() {
       es?.close()
       window.clearTimeout(retry)
     }
-  }, [refetch])
+  }, [refetch, loadMessages])
 
   return { state, runs, messages, loadMessages, connected, refetch, campaign }
 }
