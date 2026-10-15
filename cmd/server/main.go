@@ -15,6 +15,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -149,6 +150,7 @@ func main() {
 	mux.HandleFunc("GET /api/runs", api.runs)
 	mux.HandleFunc("GET /api/analytics", api.analytics)
 	mux.HandleFunc("GET /api/whatsapp/qr.png", api.qrPNG)
+	mux.HandleFunc("GET /api/whatsapp/chat-qr.png", api.chatQR)
 	mux.HandleFunc("POST /api/simulate", api.simulate)
 	mux.HandleFunc("POST /api/demo/reset", api.resetDemo)
 	mux.HandleFunc("POST /api/contacts", api.addContact)
@@ -411,6 +413,24 @@ func waStatus(c *wa.Client) map[string]any {
 	st := c.Status()
 	return map[string]any{"enabled": true, "connected": st.Connected, "linked": st.Linked, "phone": st.Phone,
 		"push_name": st.PushName, "has_qr": st.HasQR, "logged_out": st.LoggedOut}
+}
+
+// chatQR is a QR code that opens a WhatsApp chat with John's demo number,
+// for the judges' guide.
+func (a *api) chatQR(w http.ResponseWriter, r *http.Request) {
+	if a.wa == nil || a.wa.Status().Phone == "" {
+		http.NotFound(w, r)
+		return
+	}
+	text := strings.ReplaceAll(url.QueryEscape("Hi John! What is U-topia?"), "+", "%20")
+	q, err := qr.Encode("https://wa.me/"+a.wa.Status().Phone+"?text="+text, qr.M)
+	if err != nil {
+		httpErr(w, err)
+		return
+	}
+	q.Scale = 8
+	w.Header().Set("Content-Type", "image/png")
+	w.Write(q.PNG())
 }
 
 // qrPNG renders the current pairing QR so John can link from the dashboard.

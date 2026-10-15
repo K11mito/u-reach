@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ChartColumn, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, Telescope, UserRound } from "lucide-react"
+import { ChartColumn, CircleHelp, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, Telescope, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLive, type WhatsAppStatus } from "@/lib/api"
 import { Inbox } from "@/components/Inbox"
@@ -7,6 +7,7 @@ import { Stage } from "@/components/Stage"
 import { Profile } from "@/components/Profile"
 import { Campaign } from "@/components/Campaign"
 import { Analytics } from "@/components/Analytics"
+import { Help } from "@/components/Help"
 import { LinkWhatsApp } from "@/components/LinkWhatsApp"
 import { BrandHeader } from "@/components/BrandHeader"
 import { JohnAvatar } from "@/components/bits"
@@ -14,11 +15,11 @@ import robot from "@/assets/nav-robot.webp"
 import logo from "@/assets/logo.webp"
 import { Toaster, toast } from "@/components/Toast"
 
-type Page = "inbox" | "stage" | "campaign" | "analytics" | "profile"
-const TITLES: Record<Page, string> = { inbox: "Inbox", stage: "Stage", campaign: "Campaign", analytics: "Analytics", profile: "John" }
+type Page = "inbox" | "stage" | "campaign" | "analytics" | "profile" | "help"
+const TITLES: Record<Page, string> = { inbox: "Inbox", stage: "Stage", campaign: "Campaign", analytics: "Analytics", profile: "John", help: "Help" }
 const pageFromPath = (): Page => {
   const p = window.location.pathname.replace(/^\//, "")
-  return (["stage", "campaign", "analytics", "profile"].includes(p) ? p : "inbox") as Page
+  return (["stage", "campaign", "analytics", "profile", "help"].includes(p) ? p : "inbox") as Page
 }
 
 export default function App() {
@@ -44,7 +45,7 @@ export default function App() {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      const map: Record<string, Page> = { "1": "inbox", "2": "stage", "3": "campaign", "4": "analytics", "5": "profile", p: "stage" }
+      const map: Record<string, Page> = { "1": "inbox", "2": "stage", "3": "campaign", "4": "analytics", "5": "profile", "6": "help", p: "stage" }
       if (map[e.key]) go(map[e.key])
     }
     window.addEventListener("keydown", key)
@@ -84,6 +85,7 @@ export default function App() {
     { id: "campaign" as const, label: "Campaign", icon: Megaphone },
     { id: "analytics" as const, label: "Analytics", icon: ChartColumn },
     { id: "profile" as const, label: "John", icon: UserRound },
+    { id: "help" as const, label: "Help", icon: CircleHelp },
   ]
 
   return (
@@ -145,6 +147,7 @@ export default function App() {
           {page === "profile" && <Profile state={state} />}
           {page === "campaign" && <Campaign contacts={state.contacts} statuses={campaign} />}
           {page === "analytics" && <Analytics state={state} />}
+          {page === "help" && <Help state={state} />}
         </main>
       </div>
       {linkOpen && <LinkWhatsApp wa={state.whatsapp} onClose={() => setLinkOpen(false)} />}
