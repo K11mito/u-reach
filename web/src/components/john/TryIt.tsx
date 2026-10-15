@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link2, Loader2, Mic, Send, Sparkles, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { errText, harnessApi, type Harness, type HarnessProfile, type TryResult } from "@/lib/api"
+import { errText, explainError, harnessApi, type Harness, type HarnessProfile, type TryResult } from "@/lib/api"
 import { Section } from "./editors"
 
 const SAMPLES = ["Hey John, what is U.Center?", "Is this safe? I lost money on an exchange before", "How much does it cost to join?", "Can I use it to send money home to the Philippines?"]
@@ -58,7 +58,14 @@ export function TryIt({ draft, title = "Try John", hint = "Hear how he'd answer 
       {err && (
         <div className="mt-4 flex gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-800">
           <TriangleAlert className="mt-px size-4 shrink-0" />
-          <span className="min-w-0 [overflow-wrap:anywhere]">{err}</span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">
+            {explainError(err.replace(/^John's AI couldn't answer: /, ""))}
+            {/^John's AI couldn't answer: /.test(err) && (
+              <span className="mt-0.5 block truncate font-mono text-[11px] text-red-900/55" title={err}>
+                {err}
+              </span>
+            )}
+          </span>
         </div>
       )}
       {res && (
