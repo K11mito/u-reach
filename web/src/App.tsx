@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ChartColumn, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, PhoneCall, QrCode, UserRound } from "lucide-react"
+import { ChartColumn, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, Telescope, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLive, type WhatsAppStatus } from "@/lib/api"
 import { Inbox } from "@/components/Inbox"
@@ -8,9 +8,9 @@ import { Profile } from "@/components/Profile"
 import { Campaign } from "@/components/Campaign"
 import { Analytics } from "@/components/Analytics"
 import { LinkWhatsApp } from "@/components/LinkWhatsApp"
+import { BrandHeader } from "@/components/BrandHeader"
 import { JohnAvatar } from "@/components/bits"
 import robot from "@/assets/nav-robot.webp"
-import banner from "@/assets/header-banner.webp"
 import logo from "@/assets/logo.webp"
 import { Toaster, toast } from "@/components/Toast"
 
@@ -88,22 +88,10 @@ export default function App() {
 
   return (
     <div className="flex h-screen min-w-[1100px] flex-col gap-4 bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4">
-      {/* Full-width brand bar, darker than the nav, which tucks under it. The brand sits over the nav column, the motto over the content. */}
-      <header className="relative z-10 flex h-16 shrink-0 items-center overflow-hidden rounded-2xl bg-gradient-to-r from-[oklch(0.366_0.24_277)] to-[oklch(0.35_0.218_304)] text-white shadow-lg shadow-indigo-950/30">
-        <div className="relative z-10 flex w-[clamp(220px,18vw,300px)] shrink-0 items-center gap-2.5 px-5">
-          <img src={logo} alt="U-Reach" className="size-9 shrink-0" />
-          <div className="min-w-0">
-            <div className="text-lg leading-tight font-extrabold tracking-tight">U-Reach</div>
-            <div className="truncate text-[11px] text-white/65">for U.Center ambassadors</div>
-          </div>
-        </div>
-        <div className="relative z-10 ml-2 border-l border-white/15 pl-6 text-xl font-extrabold tracking-tight">Let's Go! Let's Grow!</div>
-        {/* The banner art sits on the right and fades into the header on its left. */}
-        <img src={banner} alt="" className="absolute inset-y-0 right-0 h-full w-auto max-w-[70%] object-cover object-right opacity-80 [mask-image:linear-gradient(to_right,transparent,black_40%)]" />
-      </header>
+      <BrandHeader />
 
       <div className="flex min-h-0 flex-1 gap-4">
-        <aside className="-mt-8 flex w-[clamp(220px,18vw,300px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 pt-12 text-white shadow-lg shadow-indigo-500/20">
+        <aside className="-mt-8 ml-2 flex w-[clamp(220px,18vw,300px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 pt-12 text-white shadow-lg shadow-indigo-500/20">
           <nav className="space-y-1">
             {nav.map((n, i) => (
               <button
@@ -120,19 +108,12 @@ export default function App() {
                 {!!n.badge && <span className="min-w-5 rounded-full bg-amber-100 px-1.5 text-center text-[11px] font-semibold text-amber-800 tabular-nums">{n.badge}</span>}
               </button>
             ))}
-          </nav>
-          {/* Not built: shown so the demo can point at what comes next. */}
-          <div className="mt-3 border-t border-white/15 pt-3">
-            <button
-              onClick={() => toast("Just an idea: the AI would book a 3-way call between the lead, John and his upline. We didn't get to build it this hackathon.", "info", 6000)}
-              title="Just an idea we didn't get to build"
-              className="flex w-full cursor-help items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/45 transition hover:bg-white/5"
-            >
-              <PhoneCall className="size-4" />
-              <span className="flex-1 text-left">3-Way Calls</span>
-              <span className="rounded-full border border-white/25 px-1.5 text-[10px] font-medium text-white/60">Idea</span>
+            {/* Not built yet. */}
+            <button disabled className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/40">
+              <Telescope className="size-4" />
+              <span className="flex-1 text-left">Research</span>
             </button>
-          </div>
+          </nav>
           {/* Fills the free space above John's card; on short screens the top is cropped, keeping the robot. */}
           <div className="relative mt-4 mb-3 min-h-0 flex-1">
             <img src={robot} alt="" className="absolute bottom-0 -left-3 max-h-full w-[80%] object-cover object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
