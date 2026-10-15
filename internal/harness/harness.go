@@ -7,9 +7,12 @@
 package harness
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"slices"
 	"strconv"
@@ -129,12 +132,22 @@ const (
 	settingFAQ      = "faq"
 	settingReferral = "referral_url"
 	settingAutonomy = "autonomy"
+	// SHA-256 of the data/faq.md the saved FAQ was copied from. A saved FAQ
+	// that still matches it was never edited, so it follows the file.
+	settingFAQShipped = "faq_shipped"
 
 	// MaxDocChars caps one document (~30k tokens); MaxPlaybookChars caps all
 	// active documents together so every reply stays fast and affordable.
 	MaxDocChars      = 120_000
 	MaxPlaybookChars = 200_000
 )
+
+// shippedFAQs are earlier versions of data/faq.md (SHA-256), for databases
+// saved before settingFAQShipped existed: a saved FAQ matching one of them is
+// an untouched copy, not John's own edit.
+var shippedFAQs = map[string]bool{
+	"339a4ae74508990207869cbcf3629403bc1ecc9dd10431e78a14357d0d7c3ece": true, // first FAQ, before the full knowledge base
+}
 
 // ErrInvalid wraps problems the user can fix (shown as-is in the dashboard).
 var ErrInvalid = errors.New("invalid")
@@ -205,16 +218,8 @@ func New(st *store.Store, br *brain.Brain, personaPath, faqPath string) (*Servic
 			return nil, err
 		}
 	}
-	if _, ok, err := st.Setting(settingFAQ); err != nil {
+	if err := s.syncFAQ(faqPath); err != nil {
 		return nil, err
-	} else if !ok {
-		faq, err := os.ReadFile(faqPath)
-		if err != nil {
-			return nil, err
-		}
-		if err := st.SetSetting(settingFAQ, string(faq)); err != nil {
-			return nil, err
-		}
 	}
 	// An empty link falls back to REFERRAL_URL from .env, so adding it there later works.
 	if v, _, err := st.Setting(settingReferral); err != nil {
@@ -285,6 +290,44 @@ func (s *Service) ActivePersonaJSON() json.RawMessage {
 func (s *Service) FAQ() string {
 	v, _, _ := s.st.Setting(settingFAQ)
 	return v
+}
+
+// syncFAQ keeps the saved FAQ in step with data/faq.md. On first run it
+// copies the file in. Later, when the file changes, a saved copy John never
+// edited is replaced with the new one; one he edited is kept.
+func (s *Service) syncFAQ(path string) error {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	file, fileSum := string(raw), sha(string(raw))
+	saved, ok, err := s.st.Setting(settingFAQ)
+	if err != nil {
+		return err
+	}
+	from, _, err := s.st.Setting(settingFAQShipped)
+	if err != nil {
+		return err
+	}
+	switch {
+	case !ok || saved == file:
+	case sha(saved) == from || (from == "" && shippedFAQs[sha(saved)]):
+		log.Printf("harness: facts updated to the new %s", path)
+	default:
+		if from != fileSum {
+			log.Printf("harness: keeping John's edited facts; %s has changed since they were saved", path)
+		}
+		return nil
+	}
+	if err := s.st.SetSetting(settingFAQ, file); err != nil {
+		return err
+	}
+	return s.st.SetSetting(settingFAQShipped, fileSum)
+}
+
+func sha(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
 }
 
 // SetProfile replaces who John is.
