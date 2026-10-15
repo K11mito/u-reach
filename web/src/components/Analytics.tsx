@@ -61,6 +61,8 @@ export function Analytics({ state }: { state: State }) {
   const week = days.slice(7)
   const prev = days.slice(0, 7)
   const total = (k: "leads" | "voice" | "links" | "purchased", ds = week) => sum(ds.map((d) => d[k]))
+  // Each lead once (the daily counts repeat a lead on every day they chatted).
+  const leadsWeek = data.week?.leads ?? total("leads")
   const change = (k: "leads" | "voice" | "links" | "purchased") => {
     const before = total(k, prev)
     return before ? (total(k) - before) / before : 0
@@ -78,7 +80,7 @@ export function Analytics({ state }: { state: State }) {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Card title="Your funnel" hint="Last 14 days, every lead John's AI talked to">
           <div className="mb-2 flex flex-wrap gap-x-5 gap-y-1">
-            <Legend color={C.leads} label="Leads reached" value={total("leads")} />
+            <Legend color={C.leads} label="Leads reached" value={leadsWeek} />
             <Legend color={C.voice} label="Voice notes" value={total("voice")} />
             <Legend color={C.links} label="Links sent" value={total("links")} />
             <Legend color={C.joined} label="Joined" value={total("purchased")} />
@@ -99,7 +101,7 @@ export function Analytics({ state }: { state: State }) {
         <Card title="Conversion this week" hint="From first message to membership" className="flex flex-col">
           <Funnel
             steps={[
-              { label: "Leads reached", value: total("leads") },
+              { label: "Leads reached", value: leadsWeek },
               { label: "Got the link", value: total("links") },
               { label: "Joined", value: total("purchased") },
             ]}

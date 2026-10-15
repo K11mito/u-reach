@@ -221,6 +221,7 @@ export interface FunnelDay {
 }
 export interface Analytics {
   days: FunnelDay[]
+  week?: { leads: number } // each lead counted once over the last 7 days
   hours: { t: number; elevenlabs: number; claude: number }[] // USD per hour
   spend: {
     elevenlabs: { usd_window?: number; credits_window?: number; credits_used?: number; credits_limit?: number; usd_per_credit?: number; plan?: string; error?: string }
