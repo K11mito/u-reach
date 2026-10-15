@@ -1,0 +1,44 @@
+# Checks every push to main and every pull request: Go formatting, vet and
+# tests (with the race detector), and the dashboard build. Nothing here calls
+# Claude, ElevenLabs or WhatsApp; the tests use stand-ins and a mock voice.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # Voice notes are Ogg Opus and the mock voice renders MP3.
+      - name: Install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      # Also type-checks the dashboard; the Go binary embeds its output.
+      - name: Build the dashboard
+        working-directory: web
+        run: npm ci --no-audit --no-fund && npm run build
+
+      - name: gofmt
+        run: test -z "$(gofmt -l cmd internal web | tee /dev/stderr)"
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test -race ./...
