@@ -50,7 +50,7 @@ export function Hero({
   }
 
   return (
-    <Grain seed="john-hero" palette="ocean" className="rounded-2xl p-6 text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.12)]">
+    <Grain seed="john-hero" palette="ocean" className="rounded-xl p-6 text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.12)]">
       <div className="relative flex items-start gap-5">
         <JohnAvatar size={84} src={a.avatar} />
         <div className="min-w-0 flex-1">
@@ -125,7 +125,7 @@ function PresetPill({ preset, active, onActivate, onEdit }: { preset: HarnessPre
     <div
       className={cn(
         "group/pill inline-flex h-8 items-center rounded-full transition [text-shadow:none]",
-        active ? "bg-white text-foreground shadow-md shadow-black/10" : "bg-white/15 text-white backdrop-blur hover:bg-white/25",
+        active ? "bg-white text-foreground shadow-sm shadow-black/10" : "bg-white/15 text-white backdrop-blur hover:bg-white/25",
       )}
     >
       <button onClick={onActivate} title={active ? `In use: ${preset.description}` : `Switch to ${preset.name}: ${preset.description}`} className="inline-flex h-8 items-center gap-1.5 rounded-full pl-3 text-xs font-medium">

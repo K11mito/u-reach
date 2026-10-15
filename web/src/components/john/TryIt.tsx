@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link2, Loader2, Send, Sparkles, TriangleAlert } from "lucide-react"
+import { Link2, Loader2, Mic, Send, Sparkles, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { errText, harnessApi, type Harness, type HarnessProfile, type TryResult } from "@/lib/api"
 import { Section } from "./editors"
@@ -63,13 +63,13 @@ export function TryIt({ draft, title = "Try John", hint = "Hear how he'd answer 
       )}
       {res && (
         <div className="mt-4 space-y-2">
-          <div className="ml-6 rounded-2xl rounded-br-md bg-wa-bubble px-4 py-3 text-sm leading-relaxed">
-            <span className="mb-1 block text-[11px] font-semibold text-wa-dark">
-              🎤 Voice note · {res.words} words · ~{Math.round(res.words / 2.5)}s
+          <div className="ml-6 rounded-xl rounded-br-sm bg-wa-bubble px-4 py-3 ring-1 ring-wa/15 text-sm leading-relaxed">
+            <span className="mb-1 flex items-center gap-1 text-[11px] font-medium text-wa-dark">
+              <Mic className="size-3" /> Voice note · {res.words} words · ~{Math.round(res.words / 2.5)}s
             </span>
             {res.reply.spoken_script}
           </div>
-          {res.reply.followup_text && <div className="ml-6 rounded-2xl rounded-br-md bg-wa-bubble px-4 py-2.5 text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{res.reply.followup_text}</div>}
+          {res.reply.followup_text && <div className="ml-6 rounded-xl rounded-br-sm bg-wa-bubble px-4 py-2.5 ring-1 ring-wa/15 text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{res.reply.followup_text}</div>}
           <div className="flex flex-wrap gap-1.5 pt-1 text-[11px]">
             {res.reply.handoff && <Flag tone="amber">Hands to John: {res.reply.handoff_reason || res.forced_handoff}</Flag>}
             {res.reply.opt_out && <Flag tone="amber">Lead opted out</Flag>}
