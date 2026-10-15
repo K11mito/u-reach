@@ -23,17 +23,17 @@ export function LinkWhatsApp({ wa, onClose }: { wa: WhatsAppStatus; onClose: () 
 
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="animate-in fade-in zoom-in-95 relative w-[420px] rounded-3xl bg-card p-7 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-4 right-4 rounded-full p-1 text-muted-foreground hover:bg-muted" aria-label="Close">
+      <div className="animate-in fade-in zoom-in-95 relative w-[420px] rounded-xl border bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 rounded-md p-1 text-muted-foreground hover:bg-muted" aria-label="Close">
           <X className="size-4" />
         </button>
-        <h2 className="text-xl font-extrabold">Link John's WhatsApp</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Link John's WhatsApp</h2>
         <p className="mt-1 text-sm text-muted-foreground">On the demo phone: WhatsApp → Settings → Linked devices → Link a device, then scan.</p>
-        <div className="mt-5 grid aspect-square place-items-center overflow-hidden rounded-2xl border bg-white">
+        <div className="mt-5 grid aspect-square place-items-center overflow-hidden rounded-lg border bg-white">
           {wa.connected ? (
             <div className="text-center text-wa-dark">
               <CheckCircle2 className="mx-auto size-14" />
-              <div className="mt-2 font-bold">Linked as +{wa.phone}</div>
+              <div className="mt-2 font-medium">Linked as +{wa.phone}</div>
             </div>
           ) : wa.logged_out ? (
             <p className="px-8 text-center text-sm text-muted-foreground">This session was logged out from the phone. Restart the server to get a fresh QR code.</p>

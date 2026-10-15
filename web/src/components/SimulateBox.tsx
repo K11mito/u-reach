@@ -68,7 +68,7 @@ export function SimulateBox() {
     )
   return (
     <div className="space-y-2 border-t bg-muted/40 p-3">
-      <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+      <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <FlaskConical className="size-3.5" /> Simulate a lead (nothing goes to WhatsApp)
         </span>
@@ -79,7 +79,7 @@ export function SimulateBox() {
       <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Lead name" className="h-8 bg-card" />
       <div className="flex gap-2">
         {recording ? (
-          <div className="flex h-8 flex-1 items-center gap-2 rounded-md bg-red-50 px-3 text-xs font-semibold text-red-600 ring-1 ring-red-200">
+          <div className="flex h-8 flex-1 items-center gap-2 rounded-md bg-red-50 px-3 text-xs font-medium text-red-600 ring-1 ring-red-200">
             <span className="size-2 animate-pulse rounded-full bg-red-500" /> Recording… 0:{String(secs).padStart(2, "0")}
           </div>
         ) : (

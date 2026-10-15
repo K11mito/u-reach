@@ -35,7 +35,7 @@ export function Toaster() {
         <div
           key={t.id}
           className={cn(
-            "animate-in fade-in slide-in-from-bottom-2 flex max-w-sm items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-lg",
+            "animate-in fade-in slide-in-from-bottom-2 flex max-w-sm items-center gap-2 rounded-lg px-3.5 py-2.5 text-sm font-medium shadow-lg shadow-black/10",
             t.kind === "error" ? "bg-red-600 text-white" : "bg-foreground text-background",
           )}
         >

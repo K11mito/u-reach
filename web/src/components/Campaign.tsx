@@ -37,39 +37,39 @@ export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[360px_1fr] gap-4">
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+      <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-card">
         <div className="border-b px-4 py-3">
-          <h2 className="font-bold">Who should John reach out to?</h2>
+          <h2 className="text-[15px] font-semibold tracking-tight">Who should John reach out to?</h2>
           <p className="text-xs text-muted-foreground">Each gets a personal voice note in his voice, then his link.</p>
         </div>
         <AddContact />
         <div className="min-h-0 flex-1 overflow-y-auto">
           {ordered.map((c) => (
-            <label key={c.id} className={cn("flex cursor-pointer items-center gap-3 border-b border-border/60 px-4 py-2.5 hover:bg-muted/60", picked.includes(c.id) && "bg-accent/50")}>
+            <label key={c.id} className={cn("flex cursor-pointer items-center gap-3 border-b border-border/60 px-4 py-2.5 hover:bg-muted/50", picked.includes(c.id) && "bg-muted")}>
               <input type="checkbox" checked={picked.includes(c.id)} onChange={() => toggle(c.id)} className="size-4 accent-[var(--primary)]" />
               <Initials name={displayName(c)} src={c.avatar} size={34} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">{displayName(c)}</div>
+                <div className="truncate text-sm font-medium">{displayName(c)}</div>
                 <div className="truncate text-xs text-muted-foreground">{c.context || `+${c.phone}`}</div>
               </div>
-              <StatusChip status={c.status} />
+              <StatusChip status={c.status} bare />
             </label>
           ))}
         </div>
         <div className="border-t p-3">
-          <Button onClick={write} disabled={!picked.length || loading} className="h-11 w-full rounded-xl">
+          <Button onClick={write} disabled={!picked.length || loading} className="h-10 w-full">
             {loading ? <Loader2 className="animate-spin" /> : <Sparkles />} Write {picked.length || ""} personal opener{picked.length === 1 ? "" : "s"}
           </Button>
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+      <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-card">
         <div className="flex items-center justify-between border-b px-5 py-3">
           <div>
-            <h2 className="font-bold">Openers to approve</h2>
+            <h2 className="text-[15px] font-semibold tracking-tight">Openers to approve</h2>
             <p className="text-xs text-muted-foreground">Listen, tweak the words if you like, then send. They go out a few seconds apart.</p>
           </div>
-          <Button onClick={send} disabled={!drafts.length || loading || sent || drafts.every((d) => !!d.error)} className="rounded-full bg-wa-dark hover:bg-wa-dark/90">
+          <Button onClick={send} disabled={!drafts.length || loading || sent || drafts.every((d) => !!d.error)} className="bg-wa-dark hover:bg-wa-dark/90">
             <Send /> {sent ? "Sending…" : `Send ${drafts.filter((d) => !d.error).length || ""}`}
           </Button>
         </div>
@@ -77,7 +77,7 @@ export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses
           {!drafts.length && (
             <div className="grid h-full place-items-center text-center text-muted-foreground">
               <div>
-                <Megaphone className="mx-auto mb-2 size-8 text-primary/60" />
+                <Megaphone className="mx-auto mb-2 size-6 text-muted-foreground/70" />
                 Pick a few people on the left and John's AI writes each one a personal voice note.
               </div>
             </div>
@@ -85,10 +85,10 @@ export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses
           {drafts.map((d) => {
             const st = statuses[d.contact_id]
             return (
-              <div key={d.contact_id} className="rounded-2xl border p-4 shadow-sm">
+              <div key={d.contact_id} className="rounded-lg border p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Initials name={d.name} size={36} />
-                  <div className="flex-1 font-bold">{d.name}</div>
+                  <div className="flex-1 text-sm font-medium">{d.name}</div>
                   {sent && <SendState st={st} />}
                   {!sent && (
                     <button onClick={() => setDrafts((ds) => ds.filter((x) => x.contact_id !== d.contact_id))} className="text-muted-foreground hover:text-foreground" title="Remove">
@@ -104,7 +104,7 @@ export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <div className="inline-block rounded-2xl bg-wa-bubble px-3 py-2">
+                    <div className="inline-block rounded-xl rounded-br-sm bg-wa-bubble px-3 py-2 ring-1 ring-wa/15">
                       <VoiceNote src={edited[d.contact_id] ? undefined : d.audio_path} durationMs={d.duration_ms} seed={d.contact_id} outgoing />
                     </div>
                     {edited[d.contact_id] && <p className="text-xs text-amber-700">Edited: John's voice re-records it when you send.</p>}
@@ -115,9 +115,9 @@ export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses
                         update(d.contact_id, { script: e.target.value })
                         setEdited((x) => ({ ...x, [d.contact_id]: true }))
                       }}
-                      className="min-h-20 rounded-xl text-sm"
+                      className="min-h-20 text-sm"
                     />
-                    <Input value={d.followup} disabled={sent} onChange={(e) => update(d.contact_id, { followup: e.target.value })} placeholder="Text after the note (link is added automatically)" className="rounded-xl text-sm" />
+                    <Input value={d.followup} disabled={sent} onChange={(e) => update(d.contact_id, { followup: e.target.value })} placeholder="Text after the note (link is added automatically)" className="text-sm" />
                   </div>
                 )}
               </div>
@@ -133,13 +133,13 @@ function SendState({ st }: { st?: CampaignStatus }) {
   if (!st) return <span className="text-xs text-muted-foreground">queued</span>
   if (st.status === "sending")
     return (
-      <span className="flex items-center gap-1 text-xs font-semibold text-wa-dark">
+      <span className="flex items-center gap-1 text-xs font-medium text-wa-dark">
         <Loader2 className="size-3.5 animate-spin" /> recording…
       </span>
     )
   if (st.status === "sent")
     return (
-      <span className="flex items-center gap-1 text-xs font-semibold text-wa-dark">
+      <span className="flex items-center gap-1 text-xs font-medium text-wa-dark">
         <Check className="size-3.5" /> sent
       </span>
     )
@@ -166,7 +166,7 @@ function AddContact() {
   }
   if (!open)
     return (
-      <button onClick={() => setOpen(true)} className="flex items-center gap-2 border-b px-4 py-2.5 text-sm font-semibold text-primary hover:bg-muted/60">
+      <button onClick={() => setOpen(true)} className="flex items-center gap-2 border-b px-4 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted/50 hover:text-foreground">
         <Plus className="size-4" /> Add a contact
       </button>
     )

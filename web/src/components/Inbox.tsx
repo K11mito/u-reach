@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { api, clock, dayLabel, displayName, timeAgo, type Contact, type Message, type Run, type Status } from "@/lib/api"
-import { Initials, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
+import { fmtDur, Initials, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
 import { SimulateBox } from "./SimulateBox"
 import { toast } from "./Toast"
 
@@ -107,10 +107,10 @@ export function Inbox({
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[minmax(300px,340px)_1fr] gap-4">
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <div className="space-y-2.5 border-b px-3 pt-3 pb-2.5">
-          <div className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2 ring-primary/30 focus-within:ring-2">
-            <Search className="size-4 text-muted-foreground" />
+      <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-card">
+        <div className="space-y-2.5 border-b p-3">
+          <div className="flex h-8 items-center gap-2 rounded-md border bg-background px-2.5 transition focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/20">
+            <Search className="size-3.5 text-muted-foreground" />
             <input
               ref={search}
               value={query}
@@ -119,21 +119,21 @@ export function Inbox({
               placeholder="Search leads"
               className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
-            <kbd className="rounded border bg-card px-1.5 text-[10px] text-muted-foreground">/</kbd>
+            <kbd className="rounded border bg-card px-1.5 font-mono text-[10px] text-muted-foreground">/</kbd>
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex rounded-md bg-muted p-0.5">
             {tabs.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setFilter(t.id)}
                 className={cn(
-                  "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap transition",
-                  filter === t.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                  "flex flex-auto items-center justify-center gap-1 rounded-[5px] px-1.5 py-1 text-[11px] font-medium whitespace-nowrap transition",
+                  filter === t.id ? "bg-card text-foreground shadow-xs ring-1 ring-black/5" : "text-muted-foreground hover:text-foreground",
                   t.id === "needs_john" && filter !== t.id && counts.needs_john && "text-amber-700",
                 )}
               >
                 {t.label}
-                {!!counts[t.id] && <span className={cn("ml-1 tabular-nums", filter === t.id ? "opacity-80" : "opacity-60")}>{counts[t.id]}</span>}
+                {!!counts[t.id] && <span className="tabular-nums opacity-55">{counts[t.id]}</span>}
               </button>
             ))}
           </div>
@@ -156,7 +156,7 @@ export function Inbox({
           onCampaign={onCampaign}
         />
       ) : (
-        <div className="grid place-items-center rounded-2xl border bg-card text-muted-foreground">No chats yet. Text John's number or use Simulate.</div>
+        <div className="grid place-items-center rounded-xl border bg-card text-sm text-muted-foreground">No chats yet. Text John's number or use Simulate.</div>
       )}
     </div>
   )
@@ -167,19 +167,18 @@ function ChatRow({ c, active, unread, run, last, onClick }: { c: Contact; active
     <button
       onClick={onClick}
       className={cn(
-        "relative flex w-full items-center gap-3 border-b border-border/60 px-4 py-3 text-left transition hover:bg-muted/60",
-        active && "bg-accent/60 hover:bg-accent/60",
+        "relative flex w-full items-center gap-3 border-b border-border/60 px-3.5 py-2.5 text-left transition hover:bg-muted/50",
+        active && "bg-muted hover:bg-muted",
       )}
     >
-      {active && <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary" />}
       <div className="relative">
-        <Initials name={displayName(c)} src={c.avatar} size={42} />
-        {run && <span className="absolute -right-0.5 -bottom-0.5 size-3.5 animate-pulse rounded-full border-2 border-card bg-wa" />}
+        <Initials name={displayName(c)} src={c.avatar} size={38} />
+        {run && <span className="absolute -right-0.5 -bottom-0.5 size-3 animate-pulse rounded-full border-2 border-card bg-wa" />}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className={cn("truncate font-semibold", unread && "font-extrabold")}>{displayName(c)}</span>
-          <span className={cn("flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums", unread ? "font-bold text-wa-dark" : "text-muted-foreground")}>
+          <span className={cn("truncate text-sm font-medium", unread && "font-semibold")}>{displayName(c)}</span>
+          <span className={cn("flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums", unread ? "font-semibold text-wa-dark" : "text-muted-foreground")}>
             {timeAgo(c.last_message_at || c.created_at)}
             {unread && <span className="size-2 rounded-full bg-wa" />}
           </span>
@@ -191,23 +190,29 @@ function ChatRow({ c, active, unread, run, last, onClick }: { c: Contact; active
             ) : last ? (
               <>
                 {last.direction === "out" && <Ticks status={last.status} voice={last.kind === "voice"} />}
-                <span className="truncate">{preview(last)}</span>
+                <Preview m={last} />
               </>
             ) : (
               <span className="truncate">{c.context || "New lead"}</span>
             )}
           </span>
-          <StatusChip status={c.status} />
+          <StatusChip status={c.status} bare />
         </div>
       </div>
     </button>
   )
 }
 
-function preview(m: Message) {
-  const who = m.direction === "out" ? (m.source === "john" ? "You: " : "") : ""
-  if (m.kind === "voice") return `${who}🎤 Voice note${m.duration_ms ? ` (${Math.round(m.duration_ms / 1000)}s)` : ""}`
-  return who + m.text.split("\n")[0]
+function Preview({ m }: { m: Message }) {
+  const who = m.direction === "out" && m.source === "john" ? "You: " : ""
+  if (m.kind === "voice")
+    return (
+      <span className="flex min-w-0 items-center gap-1 truncate">
+        {who}
+        <Mic className="size-3 shrink-0" /> Voice note{m.duration_ms ? ` · ${fmtDur(m.duration_ms)}` : ""}
+      </span>
+    )
+  return <span className="truncate">{who + m.text.split("\n")[0]}</span>
 }
 
 function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Contact; messages?: Message[]; run?: Run; failed?: Run; onCampaign: () => void }) {
@@ -248,16 +253,16 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
   }
 
   return (
-    <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
-      <div className="flex items-center gap-3 border-b px-5 py-3">
-        <Initials name={displayName(contact)} src={contact.avatar} size={44} />
+    <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-card">
+      <div className="flex items-center gap-3 border-b px-4 py-2.5">
+        <Initials name={displayName(contact)} src={contact.avatar} size={38} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-lg font-bold">{displayName(contact)}</span>
+            <span className="text-[15px] font-semibold tracking-tight">{displayName(contact)}</span>
             <StatusChip status={contact.status} />
             {contact.link_sent_at > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-secondary-foreground">
-                <Link2 className="size-3" /> Link sent
+              <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-foreground/75">
+                <Link2 className="size-3 text-muted-foreground" /> Link sent
               </span>
             )}
           </div>
@@ -278,67 +283,64 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
               toast(String(e), "error")
             }
           }}
-          className="rounded-full text-muted-foreground"
+          className="text-muted-foreground"
           title="Reset this chat (removes the lead)"
           aria-label="Reset this chat"
         >
           <RotateCcw />
         </Button>
         {paused ? (
-          <Button variant="outline" onClick={() => setStatus("auto")} className="rounded-full">
+          <Button variant="outline" size="sm" onClick={() => setStatus("auto")}>
             <Undo2 /> Hand back to AI
           </Button>
         ) : (
-          <Button onClick={() => setStatus("human")} className="rounded-full">
+          <Button size="sm" onClick={() => setStatus("human")}>
             <Hand /> Take over
           </Button>
         )}
       </div>
 
       {failed && (
-        <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-5 py-2 text-sm text-red-800">
-          <TriangleAlert className="size-4 shrink-0" />
+        <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-[13px] text-red-800">
+          <TriangleAlert className="size-3.5 shrink-0" />
           <span className="min-w-0 flex-1 truncate">
-            <b>Last reply failed</b> ({failed.error || "unknown error"}). The lead got a holding note; take over to answer.
+            <b className="font-semibold">Last reply failed</b> ({failed.error || "unknown error"}). The lead got a holding note; take over to answer.
           </span>
         </div>
       )}
       {contact.status === "needs_john" && (
-        <div className="flex items-center gap-2 border-b border-amber/40 bg-amber/15 px-5 py-2 text-sm text-amber-900">
-          <TriangleAlert className="size-4 shrink-0" />
+        <div className="flex items-center gap-2 border-b border-amber/30 bg-amber/10 px-4 py-2 text-[13px] text-amber-900">
+          <TriangleAlert className="size-3.5 shrink-0 text-amber-600" />
           <span className="min-w-0 flex-1 truncate">
-            <b>John's turn.</b> {contact.handoff_reason || "The AI handed this chat to you."} The AI is paused here.
+            <b className="font-semibold">John's turn.</b> {contact.handoff_reason || "The AI handed this chat to you."} The AI is paused here.
           </span>
         </div>
       )}
       {!!contact.memory?.length && (
-        <div className="flex flex-wrap items-center gap-1.5 border-b bg-muted/40 px-5 py-2 text-xs">
-          <span className="font-semibold text-muted-foreground">Remembers:</span>
+        <div className="flex flex-wrap items-center gap-1.5 border-b px-4 py-2 text-xs">
+          <span className="font-medium text-muted-foreground">Remembers</span>
           {contact.memory.map((m) => (
-            <span key={m} className="rounded-full bg-card px-2 py-0.5 text-muted-foreground ring-1 ring-border">
+            <span key={m} className="rounded-md bg-secondary px-2 py-0.5 text-foreground/75">
               {m}
             </span>
           ))}
         </div>
       )}
 
-      <div
-        ref={scroller}
-        className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,oklch(0.9_0.02_285)_1px,transparent_0)] bg-[length:22px_22px] px-6 py-5"
-      >
+      <div ref={scroller} className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[oklch(0.975_0.003_150)] px-6 py-5">
         {!messages ? (
           <div className="space-y-3">
             {[60, 40, 70].map((w, i) => (
-              <div key={i} className={cn("h-12 animate-pulse rounded-2xl bg-muted", i % 2 ? "ml-auto" : "")} style={{ width: `${w}%` }} />
+              <div key={i} className={cn("h-12 animate-pulse rounded-xl bg-muted", i % 2 ? "ml-auto" : "")} style={{ width: `${w}%` }} />
             ))}
           </div>
         ) : messages.length === 0 && !run ? (
           <div className="grid h-full place-items-center text-center text-sm text-muted-foreground">
             <div>
-              <Megaphone className="mx-auto mb-2 size-7 text-primary/60" />
+              <Megaphone className="mx-auto mb-2 size-6 text-muted-foreground/70" />
               No messages with {displayName(contact)} yet.
               <br />
-              <button onClick={onCampaign} className="mt-2 font-semibold text-primary hover:underline">
+              <button onClick={onCampaign} className="mt-2 font-medium text-foreground underline-offset-4 hover:underline">
                 Send them a personal voice note from John →
               </button>
             </div>
@@ -348,7 +350,7 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
             <Fragment key={m.id}>
               {(i === 0 || dayLabel(messages[i - 1].created_at) !== dayLabel(m.created_at)) && (
                 <div className="sticky top-0 z-10 flex justify-center py-1">
-                  <span className="rounded-full bg-card/90 px-3 py-0.5 text-[11px] font-semibold text-muted-foreground shadow-sm ring-1 ring-border backdrop-blur">{dayLabel(m.created_at)}</span>
+                  <span className="rounded-md border bg-card/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground backdrop-blur">{dayLabel(m.created_at)}</span>
                 </div>
               )}
               <Bubble m={m} />
@@ -357,7 +359,7 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
         )}
         {run && (
           <div className="flex justify-end">
-            <div className="inline-flex items-center gap-2 rounded-2xl bg-wa-bubble px-3 py-2 text-sm font-medium text-wa-dark shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-xl bg-wa-bubble px-3 py-2 text-sm font-medium text-wa-dark ring-1 ring-wa/15">
               {run.thought_at ? (
                 <>
                   <Mic className="size-4 animate-pulse" /> John is recording audio…
@@ -385,16 +387,20 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
               }
             }}
             placeholder={`Reply to ${displayName(contact)} as John… (Enter to send)`}
-            className="max-h-32 min-h-11 resize-none rounded-xl"
+            className="max-h-32 min-h-10 resize-none"
             rows={1}
           />
-          <Button onClick={send} disabled={busy || !draft.trim()} className="h-11 rounded-xl bg-wa-dark hover:bg-wa-dark/90" aria-label="Send">
+          <Button onClick={send} disabled={busy || !draft.trim()} className="size-10" aria-label="Send">
             <Send />
           </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-2 border-t bg-wa/5 px-5 py-2.5 text-xs text-wa-dark">
-          <Sparkles className="size-3.5" /> John's AI voice is answering this chat. Take over anytime.
+        <div className="flex items-center gap-2 border-t px-4 py-2.5 text-xs text-muted-foreground">
+          <span className="relative flex size-1.5">
+            <span className="absolute inset-0 animate-ping rounded-full bg-wa opacity-60" />
+            <span className="size-1.5 rounded-full bg-wa" />
+          </span>
+          John's AI voice is answering this chat. Take over anytime.
         </div>
       )}
     </div>
@@ -406,7 +412,7 @@ function Bubble({ m }: { m: Message }) {
   const ai = m.source === "ai" || m.source === "seed"
   return (
     <div className={cn("flex", out ? "justify-end" : "justify-start")}>
-      <div className={cn("max-w-[72%] rounded-2xl px-3.5 py-2 shadow-sm", out ? "rounded-br-md bg-wa-bubble" : "rounded-bl-md bg-card ring-1 ring-border/60")}>
+      <div className={cn("max-w-[72%] rounded-xl px-3.5 py-2", out ? "rounded-br-sm bg-wa-bubble ring-1 ring-wa/15" : "rounded-bl-sm bg-card ring-1 ring-border")}>
         {m.kind === "voice" ? (
           <div className="space-y-1.5 py-1">
             <VoiceNote src={m.audio_path} durationMs={m.duration_ms} seed={m.id} outgoing={out} />
@@ -419,18 +425,18 @@ function Bubble({ m }: { m: Message }) {
         )}
         <div className="mt-1 flex items-center justify-end gap-1.5 text-[10px] text-muted-foreground">
           {out && ai && (
-            <span className="inline-flex items-center gap-0.5 font-semibold text-primary">
+            <span className="inline-flex items-center gap-0.5 font-medium text-foreground/60">
               <Bot className="size-3" /> AI
             </span>
           )}
           {out && m.source === "john" && (
-            <span className="inline-flex items-center gap-0.5 font-semibold text-foreground/70">
+            <span className="inline-flex items-center gap-0.5 font-medium text-foreground/60">
               <UserRound className="size-3" /> John
             </span>
           )}
           {clock(m.created_at)}
           {out && <Ticks status={m.status} voice={m.kind === "voice"} />}
-          {out && m.kind === "voice" && m.status === "played" && <span className="font-semibold text-sky-600">played</span>}
+          {out && m.kind === "voice" && m.status === "played" && <span className="font-medium text-sky-600">played</span>}
         </div>
       </div>
     </div>
