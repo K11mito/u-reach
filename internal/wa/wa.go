@@ -42,6 +42,13 @@ type Client struct {
 
 	// OnMessage runs in its own goroutine per message; it may block.
 	OnMessage func(Inbound)
+	// OnOwnMessage gets messages typed on the demo phone itself (John replying
+	// by hand). Messages this client sent are never passed here.
+	OnOwnMessage func(Inbound)
+	// OnReceipt gets delivered/read/played receipts for messages we sent.
+	OnReceipt func(ids []types.MessageID, kind string)
+	// OnStatus is called when link or connection state changes.
+	OnStatus func()
 
 	log       waLog.Logger
 	lock      *os.File
@@ -50,6 +57,45 @@ type Client struct {
 
 	connOnce  sync.Once
 	connected chan struct{}
+
+	mu        sync.Mutex
+	qr        string // current pairing QR code, while unlinked
+	loggedOut bool
+	sent      sync.Map // message IDs this client sent
+}
+
+// Status is the link state shown on the dashboard.
+type Status struct {
+	Linked    bool   `json:"linked"`
+	Connected bool   `json:"connected"`
+	Phone     string `json:"phone,omitempty"`
+	PushName  string `json:"push_name,omitempty"`
+	QR        string `json:"-"`
+	HasQR     bool   `json:"has_qr"`
+	LoggedOut bool   `json:"logged_out"`
+}
+
+func (c *Client) Status() Status {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	st := Status{Connected: c.WA.IsConnected() && c.WA.IsLoggedIn(), QR: c.qr, HasQR: c.qr != "", LoggedOut: c.loggedOut, PushName: c.WA.Store.PushName}
+	if id := c.WA.Store.ID; id != nil {
+		st.Linked, st.Phone = true, id.User
+	}
+	return st
+}
+
+func (c *Client) setQR(code string) {
+	c.mu.Lock()
+	c.qr = code
+	c.mu.Unlock()
+	c.changed()
+}
+
+func (c *Client) changed() {
+	if c.OnStatus != nil {
+		go c.OnStatus()
+	}
 }
 
 // MaxBacklog is how old a message may be (relative to process start) and still
@@ -97,9 +143,10 @@ func Open(ctx context.Context, sessionPath string, allowlist []string, log waLog
 	return c, nil
 }
 
-// Connect connects, linking first if the session is new. With pairPhone set
-// (international format, digits), it prints an 8-character pairing code instead
-// of a QR code: WhatsApp > Linked devices > Link with phone number.
+// Connect connects, linking first if the session is new. While unlinked it
+// keeps offering fresh QR codes (terminal and dashboard) until someone scans
+// one. With pairPhone set (international format), it prints an 8-character
+// pairing code instead: WhatsApp > Linked devices > Link with phone number.
 func (c *Client) Connect(ctx context.Context, pairPhone string) error {
 	if c.WA.Store.ID != nil {
 		if err := c.WA.Connect(); err != nil {
@@ -107,13 +154,35 @@ func (c *Client) Connect(ctx context.Context, pairPhone string) error {
 		}
 		return c.waitConnected(ctx)
 	}
+	for {
+		linked, err := c.pairOnce(ctx, pairPhone)
+		if linked {
+			c.setQR("")
+			return c.waitConnected(ctx)
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if err != nil {
+			c.log.Warnf("pairing: %v (retrying)", err)
+		}
+		c.WA.Disconnect()
+		c.setQR("")
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(2 * time.Second):
+		}
+	}
+}
 
+func (c *Client) pairOnce(ctx context.Context, pairPhone string) (bool, error) {
 	qrs, err := c.WA.GetQRChannel(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err := c.WA.Connect(); err != nil {
-		return err
+		return false, err
 	}
 	pairing := false
 	for item := range qrs {
@@ -124,30 +193,28 @@ func (c *Client) Connect(ctx context.Context, pairPhone string) error {
 					pairing = true
 					code, err := c.WA.PairPhone(ctx, digits(pairPhone), true, whatsmeow.PairClientChrome, "Chrome (Linux)")
 					if err != nil {
-						return fmt.Errorf("pair phone: %w", err)
+						return false, fmt.Errorf("pair phone: %w", err)
 					}
 					fmt.Printf("\nPairing code: %s\nOn the demo phone: WhatsApp > Settings > Linked devices > Link a device > Link with phone number instead\n\n", code)
 				}
 				continue
 			}
-			fmt.Println("\nScan with the demo phone: WhatsApp > Settings > Linked devices > Link a device")
+			c.setQR(item.Code)
+			fmt.Println("\nScan with the demo phone: WhatsApp > Settings > Linked devices > Link a device (or open the dashboard)")
 			qrterminal.GenerateHalfBlock(item.Code, qrterminal.L, os.Stdout)
 		case "success":
 			fmt.Println("Linked. Session saved; restarts won't need a QR.")
-			return c.waitConnected(ctx)
+			return true, nil
 		case "timeout":
-			return errors.New("QR timed out: run again")
+			return false, errors.New("QR codes expired")
 		default:
 			if item.Error != nil {
-				return fmt.Errorf("pairing %s: %w", item.Event, item.Error)
+				return false, fmt.Errorf("%s: %w", item.Event, item.Error)
 			}
 			c.log.Infof("pairing event: %s", item.Event)
 		}
 	}
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	return errors.New("QR channel closed before linking")
+	return false, errors.New("QR channel closed")
 }
 
 func (c *Client) waitConnected(ctx context.Context) error {
@@ -175,11 +242,32 @@ func (c *Client) handle(evt any) {
 		c.log.Infof("connected as %s", c.WA.Store.ID)
 		c.connOnce.Do(func() { close(c.connected) })
 		go c.announceAvailable()
+		c.changed()
+	case *events.Disconnected:
+		c.changed()
 	case *events.LoggedOut:
-		c.log.Errorf("LOGGED OUT (reason %v): delete %s and link again", e.Reason, "the session DB")
+		c.log.Errorf("LOGGED OUT (reason %v): restart to link again", e.Reason)
+		c.mu.Lock()
+		c.loggedOut = true
+		c.mu.Unlock()
+		c.changed()
 	case *events.StreamReplaced:
 		c.log.Errorf("another client took over this session; is a second process running?")
+		c.changed()
+	case *events.Receipt:
+		if c.OnReceipt != nil && !e.IsFromMe && !e.IsGroup {
+			kind := map[types.ReceiptType]string{types.ReceiptTypeDelivered: "delivered", types.ReceiptTypeRead: "read", types.ReceiptTypePlayed: "played"}[e.Type]
+			if kind != "" {
+				go c.OnReceipt(e.MessageIDs, kind)
+			}
+		}
 	case *events.Message:
+		if e.Info.IsFromMe {
+			if in, ok := c.ownMessage(e); ok && c.OnOwnMessage != nil {
+				go c.OnOwnMessage(in)
+			}
+			return
+		}
 		if in, ok := c.filter(e); ok && c.OnMessage != nil {
 			go c.OnMessage(in) // never block whatsmeow's event loop
 		}
@@ -248,6 +336,32 @@ func (c *Client) filter(e *events.Message) (Inbound, bool) {
 	return in, true
 }
 
+// ownMessage picks up a text John typed on the demo phone in a direct chat.
+func (c *Client) ownMessage(e *events.Message) (Inbound, bool) {
+	info := e.Info
+	if _, ours := c.sent.Load(info.ID); ours {
+		return Inbound{}, false
+	}
+	if info.IsGroup || info.Chat.Server == types.BroadcastServer || info.Chat.Server == types.NewsletterServer ||
+		info.Timestamp.Before(c.startedAt.Add(-MaxBacklog)) {
+		return Inbound{}, false
+	}
+	text := e.Message.GetConversation()
+	if text == "" {
+		text = e.Message.GetExtendedTextMessage().GetText()
+	}
+	if text == "" && e.Message.GetAudioMessage() == nil {
+		return Inbound{}, false
+	}
+	// In our own messages the other party is the chat (or its alt address).
+	to := c.phoneJID(types.MessageSource{Sender: info.Chat, SenderAlt: info.RecipientAlt})
+	in := Inbound{ID: info.ID, Chat: info.Chat, Sender: info.Sender, From: to, Text: text, Audio: e.Message.GetAudioMessage(), Timestamp: info.Timestamp}
+	if to.Server == types.DefaultUserServer {
+		in.Phone = to.User
+	}
+	return in, true
+}
+
 // phoneJID resolves the sender to a phone-number JID. WhatsApp increasingly
 // addresses DMs by LID; without this, a reply from a contact we messaged by
 // phone number would look like a brand-new contact.
@@ -269,7 +383,9 @@ func (c *Client) phoneJID(src types.MessageSource) types.JID {
 
 // SendText sends a plain text message.
 func (c *Client) SendText(ctx context.Context, to types.JID, text string) (types.MessageID, error) {
-	resp, err := c.WA.SendMessage(ctx, to, &waE2E.Message{Conversation: proto.String(text)})
+	id := c.WA.GenerateMessageID()
+	c.sent.Store(id, true)
+	resp, err := c.WA.SendMessage(ctx, to, &waE2E.Message{Conversation: proto.String(text)}, whatsmeow.SendRequestExtra{ID: id})
 	return resp.ID, err
 }
 
@@ -292,7 +408,9 @@ func (c *Client) SendVoiceNote(ctx context.Context, to types.JID, ogg []byte, se
 		Waveform:          waveform,
 		MediaKeyTimestamp: proto.Int64(time.Now().Unix()),
 	}}
-	resp, err := c.WA.SendMessage(ctx, to, msg)
+	id := c.WA.GenerateMessageID()
+	c.sent.Store(id, true)
+	resp, err := c.WA.SendMessage(ctx, to, msg, whatsmeow.SendRequestExtra{ID: id})
 	return resp.ID, err
 }
 
