@@ -95,7 +95,7 @@ func main() {
 	mux.HandleFunc("GET /api/runs", api.runs)
 	mux.HandleFunc("POST /api/simulate", api.simulate)
 	mux.Handle("GET /audio/", http.StripPrefix("/audio/", http.FileServer(http.Dir("data/audio"))))
-	mux.Handle("GET /", spa())
+	mux.Handle("GET /", spa(api.boot))
 
 	srv := &http.Server{Addr: *addr, Handler: logRequests(mux)}
 	go func() {
@@ -166,15 +166,37 @@ type api struct {
 }
 
 func (a *api) state(w http.ResponseWriter, r *http.Request) {
-	contacts, err := a.store.Contacts()
+	st, err := a.snapshot()
 	if err != nil {
 		httpErr(w, err)
 		return
 	}
+	writeJSON(w, st)
+}
+
+// boot is inlined into index.html so the first paint already has data.
+func (a *api) boot() any {
+	st, err := a.snapshot()
+	if err != nil {
+		return nil
+	}
+	runs, _ := a.store.Runs(30)
+	msgs := map[int64][]store.Message{}
+	if cs, _ := a.store.Contacts(); len(cs) > 0 {
+		m, _ := a.store.Messages(cs[0].ID, 200)
+		msgs[cs[0].ID] = nonNil(m)
+	}
+	return map[string]any{"state": st, "runs": nonNil(runs), "messages": msgs}
+}
+
+func (a *api) snapshot() (map[string]any, error) {
+	contacts, err := a.store.Contacts()
+	if err != nil {
+		return nil, err
+	}
 	stats, err := a.store.Stats()
 	if err != nil {
-		httpErr(w, err)
-		return
+		return nil, err
 	}
 	persona, _ := os.ReadFile("data/persona/john.json")
 	faq, _ := os.ReadFile("data/faq.md")
@@ -186,8 +208,14 @@ func (a *api) state(w http.ResponseWriter, r *http.Request) {
 		}
 		waState["push_name"] = a.wa.WA.Store.PushName
 	}
+	last := map[int64]store.Message{}
+	for _, c := range contacts {
+		if m, _ := a.store.Messages(c.ID, 1); len(m) == 1 {
+			last[c.ID] = m[0]
+		}
+	}
 	minPerReply := atoi(config.Get("MIN_SAVED_PER_REPLY", "15"))
-	writeJSON(w, map[string]any{
+	return map[string]any{
 		"ambassador": map[string]any{
 			"name":         "John Klensch",
 			"voice_id":     a.voiceID,
@@ -199,10 +227,11 @@ func (a *api) state(w http.ResponseWriter, r *http.Request) {
 			"mock_voice":   a.core.Voice.Mock,
 		},
 		"contacts":    nonNil(contacts),
+		"last":        last,
 		"stats":       stats,
 		"hours_saved": float64(stats.RepliesWeek*minPerReply) / 60,
 		"whatsapp":    waState,
-	})
+	}, nil
 }
 
 func (a *api) messages(w http.ResponseWriter, r *http.Request) {
@@ -279,8 +308,9 @@ func (a *api) simulate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]bool{"ok": true})
 }
 
-// spa serves the embedded dashboard, falling back to index.html for client routes.
-func spa() http.Handler {
+// spa serves the embedded dashboard, falling back to index.html for client
+// routes. boot() is inlined as window.__BOOT__ so the first render has data.
+func spa(boot func() any) http.Handler {
 	dist, _ := fs.Sub(web.Dist, "dist")
 	files := http.FileServer(http.FS(dist))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -297,7 +327,13 @@ func spa() http.Handler {
 			w.Write([]byte("U-Reach API is running. Build the dashboard: cd web && npm install && npm run build, then rebuild the server.\n"))
 			return
 		}
+		if b, err := json.Marshal(boot()); err == nil {
+			// Escape "<" so data can never close the script tag.
+			script := "<script>window.__BOOT__=" + strings.ReplaceAll(string(b), "<", "\\u003c") + "</script>"
+			index = []byte(strings.Replace(string(index), "<div id=\"root\"></div>", script+"<div id=\"root\"></div>", 1))
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
 		w.Write(index)
 	})
 }
