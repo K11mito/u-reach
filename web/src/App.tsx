@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ChartColumn, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, UserRound } from "lucide-react"
+import { ChartColumn, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, PhoneCall, QrCode, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLive, type WhatsAppStatus } from "@/lib/api"
 import { Inbox } from "@/components/Inbox"
@@ -88,8 +88,8 @@ export default function App() {
 
   return (
     <div className="flex h-screen min-w-[1100px] flex-col gap-4 bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4">
-      {/* Full-width brand bar, a shade darker than the nav: the brand sits over the nav column, the motto over the content. */}
-      <header className="relative flex h-16 shrink-0 items-center overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-700 to-purple-800 text-white shadow-lg shadow-indigo-500/20">
+      {/* Full-width brand bar, darker than the nav, which tucks under it. The brand sits over the nav column, the motto over the content. */}
+      <header className="relative z-10 flex h-16 shrink-0 items-center overflow-hidden rounded-2xl bg-gradient-to-r from-[oklch(0.366_0.24_277)] to-[oklch(0.35_0.218_304)] text-white shadow-lg shadow-indigo-950/30">
         <div className="relative z-10 flex w-[clamp(220px,18vw,300px)] shrink-0 items-center gap-2.5 px-5">
           <img src={logo} alt="U-Reach" className="size-9 shrink-0" />
           <div className="min-w-0">
@@ -103,7 +103,7 @@ export default function App() {
       </header>
 
       <div className="flex min-h-0 flex-1 gap-4">
-        <aside className="flex w-[clamp(220px,18vw,300px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/20">
+        <aside className="-mt-8 flex w-[clamp(220px,18vw,300px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 pt-12 text-white shadow-lg shadow-indigo-500/20">
           <nav className="space-y-1">
             {nav.map((n, i) => (
               <button
@@ -121,9 +121,21 @@ export default function App() {
               </button>
             ))}
           </nav>
+          {/* Not built: shown so the demo can point at what comes next. */}
+          <div className="mt-3 border-t border-white/15 pt-3">
+            <button
+              onClick={() => toast("Just an idea: the AI would book a 3-way call between the lead, John and his upline. We didn't get to build it this hackathon.", "info", 6000)}
+              title="Just an idea we didn't get to build"
+              className="flex w-full cursor-help items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/45 transition hover:bg-white/5"
+            >
+              <PhoneCall className="size-4" />
+              <span className="flex-1 text-left">3-Way Calls</span>
+              <span className="rounded-full border border-white/25 px-1.5 text-[10px] font-medium text-white/60">Idea</span>
+            </button>
+          </div>
           {/* Fills the free space above John's card; on short screens the top is cropped, keeping the robot. */}
           <div className="relative mt-4 mb-3 min-h-0 flex-1">
-            <img src={robot} alt="" className="absolute bottom-0 left-1.5 max-h-full w-[80%] object-cover object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
+            <img src={robot} alt="" className="absolute bottom-0 -left-3 max-h-full w-[80%] object-cover object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
           </div>
           <div className="space-y-3 rounded-2xl bg-white/10 p-3">
             {/* John's photo opens his page: persona, presets and sales playbook. */}
