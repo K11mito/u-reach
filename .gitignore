@@ -19,3 +19,6 @@ web/node_modules/
 
 # binaries
 bin/
+
+# logs
+data/*.log
