@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react"
 import { AudioLines, BrainCircuit, Check, Ear, Hand, MessageCircle, Mic, Send, Smartphone, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { clock, displayName, useCountUp, type Message, type Run, type State } from "@/lib/api"
@@ -15,10 +15,12 @@ const STAGES = [
 
 type Brain = { spoken_script: string; handoff: boolean; handoff_reason: string; opt_out: boolean }
 
-// The stage is laid out on a fixed 1920×1080 canvas and scaled to fit the
-// screen, so a projector shows exactly what the laptop shows. Ctrl +/- (or
-// Ctrl + scroll) zooms the content: a smaller canvas, scaled up to fit.
-const CANVAS = { w: 1920, h: 1080 }
+// The header sits exactly where it does on every other page. Everything below
+// it is laid out on a fixed canvas (what a 1920×1080 screen has left under the
+// header) and scaled to fit, so a projector shows exactly what the laptop
+// shows. Ctrl +/- (or Ctrl + scroll) zooms the content: a smaller canvas,
+// scaled up to fit.
+const CANVAS = { w: 1888, h: 968 }
 const ZOOMS = [0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2]
 
 function useStageZoom() {
@@ -67,15 +69,18 @@ function useStageZoom() {
   return zoom
 }
 
-/** How much to scale a w×h canvas so it fits the window. */
-function useFit(w: number, h: number) {
+/** How much to scale a w×h canvas so it fits inside `area`. */
+function useFit(area: RefObject<HTMLDivElement | null>, w: number, h: number) {
   const [scale, setScale] = useState(1)
   useLayoutEffect(() => {
-    const fit = () => setScale(Math.min(window.innerWidth / w, window.innerHeight / h))
+    const el = area.current
+    if (!el) return
+    const fit = () => setScale(Math.min(el.clientWidth / w, el.clientHeight / h))
     fit()
-    window.addEventListener("resize", fit)
-    return () => window.removeEventListener("resize", fit)
-  }, [w, h])
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [area, w, h])
   return scale
 }
 
@@ -142,21 +147,22 @@ export function Stage({
   const zoom = useStageZoom()
   const w = Math.round(CANVAS.w / zoom)
   const h = Math.round(CANVAS.h / zoom)
-  const scale = useFit(w, h)
+  const area = useRef<HTMLDivElement>(null)
+  const scale = useFit(area, w, h)
 
   const live = run?.status === "running"
   const end = run?.sent_at || (live ? now : 0)
   const total = run && end ? (end - run.received_at) / 1000 : 0
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-background">
-      <div
-        className="absolute top-1/2 left-1/2 flex flex-col gap-4 bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4"
-        style={{ width: w, height: h, transform: `translate(-50%, -50%) scale(${scale})` }}
-      >
-        <BrandHeader />
+    <div className="fixed inset-0 flex flex-col gap-4 overflow-hidden bg-background bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4">
+      <BrandHeader />
 
-        <main className="grid min-h-0 flex-1 grid-cols-[1fr_420px] gap-4">
+      <div ref={area} className="relative min-h-0 flex-1">
+        <main
+          className="absolute top-1/2 left-1/2 grid grid-cols-[1fr_420px] gap-4"
+          style={{ width: w, height: h, transform: `translate(-50%, -50%) scale(${scale})` }}
+        >
           <section className="flex min-h-0 flex-col gap-4">
             {/* Who is answering, and the week so far. */}
             <div className="flex items-center gap-4 rounded-2xl border bg-card px-5 py-3 shadow-sm">
