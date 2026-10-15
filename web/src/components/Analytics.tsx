@@ -13,17 +13,33 @@ const usd = (v: number) => (v >= 0.01 ? `$${v.toFixed(2)}` : v > 0 ? `$${v.toFix
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
 const running = (xs: number[]) => xs.map((_, i) => sum(xs.slice(0, i + 1)))
 
+// The last numbers fetched, kept across visits: the page shows them at once
+// and refreshes quietly in the background instead of flashing a spinner.
+let cached: Data | null = null
+let inflight: Promise<Data> | null = null
+function fetchAnalytics() {
+  inflight ??= api
+    .analytics()
+    .then((d) => (cached = d))
+    .finally(() => (inflight = null))
+  return inflight
+}
+
+/** Warms the cache so the first visit to the page is instant too. */
+export function prefetchAnalytics() {
+  fetchAnalytics().catch(() => {})
+}
+
 /** John's last two weeks: the funnel, and what U-Reach costs to run. */
 export function Analytics({ state }: { state: State }) {
-  const [data, setData] = useState<Data | null>(null)
+  const [data, setData] = useState<Data | null>(cached)
   const [error, setError] = useState("")
 
   // Spend is live, so keep it fresh while the page is open.
   useEffect(() => {
     let alive = true
     const load = () =>
-      api
-        .analytics()
+      fetchAnalytics()
         .then((d) => alive && (setData(d), setError("")))
         .catch((e) => alive && setError(String(e)))
     load()
@@ -61,7 +77,7 @@ export function Analytics({ state }: { state: State }) {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Card title="Your funnel" hint="Last 14 days, every lead John's AI talked to">
-          <div className="mb-3 flex flex-wrap gap-x-5 gap-y-1">
+          <div className="mb-2 flex flex-wrap gap-x-5 gap-y-1">
             <Legend color={C.leads} label="Leads reached" value={total("leads")} />
             <Legend color={C.voice} label="Voice notes" value={total("voice")} />
             <Legend color={C.links} label="Links sent" value={total("links")} />
@@ -69,7 +85,7 @@ export function Analytics({ state }: { state: State }) {
           </div>
           <LineChart
             labels={days.map((d) => d.date)}
-            height={260}
+            height={170}
             tick={(d, i) => day(d, i < 0)}
             series={[
               { name: "Leads reached", color: C.leads, values: days.map((d) => d.leads), area: true },
@@ -80,34 +96,31 @@ export function Analytics({ state }: { state: State }) {
           />
         </Card>
 
-        <div className="space-y-4">
-          <Card title="Conversion this week" hint="From first message to membership">
-            <Funnel
-              steps={[
-                { label: "Leads reached", value: total("leads") },
-                { label: "Got the link", value: total("links") },
-                { label: "Joined", value: total("purchased") },
-              ]}
-            />
-          </Card>
-          <Card title="Reply time" hint="Message in to voice note out, measured live">
+        <Card title="Conversion this week" hint="From first message to membership" className="flex flex-col">
+          <Funnel
+            steps={[
+              { label: "Leads reached", value: total("leads") },
+              { label: "Got the link", value: total("links") },
+              { label: "Joined", value: total("purchased") },
+            ]}
+          />
+          {/* Measured live from real replies. */}
+          <div className="mt-auto flex items-center gap-3 border-t pt-3">
+            <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-md shadow-indigo-500/25">
+              <Timer className="size-[18px]" />
+            </div>
             {data.response.avg_ms ? (
-              <div className="flex items-end gap-3">
-                <div className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-md shadow-indigo-500/25">
-                  <Timer className="size-5" />
-                </div>
-                <div>
-                  <div className="text-3xl leading-none font-extrabold tracking-tight tabular-nums">{(data.response.avg_ms / 1000).toFixed(1)}s</div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    average over {data.response.replies} real {data.response.replies === 1 ? "reply" : "replies"}
-                  </div>
+              <div className="min-w-0">
+                <div className="text-xl leading-none font-extrabold tracking-tight tabular-nums">{(data.response.avg_ms / 1000).toFixed(1)}s reply time</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  message in to voice note out, over {data.response.replies} real {data.response.replies === 1 ? "reply" : "replies"}
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Timed from the first real reply.</p>
+              <p className="text-xs text-muted-foreground">Reply time is measured from the first real reply.</p>
             )}
-          </Card>
-        </div>
+          </div>
+        </Card>
       </div>
 
       <Spend data={data} />
@@ -117,8 +130,8 @@ export function Analytics({ state }: { state: State }) {
 
 function Card({ title, hint, right, children, className }: { title: string; hint?: string; right?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={cn("rounded-xl border bg-card p-5 shadow-sm", className)}>
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <section className={cn("rounded-xl border bg-card p-4 shadow-sm", className)}>
+      <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
           {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
@@ -170,7 +183,7 @@ function Kpi({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-xl p-5",
+        "rounded-xl px-4 py-3",
         hero ? "bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-lg shadow-indigo-500/25" : "border bg-card shadow-sm",
       )}
     >
@@ -178,12 +191,13 @@ function Kpi({
         <span className={cn("text-xs font-medium", hero ? "text-white/80" : "text-muted-foreground")}>{label}</span>
         <Icon className={cn("size-4", hero ? "text-white/80" : "text-muted-foreground/70")} />
       </div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-3xl font-extrabold tracking-tight tabular-nums">{shown.toFixed(decimals)}</span>
-        <Delta value={delta} light={hero} />
+      <div className="mt-1.5 flex items-end justify-between gap-3">
+        <div className="flex items-baseline gap-2" title="vs the week before">
+          <span className="text-[28px] leading-none font-extrabold tracking-tight tabular-nums">{shown.toFixed(decimals)}</span>
+          <Delta value={delta} light={hero} />
+        </div>
+        <Sparkline values={trend} color={hero ? "#ffffff" : color} className="h-8 w-24 shrink-0" />
       </div>
-      <span className={cn("text-[11px]", hero ? "text-white/65" : "text-muted-foreground")}>vs the week before</span>
-      <Sparkline values={trend} color={hero ? "#ffffff" : color} className="mt-3" />
     </div>
   )
 }
@@ -202,7 +216,7 @@ function Legend({ color, label, value }: { color: string; label: string; value: 
 function Funnel({ steps }: { steps: { label: string; value: number }[] }) {
   const top = Math.max(1, steps[0]?.value ?? 1)
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {steps.map((s, i) => {
         const rate = i > 0 && steps[i - 1].value ? s.value / steps[i - 1].value : null
         return (
@@ -214,7 +228,7 @@ function Funnel({ steps }: { steps: { label: string; value: number }[] }) {
                 {rate !== null && ` · ${Math.round(rate * 100)}%`}
               </span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500" style={{ width: `${Math.max(3, (s.value / top) * 100)}%` }} />
             </div>
           </div>
@@ -246,8 +260,8 @@ function Spend({ data }: { data: Data }) {
       }
     >
       <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <div className="rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 p-4 text-white shadow-md shadow-indigo-500/25">
+        <div className="space-y-3">
+          <div className="rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 p-3 text-white shadow-md shadow-indigo-500/25">
             <div className="text-xs text-white/80">Total, last 24 hours</div>
             <div className="mt-1 text-3xl font-extrabold tracking-tight tabular-nums">{usd((el.usd_window ?? 0) + (claude.usd_window ?? 0))}</div>
           </div>
@@ -267,7 +281,7 @@ function Spend({ data }: { data: Data }) {
           </div>
           <LineChart
             labels={hours.map((h) => String(h.t))}
-            height={230}
+            height={170}
             ticks={8}
             format={(v) => (v === 0 ? "$0" : v < 0.1 ? `$${v.toFixed(3)}` : `$${v.toFixed(2)}`)}
             tick={(t, i) => hour(Number(t), i < 0)}

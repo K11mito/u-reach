@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react"
-import { ChartColumn, CircleHelp, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, Telescope, UserRound } from "lucide-react"
+import { ChartColumn, CircleHelp, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLive, type WhatsAppStatus } from "@/lib/api"
 import { Inbox } from "@/components/Inbox"
 import { Stage } from "@/components/Stage"
 import { Profile } from "@/components/Profile"
 import { Campaign } from "@/components/Campaign"
-import { Analytics } from "@/components/Analytics"
+import { Analytics, prefetchAnalytics } from "@/components/Analytics"
 import { Help } from "@/components/Help"
 import { LinkWhatsApp } from "@/components/LinkWhatsApp"
 import { BrandHeader } from "@/components/BrandHeader"
@@ -22,10 +22,26 @@ const pageFromPath = (): Page => {
   return (["stage", "campaign", "analytics", "profile", "help"].includes(p) ? p : "inbox") as Page
 }
 
+// Big screens at 100% browser zoom render the dashboard small. Scale it up
+// there, like 120% zoom, so every page matches; laptops that already render
+// larger (or a browser already zoomed in) get no extra scale.
+const uiScale = () => Math.min(1.2, Math.max(1, window.innerWidth / 1600))
+
+function useUiScale() {
+  const [scale, setScale] = useState(uiScale)
+  useEffect(() => {
+    const resize = () => setScale(uiScale())
+    window.addEventListener("resize", resize)
+    return () => window.removeEventListener("resize", resize)
+  }, [])
+  return scale
+}
+
 export default function App() {
   const { state, runs, messages, loadMessages, connected, campaign } = useLive()
   const [page, setPage] = useState<Page>(pageFromPath)
   const [linkOpen, setLinkOpen] = useState(false)
+  const scale = useUiScale()
   const go = useCallback((p: Page) => {
     window.history.pushState(null, "", p === "inbox" ? "/" : `/${p}`)
     setPage(p)
@@ -40,6 +56,11 @@ export default function App() {
   useEffect(() => {
     document.title = `U-Reach · ${TITLES[page]}`
   }, [page])
+  useEffect(() => {
+    // A few seconds after opening, so it never competes with the first paint.
+    const t = window.setTimeout(prefetchAnalytics, 3000)
+    return () => window.clearTimeout(t)
+  }, [])
 
   // Number keys switch pages; P presents (Stage view). Ignored while typing.
   useEffect(() => {
@@ -89,7 +110,11 @@ export default function App() {
   ]
 
   return (
-    <div className="flex h-screen min-w-[960px] flex-col gap-4 bg-gradient-to-r from-[oklch(0.95_0.035_300)] to-[oklch(0.95_0.035_245)] p-4">
+    // Laid out at 1/scale of the window, then scaled up to fill it. The transform also anchors the modal and toasts to this box.
+    <div
+      className="flex min-w-[960px] origin-top-left flex-col gap-4 bg-gradient-to-r from-[oklch(0.95_0.035_300)] to-[oklch(0.95_0.035_245)] p-4"
+      style={{ width: `${100 / scale}vw`, height: `${100 / scale}vh`, transform: scale === 1 ? undefined : `scale(${scale})` }}
+    >
       <BrandHeader />
 
       <div className="flex min-h-0 flex-1 gap-4">
@@ -110,15 +135,10 @@ export default function App() {
                 {!!n.badge && <span className="min-w-5 rounded-full bg-amber-100 px-1.5 text-center text-[11px] font-semibold text-amber-800 tabular-nums">{n.badge}</span>}
               </button>
             ))}
-            {/* Not built yet. */}
-            <button disabled className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/40">
-              <Telescope className="size-4" />
-              <span className="flex-1 text-left">Research</span>
-            </button>
           </nav>
           {/* Fills the free space above John's card; on short screens the top is cropped, keeping the robot, and on very short ones (zoomed in) it hides. */}
           <div className="relative mt-4 mb-3 min-h-0 flex-1">
-            <img src={robot} alt="" className="absolute bottom-0 -left-3 max-h-full w-[80%] object-cover [@media(max-height:680px)]:hidden object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
+            <img src={robot} alt="" className="absolute bottom-0 -left-3 max-h-full w-[68%] object-cover [@media(max-height:680px)]:hidden object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
           </div>
           <div className="space-y-3 rounded-2xl bg-white/10 p-3">
             {/* John's photo opens his page: persona, presets and sales playbook. */}

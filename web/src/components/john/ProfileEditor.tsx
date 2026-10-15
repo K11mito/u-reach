@@ -142,7 +142,7 @@ export function ProfileEditor({ snap, run, onBack }: { snap: HarnessSnapshot; ru
                   </span>
                 ))}
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">The AI sends a short holding note and the chat waits in your Inbox. Move the autonomy slider on John's card to change this list; replies that promise income always come to you.</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">Everything else the AI answers itself. For these it says you'll follow up and the chat waits in your Inbox. Replies that promise income are blocked at every level. Move the autonomy slider on John's card to change this list.</p>
             </div>
           </Section>
         </div>

@@ -215,16 +215,16 @@ func TestPresetLifecycle(t *testing.T) {
 func TestAutonomySetting(t *testing.T) {
 	s, br, _ := newService(t)
 	snap, _ := s.Snapshot()
-	if snap.Autonomy != brain.AutonomyMedium || len(snap.Levels) != 3 || snap.AlwaysHandoff[0] != "Earnings, income and commissions" {
+	if snap.Autonomy != brain.AutonomyMedium || len(snap.Levels) != 3 || snap.AlwaysHandoff[0] != "Payments, refunds or accounts gone wrong" {
 		t.Fatalf("default should be balanced: %q %v", snap.Autonomy, snap.AlwaysHandoff)
 	}
 	if err := s.SetAutonomy(brain.AutonomyHigh); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(br.SystemPrompt(), "end to end") {
+	if !strings.Contains(br.SystemPrompt(), "John trusts you with the whole conversation") {
 		t.Fatal("full autonomy should reach the prompt")
 	}
-	if snap, _ = s.Snapshot(); snap.Autonomy != brain.AutonomyHigh || !strings.Contains(snap.AlwaysHandoff[0], "Legal threats") {
+	if snap, _ = s.Snapshot(); snap.Autonomy != brain.AutonomyHigh || len(snap.AlwaysHandoff) != 3 || !strings.Contains(snap.AlwaysHandoff[1], "Legal threats") {
 		t.Fatalf("snapshot should show the new level: %q %v", snap.Autonomy, snap.AlwaysHandoff)
 	}
 	// Previews use the live autonomy too.

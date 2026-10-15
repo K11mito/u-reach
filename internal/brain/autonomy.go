@@ -7,9 +7,9 @@ import "regexp"
 // the prompt tells the model to hand off and the code net that forces a
 // handoff when the model doesn't.
 const (
-	AutonomyLow    = "low"    // cautious: answers simple questions, hands off anything sensitive or unclear
-	AutonomyMedium = "medium" // balanced: hands off money, legal and trust topics (the original rules)
-	AutonomyHigh   = "high"   // full: handles almost everything, hands off only extreme situations
+	AutonomyLow    = "low"    // cautious: answers simple questions, hands off money, safety and anything unclear
+	AutonomyMedium = "medium" // balanced: answers almost everything, hands off only when truly stuck (the default)
+	AutonomyHigh   = "high"   // full: handles complaints and gaps too, hands off only extreme situations
 )
 
 // NormalizeAutonomy maps anything unknown to the balanced default.
@@ -35,21 +35,21 @@ type Level struct {
 var Levels = []Level{
 	{
 		Key: AutonomyLow, Label: "Cautious",
-		Summary:   "Answers only simple questions and hands you anything sensitive or unclear.",
-		AIHandles: []string{"Greetings and small talk", "What U-topia and U.Center are", "Questions the facts answer directly"},
-		HandsOff:  []string{"Prices, payments, earnings and refunds", "Safety, scam or pyramid questions", "Doubts, worries and complaints", "Wanting to meet or get a call", "Leads who are ready to join", "Anything the facts don't cover", "Legal threats, emergencies or distress"},
+		Summary:   "Answers only simple questions and hands you money, safety and anything it isn't sure of.",
+		AIHandles: []string{"Greetings and small talk", "What U-topia and U.Center are", "Questions the knowledge base answers directly"},
+		HandsOff:  []string{"Prices, payments, earnings and rewards", "Safety, scam or pyramid questions", "Legal, tax and regulation", "Doubts, worries and complaints", "Wanting a call, or ready to join", "Anything the knowledge base doesn't cover", "Money gone wrong, legal threats or distress"},
 	},
 	{
 		Key: AutonomyMedium, Label: "Balanced",
-		Summary:   "Sells and answers questions, and hands you money, legal and trust topics.",
-		AIHandles: []string{"Everything in the facts and playbook", "Prices, packages and how to join", "Sending the link and booking calls"},
-		HandsOff:  []string{"Earnings, income and commissions", "Returns, profits and guarantees", "Payments, refunds and withdrawals", "Legal, tax and regulation", "Scam or pyramid questions", "Threats, emergencies or someone in distress"},
+		Summary:   "Answers almost everything itself, honestly, and hands you only what it can't fix or answer safely.",
+		AIHandles: []string{"Prices, packages, rewards and earnings", "Risks and whether it's legit", "Sending the link and booking calls"},
+		HandsOff:  []string{"Payments, refunds or accounts gone wrong", "Legal, tax and regulatory advice", "Complaints, or asking for John himself", "Questions the knowledge base can't answer safely", "Legal threats, emergencies or distress"},
 	},
 	{
 		Key: AutonomyHigh, Label: "Full autonomy",
-		Summary:   "Handles the whole conversation and only calls you in extreme situations.",
-		AIHandles: []string{"Prices, packages and how to pay", "Doubts, objections, scam or pyramid questions", "Earnings questions, without ever promising income"},
-		HandsOff:  []string{"Legal threats, lawyers or regulators", "Accusations of fraud or theft", "Lost money, refunds or withdrawal problems", "Threats, emergencies or someone in distress"},
+		Summary:   "Handles the whole conversation, complaints included, and only calls you in extreme situations.",
+		AIHandles: []string{"Everything Balanced answers", "Complaints, doubts and objections", "Gaps in the knowledge base, offering a call"},
+		HandsOff:  []string{"Payments, refunds or accounts gone wrong", "Legal threats, police, fraud or theft", "Emergencies or someone in distress"},
 	},
 }
 
@@ -64,44 +64,73 @@ func LevelOf(a string) Level {
 	return Levels[1]
 }
 
+// The code nets: words in the lead's message that force a handoff whatever
+// the model wrote. The model is told the same; these are for when it doesn't
+// listen.
 var (
-	// Extra lead topics a cautious John wants for himself (on top of handoffRe).
-	cautiousRe = regexp.MustCompile(`(?i)\b(safe|safety|secure|risk\w*|trust\w*|lost money|hack\w*|fees?|costs?|prices?|pricing|pay|paid|paying|payments?|money back|complain\w*|angry|upset|worried|scared|meet|call me)\b`)
-	// The only lead topics a fully autonomous John still hands over.
-	extremeRe = regexp.MustCompile(`(?i)\b(lawsuit|lawyers?|attorney|sue|suing|police|regulators?|fraud\w*|scammed|stole|stolen|theft|refund\w*|chargebacks?|withdraw\w*|lost (my|all|the|our) (money|savings|funds)|suicid\w*|kill (myself|me)|emergency)\b`)
-	// Income claims in the AI's own reply. Never sent, at any level: an
-	// autonomous John must not drift into promises.
-	promiseRe = regexp.MustCompile(`(?i)\b(passive income|guaranteed? (returns?|income|profits?|earnings)|(earn|make)\s+(up to |around |about |over |at least )?(\$\s?\d|\d[\d,.]*\s*(k\b|dollars|usd|usdt|baht|euros?|per |a (month|week|day))|(a few |several )?(hundreds|thousands|millions)\b|(one|two|three|four|five|six|seven|eight|nine|ten|twenty|fifty) (hundred|thousand|million)))`)
+	// Every level: money that went wrong, legal trouble, someone in danger.
+	handoffRe = regexp.MustCompile(`(?i)\b(refund\w*|chargebacks?|lawsuits?|lawyers?|attorneys?|sue|suing|police|hacked|scammed|defrauded|stole|stolen|theft|lost (my|all|the|our) (money|savings|funds)|suicid\w*|kill (myself|me)|emergency)\b`)
+	// Balanced and Cautious: complaints, or asking for a real person.
+	personRe = regexp.MustCompile(`(?i)\b(complain\w*|real (john|person|human)|human being|(speak|talk) (to|with) (a )?(real |live )?(person|human))\b`)
+	// Cautious only: money, safety and trust topics John wants for himself.
+	cautiousRe = regexp.MustCompile(`(?i)\b(earn\w*|income|commissions?|profits?|returns?|roi|passive|guarantee\w*|withdraw\w*|payouts?|salary|legal|illegal|scam|ponzi|pyramid|tax(es)?|regulat\w*|safe|safety|secure|risk\w*|trust\w*|fees?|costs?|prices?|pricing|pay|paid|paying|payments?|money back|angry|upset|worried|scared|meet|call me)\b`)
 )
 
 // handoffTrigger is the word in the lead's message that must go to John at
 // this autonomy level, or "". The levels are nested: whatever a bolder level
 // hands to John, a more cautious one does too.
 func handoffTrigger(autonomy, text string) string {
-	if kw := extremeRe.FindString(text); kw != "" {
-		return kw
-	}
+	nets := []*regexp.Regexp{handoffRe, personRe, cautiousRe}
 	switch NormalizeAutonomy(autonomy) {
 	case AutonomyHigh:
-		return ""
-	case AutonomyLow:
-		if kw := handoffRe.FindString(text); kw != "" {
+		nets = nets[:1]
+	case AutonomyMedium:
+		nets = nets[:2]
+	}
+	for _, re := range nets {
+		if kw := re.FindString(text); kw != "" {
 			return kw
 		}
-		return cautiousRe.FindString(text)
 	}
-	return handoffRe.FindString(text)
+	return ""
 }
 
-const holdingRule = ` Then spoken_script is only a short, warm holding line (20 to 40 words) saying John will get back to them personally. Do not answer the question. Put the topic in handoff_reason.`
+const (
+	honestyRule = `Honesty, always: never promise or estimate income, earnings or returns, and never say what anyone has earned. Never call the membership an investment or say what points or a membership might be worth. Never say U-topia is a bank, regulated or licensed, and never give a legal verdict like "it's legal" or "it's not a pyramid"; describe how it works and let them decide.`
+	holdingRule = `When you hand off, spoken_script is only a short, warm holding line (20 to 40 words) saying John will get back to them personally. Do not answer the question. Put the topic in handoff_reason.`
+)
 
-// handoffPrompt tells the model when to hand a chat to John.
+// handoffPrompt tells the model what to answer itself and when to hand a
+// chat to John.
 func handoffPrompt(autonomy string) string {
 	switch NormalizeAutonomy(autonomy) {
 	case AutonomyLow:
-		return `Handoff (John wants to handle most conversations himself): only answer greetings and simple questions the FAQ answers directly, like what U-topia or U.Center is. Set handoff to true for everything else: earnings, income, commissions or returns; prices, fees, packages or how to pay; refunds or withdrawals; anything legal, regulatory or tax; whether it's safe, a scam or a pyramid; any doubt, worry, objection or complaint; anything personal or emotional; when they want to meet or talk on a call; when they're ready to join; and anything the FAQ and playbook don't clearly answer. When in doubt, hand off.` + holdingRule
+		return `Be careful: John wants to handle most conversations himself. Only answer greetings and simple questions the knowledge base answers directly, like what U-topia or U.Center is.
+
+` + honestyRule + `
+
+Set handoff to true for everything else: earnings, rewards, commissions or returns; prices, fees, packages or how to pay; refunds or withdrawals; anything legal, regulatory or tax; whether it's safe, a scam or a pyramid; any doubt, worry, objection or complaint; anything personal or emotional; when they want to meet or talk on a call; when they're ready to join; and anything the knowledge base and playbook don't clearly answer. When in doubt, hand off.
+` + holdingRule
 	case AutonomyHigh:
-		return `Handoff (John trusts you to handle the conversation end to end): answer questions about prices, packages and how to pay from the FAQ. Handle doubts, worries and objections yourself, calmly and honestly, including whether it's safe, a scam or a pyramid: explain from the FAQ what U-topia and U.Center are, with no hype. If they ask about earnings, never promise, estimate or hint at any income or returns; say it depends on the person and what they put in, and invite them to a quick call. Only set handoff to true in extreme situations: legal threats, lawyers or regulators; accusations of fraud or theft; money they say they lost, or a refund or withdrawal problem; threats, emergencies or someone in distress.` + holdingRule
+		return `Answer, don't defer. John trusts you with the whole conversation, end to end: prices, packages, rewards and earnings, risks, whether it's legit, doubts, objections and complaints. Answer them yourself the way the knowledge base says to talk about them. If someone is upset, stay calm, listen and help. If a detail isn't covered, say what you do know honestly and offer a quick call.
+
+` + honestyRule + `
+
+Handoff is only for extreme situations: set it to true only when
+1. Money or an account went wrong and only a person can fix it: a payment, purchase or transfer that didn't arrive, a refund, lost money or lost access.
+2. They make legal threats (lawyers, police, regulators) or accuse John or U-topia of fraud or theft.
+3. There's a threat, an emergency, or someone is in distress.
+` + holdingRule
 	}
-	return `Handoff: if the lead asks about earnings, income, commissions, returns, payments or withdrawals, anything legal or regulatory, complaints, or whether it's a scam or pyramid, set handoff to true.` + holdingRule
+	return `Answer, don't defer. The whole point is to save John time, so you answer questions yourself, including prices, packages, rewards and earnings, risks, and whether it's legit, the way the knowledge base says to talk about them.
+
+` + honestyRule + `
+
+Handoff is rare: set it to true only when you're truly stuck.
+1. Something only a person can fix: a payment, purchase, transfer or account that went wrong, a refund, or lost access.
+2. They want legal, tax or regulatory advice, or ask whether it's allowed where they live.
+3. They're upset or complaining, or ask to speak to John himself.
+4. They ask something important the knowledge base can't answer and a guess could mislead them, like whether the card works in their specific country.
+5. There's a legal threat, an emergency, or someone is in distress.
+When you hand off, still help: say what you can, warmly, then say John will get back to them personally on the rest (20 to 50 words). Put the topic in handoff_reason.`
 }

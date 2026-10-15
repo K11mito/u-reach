@@ -306,9 +306,14 @@ func (b *Brain) generate(ctx context.Context, cfg setup, prompt string, c Contac
 
 var (
 	urlRe = regexp.MustCompile(`https?://\S+|www\.\S+`)
-	// Topics John answers personally. The model is told the same; this is the
-	// net for when it doesn't listen.
-	handoffRe = regexp.MustCompile(`(?i)\b(earn\w*|income|commissions?|profits?|returns?|roi|passive|guarantee\w*|refund\w*|withdraw\w*|payouts?|salary|lawsuit|legal|illegal|scam|ponzi|pyramid|tax(es)?)\b`)
+	// Replies that would promise money. The model is told never to; if one
+	// slips through anyway it's swapped for a holding line and John takes over.
+	incomeClaimRe = regexp.MustCompile(`(?i)\b(` +
+		// "earn/make" plus an amount of money
+		`(earn|earned|earning|make|made|making)( up to| over| around| about| at least)? (\$\s?\d[\d,.]*|\d[\d,.]*\s?(k|dollars?|usd|usdt|bucks|baht|euros?|pounds?|%|percent)|(one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|several|hundreds of|thousands of)( hundred| thousand)?( dollars?| bucks| usd| usdt| baht| euros?| pounds?)|a lot of money|good money|serious money|big money|a fortune|six figures)` +
+		// money per period, or a rate of return
+		`|(dollars?|usd|usdt|bucks|baht|euros?|pounds?) (a|per|every) (day|week|month)|(\d+ ?%|percent) (a|per|every) (day|week|month|year)|double (your|their) (money|investment)` +
+		`)`)
 	linkAskRe = regexp.MustCompile(`(?i)\b(link|sign ?up|register|join|enrol+)\b`)
 	sentEndRe = regexp.MustCompile(`[.!?…](["')\]]?)(\s|$)`)
 )
@@ -326,17 +331,17 @@ func enforce(cfg setup, r Reply, c Contact, history []Turn, meta *Meta) Reply {
 		if kw := handoffTrigger(cfg.autonomy, latest); kw != "" {
 			meta.ForcedHandoff = strings.ToLower(kw)
 			r.Handoff = true
-			r.HandoffReason = "asked about " + meta.ForcedHandoff
-			r.SpokenScript = holdingLine(c.Name)
-			r.FollowupText = ""
-		} else if promise := promiseRe.FindString(r.SpokenScript + "\n" + r.FollowupText); promise != "" {
-			// The model drifted into an income claim: never send it.
-			meta.ForcedHandoff = "income claim: " + strings.ToLower(promise)
-			r.Handoff = true
-			r.HandoffReason = "reply mentioned income; John should answer personally"
+			r.HandoffReason = "mentioned " + meta.ForcedHandoff
 			r.SpokenScript = holdingLine(c.Name)
 			r.FollowupText = ""
 		}
+	}
+	if claim := incomeClaimRe.FindString(r.SpokenScript + " " + r.FollowupText); claim != "" {
+		meta.ForcedHandoff = "income claim: " + strings.ToLower(claim)
+		r.Handoff = true
+		r.HandoffReason = "reply promised money (" + strings.ToLower(claim) + "); check what to tell them"
+		r.SpokenScript = holdingLine(c.Name)
+		r.FollowupText = ""
 	}
 	if r.Handoff || r.OptOut {
 		r.IncludeReferral = false
@@ -454,9 +459,9 @@ func systemPrompt(c Config) string {
 ` + c.Persona + `
 </persona>
 
-<faq>
+<knowledge_base>
 ` + c.FAQ + `
-</faq>
+</knowledge_base>
 ` + playbook.String() + `
 How to write spoken_script:
 - Write for the ear: short sentences, contractions, John's own openers, phrases and rhythm from the persona. No lists, no markdown, no emojis, no URLs. Write numbers as words.
@@ -465,7 +470,7 @@ How to write spoken_script:
 ` + closing + `
 ` + length + `
 - Don't repeat lines you already said earlier in this conversation; vary how you open and close.
-- Only state facts that are in the FAQ or the sales playbook. If neither covers something, say you'll walk them through it on a quick call. Never invent numbers, dates, features or promises.
+- The knowledge base and the sales playbook are your facts: answer from them with confidence, the way someone who knows this inside out would. If a detail isn't covered, say what you do know and offer to go through the rest on a quick call. Never invent numbers, dates, features or promises.
 - Never sound like a brochure or a support bot. Never say "I'd be happy to help", "Great question", "As an AI", or "Feel free to reach out".
 - Reply in English.
 

@@ -11,10 +11,26 @@ func TestEnforce(t *testing.T) {
 	b := &Brain{ReferralURL: "https://example.com/join/john"}
 	lead := func(s string) []Turn { return []Turn{{FromLead: true, Text: s}} }
 
+	// Earnings questions are answered, not handed off, as long as nothing is promised.
 	var m Meta
-	r := b.enforce(Reply{SpokenScript: "You can make a lot. See https://x.y", IncludeReferral: true}, Contact{Name: "Priya"}, lead("how much can I earn?"), &m)
-	if !r.Handoff || m.ForcedHandoff != "earn" || r.IncludeReferral || strings.Contains(r.SpokenScript, "lot") {
-		t.Fatalf("earnings question must force a handoff: %+v %+v", r, m)
+	honest := "When someone joins through your link, you earn a direct commission. Nobody can promise anyone an income."
+	r := b.enforce(Reply{SpokenScript: honest, IncludeReferral: true}, Contact{Name: "Priya"}, lead("how much can I earn? is this a scam?"), &m)
+	if r.Handoff || m.ForcedHandoff != "" || r.SpokenScript != honest {
+		t.Fatalf("an honest answer about earnings must go out as written: %+v %+v", r, m)
+	}
+
+	// A reply that promises money is swapped for a holding line.
+	m = Meta{}
+	r = b.enforce(Reply{SpokenScript: "Honestly, people make two thousand dollars a month. See https://x.y", IncludeReferral: true}, Contact{Name: "Priya"}, lead("how much can I earn?"), &m)
+	if !r.Handoff || !strings.HasPrefix(m.ForcedHandoff, "income claim") || r.IncludeReferral || strings.Contains(r.SpokenScript, "thousand") {
+		t.Fatalf("an income promise must force a handoff: %+v %+v", r, m)
+	}
+
+	// Money gone wrong still goes to John whatever the model says.
+	m = Meta{}
+	r = b.enforce(Reply{SpokenScript: "Sure thing!", IncludeReferral: true}, Contact{Name: "Ben"}, lead("I paid but nothing arrived, I want a refund"), &m)
+	if !r.Handoff || m.ForcedHandoff != "refund" || r.IncludeReferral {
+		t.Fatalf("a refund request must force a handoff: %+v %+v", r, m)
 	}
 
 	m = Meta{}
@@ -95,18 +111,24 @@ func TestAutonomyLevels(t *testing.T) {
 		level, msg string
 		handoff    bool
 	}{
+		{AutonomyLow, "hi John! what is U.Center?", false},
 		{AutonomyLow, "is it safe to put money in?", true},
-		{AutonomyMedium, "is it safe to put money in?", false},
-		{AutonomyHigh, "is it safe to put money in?", false},
 		{AutonomyLow, "how do I pay for the package?", true},
-		{AutonomyMedium, "how much can I earn?", true},
-		{AutonomyHigh, "how much can I earn?", false},
-		{AutonomyHigh, "be honest, is this a pyramid scheme?", false},
-		{AutonomyMedium, "be honest, is this a pyramid scheme?", true},
+		{AutonomyLow, "how much can I earn?", true},
+		{AutonomyLow, "be honest, is this a pyramid scheme?", true},
+		{AutonomyMedium, "is it safe to put money in?", false},
+		{AutonomyMedium, "how much can I earn?", false},
+		{AutonomyMedium, "be honest, is this a pyramid scheme?", false},
+		{AutonomyMedium, "I want to complain about how slow this is", true},
+		{AutonomyMedium, "can I talk to a real person?", true},
+		{AutonomyHigh, "I want to complain about how slow this is", false},
+		{AutonomyHigh, "can I talk to a real person?", false},
 		{AutonomyHigh, "you scammed me, I want a refund", true},
 		{AutonomyHigh, "my lawyer will contact you", true},
-		{AutonomyLow, "hi John! what is U.Center?", false},
-		{"", "how much can I earn?", true}, // unset means balanced
+		{AutonomyHigh, "my account got hacked", true},
+		{"", "how much can I earn?", false},      // unset means balanced
+		{"", "I complained twice already", true}, // …with balanced's nets
+		{"bogus", "I want a refund", true},       // unknown means balanced too
 	}
 	for _, c := range cases {
 		r, m := run(c.level, c.msg, "Hey Raj! It depends on you, let's talk on a quick call.")
@@ -115,7 +137,7 @@ func TestAutonomyLevels(t *testing.T) {
 		}
 	}
 
-	for _, script := range []string{"You can easily earn five thousand dollars a month!", "People make $2,000 a week with this.", "It's real passive income.", "You could make thousands from home."} {
+	for _, script := range []string{"You can easily earn five thousand dollars a month!", "People make $2,000 a week with this.", "Some earn 30% a year on it."} {
 		r, m := run(AutonomyHigh, "tell me more", script)
 		if !r.Handoff || r.IncludeReferral || !strings.HasPrefix(m.ForcedHandoff, "income claim") || strings.Contains(r.SpokenScript, "earn") {
 			t.Errorf("income claim %q must be blocked: %+v %q", script, r, m.ForcedHandoff)
@@ -127,14 +149,20 @@ func TestAutonomyLevels(t *testing.T) {
 		}
 	}
 
-	if p := systemPrompt(Config{Autonomy: AutonomyHigh}); !strings.Contains(p, "end to end") || strings.Contains(p, "When in doubt, hand off") {
-		t.Fatal("full autonomy prompt")
+	marks := map[string]string{AutonomyLow: "When in doubt, hand off.", AutonomyMedium: "Handoff is rare", AutonomyHigh: "John trusts you with the whole conversation"}
+	for level, mark := range marks {
+		p := systemPrompt(Config{Autonomy: level})
+		if !strings.Contains(p, mark) || !strings.Contains(p, "Honesty, always") {
+			t.Errorf("%s prompt is missing %q or the honesty rule", level, mark)
+		}
+		for other, m := range marks {
+			if other != level && strings.Contains(p, m) {
+				t.Errorf("%s prompt also has %s's rules", level, other)
+			}
+		}
 	}
-	if p := systemPrompt(Config{Autonomy: AutonomyLow}); !strings.Contains(p, "When in doubt, hand off") {
-		t.Fatal("cautious prompt")
-	}
-	if p := systemPrompt(Config{}); !strings.Contains(p, "Handoff: if the lead asks about earnings") {
-		t.Fatal("balanced prompt should keep the original rules")
+	if p := systemPrompt(Config{}); !strings.Contains(p, marks[AutonomyMedium]) {
+		t.Fatal("unset autonomy should get the balanced prompt")
 	}
 }
 
@@ -144,6 +172,7 @@ func TestAutonomyLevelsAreNested(t *testing.T) {
 		"what is U.Center?", "is it safe?", "how do I pay?", "how much can I earn?", "is this a pyramid?",
 		"my lawyer will contact you", "I lost my money", "I want a refund", "the police are involved", "can we meet tomorrow?",
 		"this is an emergency", "you scammed me", "what are the fees?", "I'm worried", "tell me more",
+		"I want to complain", "let me talk to a real person", "my account was hacked",
 	}
 	rank := map[string]int{AutonomyLow: 0, AutonomyMedium: 1, AutonomyHigh: 2}
 	for _, m := range msgs {
@@ -153,6 +182,32 @@ func TestAutonomyLevelsAreNested(t *testing.T) {
 					t.Errorf("%q goes to John at %s but not at the more cautious %s", m, bold, careful)
 				}
 			}
+		}
+	}
+}
+
+func TestIncomeClaims(t *testing.T) {
+	for _, s := range []string{
+		"You could make two thousand dollars a month.",
+		"People earn $500 every week.",
+		"Some earn 30% a year on it.",
+		"You'll be earning six figures.",
+		"It can double your money.",
+		"I made five hundred dollars last week.",
+	} {
+		if !incomeClaimRe.MatchString(s) {
+			t.Errorf("should flag: %q", s)
+		}
+	}
+	for _, s := range []string{
+		"When someone joins through your link, you earn a direct commission on their membership.",
+		"Starter is twenty-five dollars and Bronze is one hundred dollars, one time, no monthly subscription.",
+		"Let's make one quick call this week, and make it simple.",
+		"Nobody can promise anyone an income; it depends on what you do.",
+		"Sending money home is free and arrives in seconds.",
+	} {
+		if incomeClaimRe.MatchString(s) {
+			t.Errorf("should not flag: %q (matched %q)", s, incomeClaimRe.FindString(s))
 		}
 	}
 }

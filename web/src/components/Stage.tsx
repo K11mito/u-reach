@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react"
-import { AudioLines, BrainCircuit, Check, Ear, Hand, MessageCircle, Mic, Send, Smartphone, X } from "lucide-react"
+import { AudioLines, BrainCircuit, Check, Ear, Hand, MessageCircle, Mic, Send, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { clock, displayName, useCountUp, type Message, type Run, type State } from "@/lib/api"
 import { Equalizer, Initials, JohnAvatar, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
@@ -160,10 +160,10 @@ export function Stage({
 
       <div ref={area} className="relative min-h-0 flex-1">
         <main
-          className="absolute top-1/2 left-1/2 grid grid-cols-[1fr_420px] gap-4"
+          className="absolute top-1/2 left-1/2 flex flex-col"
           style={{ width: w, height: h, transform: `translate(-50%, -50%) scale(${scale})` }}
         >
-          <section className="flex min-h-0 flex-col gap-4">
+          <section className="flex min-h-0 flex-1 flex-col gap-4">
             {/* Who is answering, and the week so far. */}
             <div className="flex items-center gap-4 rounded-2xl border bg-card px-5 py-3 shadow-sm">
               <JohnAvatar size={46} src={state.ambassador.avatar} />
@@ -240,27 +240,29 @@ export function Stage({
                 )}
                 <div
                   ref={scroller}
-                  className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,oklch(0.9_0.02_285)_1px,transparent_0)] bg-[length:22px_22px] px-6 py-5 [scrollbar-width:none]"
+                  className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,oklch(0.9_0.02_285)_1px,transparent_0)] bg-[length:22px_22px] px-6 py-5 [scrollbar-width:none]"
                 >
-                  {thread.map((m) => (
-                    <StageBubble key={m.id} m={m} current={inCurrent(m)} who={displayName(contact)} />
-                  ))}
-                  {live && (
-                    <div className="flex justify-end">
-                      <div className="inline-flex items-center gap-3 rounded-xl rounded-tr-sm bg-wa-bubble px-5 py-3 text-lg font-semibold text-wa-dark ring-1 ring-wa/15">
-                        {run.thought_at ? (
-                          <>
-                            <Mic className="size-5 animate-pulse" /> recording audio…
-                          </>
-                        ) : (
-                          <>
-                            <Equalizer /> thinking…
-                          </>
-                        )}
+                  <div className="mx-auto max-w-[1280px] space-y-3">
+                    {thread.map((m) => (
+                      <StageBubble key={m.id} m={m} current={inCurrent(m)} who={displayName(contact)} />
+                    ))}
+                    {live && (
+                      <div className="flex justify-end">
+                        <div className="inline-flex items-center gap-3 rounded-xl rounded-tr-sm bg-wa-bubble px-5 py-3 text-lg font-semibold text-wa-dark ring-1 ring-wa/15">
+                          {run.thought_at ? (
+                            <>
+                              <Mic className="size-5 animate-pulse" /> recording audio…
+                            </>
+                          ) : (
+                            <>
+                              <Equalizer /> thinking…
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {run.status === "failed" && <p className="text-right text-amber-700">Couldn't reply: {run.error}</p>}
+                    )}
+                    {run.status === "failed" && <p className="text-right text-amber-700">Couldn't reply: {run.error}</p>}
+                  </div>
                 </div>
               </div>
             )}
@@ -277,16 +279,6 @@ export function Stage({
               </div>
             )}
           </section>
-
-          {/* The mirrored phone (scrcpy) goes on top of this panel. */}
-          <aside className="grid place-items-center rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 shadow-lg shadow-indigo-500/20">
-            <div className="grid aspect-[9/19] w-[72%] place-items-center rounded-[2.2rem] border-2 border-dashed border-white/30">
-              <div className="text-center text-white/70">
-                <Smartphone className="mx-auto size-8" />
-                <div className="mt-2 text-sm">Mirrored phone here</div>
-              </div>
-            </div>
-          </aside>
         </main>
       </div>
     </div>

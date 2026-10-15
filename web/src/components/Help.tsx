@@ -52,9 +52,11 @@ export function Help({ state }: { state: State }) {
           Your chat jumps to the top of the <b>Inbox</b> as it arrives. Open <b>Stage view</b> (press 2) to see each step live: received, heard, thinking,
           speaking, sent, with how long each one took.
         </Step>
-        <Step n={4} icon={ShieldCheck} title="Test the guardrails">
-          Ask about money: "How much can I earn?" or "Is this a pyramid scheme?" The AI never promises income or answers legal questions. It hands the chat
-          to the real John, and the chat turns <b>Needs John</b> here.
+        <Step n={4} icon={ShieldCheck} title="Ask the hard questions">
+          "How much can I earn?", "Is this a pyramid scheme?", "How many countries does it work in?" It answers from what it learned from U.Center's calls
+          and websites, honestly, and never promises income. Then say your payment didn't arrive: only a person can fix that, so it hands the chat to the
+          real John and it turns <b>Needs John</b> here. That's the default, <b>Balanced</b>: move the autonomy slider on the <b>John</b> page to
+          Cautious and the money questions come to you too, or to Full autonomy and only emergencies do.
         </Step>
         <Step n={5} icon={Hand} title="Take over as John">
           In the Inbox, open your chat and press <b>Take over</b> or <b>Reply as John</b>. Type a message and it lands on your phone from John's number.

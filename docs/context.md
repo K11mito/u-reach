@@ -9,13 +9,14 @@ Distilled from `transcripts/` (community calls Aug to Oct 2026, Emmanuel's expla
 
 ## How the money side works (network marketing)
 - You join U.Center by buying a **one-time lifetime package** through your **sponsor's referral link**.
-  - Packages are bronze ($100), silver, gold, platinum, diamond and full house/"superstar" (~$4,350 with Bangkok trip credits).
+  - Packages (u.center): Starter $25, Bronze $100, Silver $250, Gold $500, Platinum $1,000, Diamond $2,500, plus Full House/"superstar" (~$4,350, all packages bundled).
   - You pay in **USDT on BNB Chain**.
 - **Ranks ("Flow 1 ... Flow 20")** go up with qualifying volume from your **downline** (people you refer, and the people they refer), with a two-leg rule.
 - Rewards come from the **wealth pool**: 19 pools of commissions shared out by rank. You also earn **direct commissions** on referrals.
 - **DAO points ("dows")** and promised **ownership/stake** in U-topia sit on top of that.
 - The calls talk about all of this freely, with almost no disclaimers. Examples: "an investment for your grandkids", "massive stake position", "scarcity event".
-- **That's why the bot hands off every money, ownership or legal question to John.** Safe by design is a selling point.
+- **The bot answers these itself, honestly.** It explains how rewards work without ever promising income, calling the membership an investment, or giving legal verdicts (`data/faq.md`, "Rewards for sharing" and "Is it legit?"). It only hands off when truly stuck: money or accounts gone wrong, legal or tax advice, upset leads, or questions the knowledge base can't answer safely. A code net also blocks any reply that promises money.
+- That is the default ("Balanced") on the **autonomy slider** on the John page. "Cautious" also hands off prices, earnings, safety and doubts; "Full autonomy" handles complaints and gaps too and only hands off money gone wrong, legal threats and emergencies. Levels are nested, and the income net applies at every level (`internal/brain/autonomy.go`).
 
 ## How an ambassador conversation goes (John's three-way call)
 1. An ambassador meets a **prospect** (WhatsApp, Zoom, or a cafe table).
@@ -35,7 +36,6 @@ John has done this for 20+ years and does most calls on WhatsApp. That's the hoo
 
 ## Open questions for Kyle
 - Does the hackathon require or reward building on **U Bot**? If so, how do we plug in?
-- Current **package prices** (only bronze at $100 is confirmed) and what a new member should do first.
 - John's real **referral link**, and whether replies must disclose they're AI-generated.
 - Should the bot ever mention the **Flow Summit** or discovery calls (days and times change)?
 - Which languages do John's leads use? This decides the TTS model.
