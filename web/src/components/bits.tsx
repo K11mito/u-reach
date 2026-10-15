@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { Pause, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Grain } from "./Grain"
@@ -99,43 +99,108 @@ export function fmtDur(ms = 0) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
 }
 
-/** A WhatsApp-style voice-note player. `dark` matches WhatsApp's dark theme. */
+// Playback speed is shared by every voice note and remembered, like WhatsApp.
+const SPEEDS = [1, 1.25, 1.5, 2]
+let speed = 1
+try {
+  const saved = Number(localStorage.getItem("ureach.speed"))
+  if (SPEEDS.includes(saved)) speed = saved
+} catch {
+  /* storage unavailable: start at 1x */
+}
+const speedListeners = new Set<() => void>()
+const subscribeSpeed = (l: () => void) => {
+  speedListeners.add(l)
+  return () => {
+    speedListeners.delete(l)
+  }
+}
+function nextSpeed() {
+  speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]
+  try {
+    localStorage.setItem("ureach.speed", String(speed))
+  } catch {
+    /* ignore */
+  }
+  speedListeners.forEach((l) => l())
+}
+
+/**
+ * A WhatsApp-style voice-note player. Click or drag along the waveform to
+ * seek; the pill on the right changes the speed. `dark` matches WhatsApp's
+ * dark theme.
+ */
 export function VoiceNote({ src, durationMs, seed, outgoing, big, dark }: { src?: string; durationMs?: number; seed: number; outgoing?: boolean; big?: boolean; dark?: boolean }) {
   const ref = useRef<HTMLAudioElement>(null)
+  const wave = useRef<HTMLDivElement>(null)
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
+  const rate = useSyncExternalStore(subscribeSpeed, () => speed)
   const heights = useMemo(() => bars(seed, big ? 48 : 36), [seed, big])
+
+  // Before the file has loaded (preload is "none") the stored duration stands in.
+  const length = (a: HTMLAudioElement) => (Number.isFinite(a.duration) && a.duration > 0 ? a.duration : (durationMs ?? 0) / 1000)
 
   useEffect(() => {
     const a = ref.current
     if (!a) return
-    const tick = () => setProgress(a.duration ? a.currentTime / a.duration : 0)
+    const tick = () => {
+      const d = length(a)
+      if (d) setProgress(Math.min(1, a.currentTime / d))
+    }
     const end = () => {
       setPlaying(false)
       setProgress(0)
     }
+    const play = () => setPlaying(true)
+    const pause = () => setPlaying(false) // also when another note starts
     a.addEventListener("timeupdate", tick)
     a.addEventListener("ended", end)
+    a.addEventListener("play", play)
+    a.addEventListener("pause", pause)
     return () => {
       a.removeEventListener("timeupdate", tick)
       a.removeEventListener("ended", end)
+      a.removeEventListener("play", play)
+      a.removeEventListener("pause", pause)
     }
-  }, [src])
+  }, [src, durationMs])
+
+  useEffect(() => {
+    const a = ref.current
+    if (!a) return
+    a.defaultPlaybackRate = rate
+    a.playbackRate = rate
+  }, [rate, src])
 
   const toggle = () => {
     const a = ref.current
     if (!a) return
-    if (playing) {
+    if (!a.paused) {
       a.pause()
-      setPlaying(false)
     } else {
       document.querySelectorAll("audio").forEach((o) => o !== a && o.pause())
-      a.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+      a.playbackRate = rate
+      a.play().catch(() => setPlaying(false))
     }
   }
 
+  const seek = (clientX: number) => {
+    const a = ref.current
+    const el = wave.current
+    if (!a || !el) return
+    const d = length(a)
+    if (!d) return
+    const r = el.getBoundingClientRect()
+    const f = Math.min(0.999, Math.max(0, (clientX - r.left) / r.width))
+    a.currentTime = f * d
+    setProgress(f)
+  }
+
+  const played = dark ? "bg-[#53bdeb]" : outgoing ? "bg-wa-dark" : "bg-primary"
+  const muted = dark ? "text-white/60" : "text-muted-foreground"
   return (
-    <div className={cn("flex items-center gap-3", big ? "w-full min-w-0" : "min-w-[230px]")}>
+    <div className={cn("flex items-center gap-3", big ? "w-full min-w-0" : "min-w-[260px]")}>
       {src && <audio ref={ref} src={`/audio/${src}`} preload="none" />}
       <button
         onClick={toggle}
@@ -145,23 +210,42 @@ export function VoiceNote({ src, durationMs, seed, outgoing, big, dark }: { src?
           big ? "size-14" : "size-9",
           dark ? "bg-white/15 text-white hover:bg-white/25" : outgoing ? "bg-wa-dark text-white hover:bg-wa-dark/90" : "bg-primary text-white hover:bg-primary/90",
         )}
-        title={src ? "Play" : "Audio not rendered yet"}
+        title={src ? (playing ? "Pause" : "Play") : "Audio not rendered yet"}
       >
         {playing ? <Pause className={big ? "size-6" : "size-4"} /> : <Play className={cn(big ? "size-6" : "size-4", "translate-x-px")} />}
       </button>
-      <div className={cn("flex min-w-0 flex-1 items-center gap-[2px] overflow-hidden", big ? "h-10" : "h-6")}>
-        {heights.map((h, i) => (
-          <span
-            key={i}
-            className={cn(
-              "w-[3px] min-w-px shrink rounded-full transition-colors",
-              i / heights.length <= progress && playing ? (dark ? "bg-[#53bdeb]" : outgoing ? "bg-wa-dark" : "bg-primary") : dark ? "bg-white/35" : "bg-foreground/25",
-            )}
-            style={{ height: `${h * 100}%` }}
-          />
-        ))}
+      <div
+        ref={wave}
+        onPointerDown={(e) => {
+          if (!src) return
+          e.currentTarget.setPointerCapture(e.pointerId)
+          seek(e.clientX)
+        }}
+        onPointerMove={(e) => e.currentTarget.hasPointerCapture(e.pointerId) && seek(e.clientX)}
+        className={cn("relative min-w-0 flex-1 touch-none select-none", big ? "h-10" : "h-6", src && "cursor-pointer")}
+        title={src ? "Drag to skip" : undefined}
+      >
+        <div className="flex h-full items-center gap-[2px] overflow-hidden">
+          {heights.map((h, i) => (
+            <span key={i} className={cn("w-[3px] min-w-px shrink rounded-full", i / heights.length < progress ? played : dark ? "bg-white/35" : "bg-foreground/25")} style={{ height: `${h * 100}%` }} />
+          ))}
+        </div>
+        {src && <span className={cn("pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full", played, big ? "size-4" : "size-3")} style={{ left: `${progress * 100}%` }} />}
       </div>
-      <span className={cn("shrink-0 tabular-nums", dark ? "text-white/60" : "text-muted-foreground", big ? "text-base" : "text-xs")}>{fmtDur(durationMs)}</span>
+      <span className={cn("shrink-0 tabular-nums", muted, big ? "text-base" : "text-xs")}>{fmtDur(progress > 0 ? progress * (durationMs ?? 0) : durationMs)}</span>
+      {src && (
+        <button
+          onClick={nextSpeed}
+          title="Playback speed"
+          className={cn(
+            "shrink-0 rounded-full text-center font-semibold tabular-nums transition",
+            big ? "min-w-14 px-2 py-1 text-sm" : "min-w-10 px-1.5 py-0.5 text-[11px]",
+            dark ? "bg-white/10 text-white/80 hover:bg-white/20" : "bg-black/[0.06] text-foreground/70 hover:bg-black/10",
+          )}
+        >
+          {rate}×
+        </button>
+      )}
     </div>
   )
 }
