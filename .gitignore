@@ -1,0 +1,21 @@
+# secrets
+.env
+
+# whatsmeow session + app DB (and WAL/SHM/lock files)
+data/*.db
+data/*.db-*
+data/*.lock
+
+# generated / large / personal audio
+data/audio/
+data/voice/
+data/clones/
+data/test.ogg
+
+# dashboard build output (embedded at build time)
+web/dist/*
+!web/dist/.gitkeep
+web/node_modules/
+
+# binaries
+bin/
