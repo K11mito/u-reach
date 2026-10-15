@@ -87,7 +87,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen min-w-[1100px] gap-4 bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4">
-      <aside className="flex w-[clamp(240px,21vw,340px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/20">
+      <aside className="flex w-[clamp(220px,18vw,300px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/20">
         <div className="flex items-center gap-2.5 px-2 py-1">
           <div className="grid size-9 place-items-center rounded-xl bg-white/20 text-lg font-extrabold">U</div>
           <div>
@@ -114,7 +114,7 @@ export default function App() {
         </nav>
         {/* Fills the free space above John's card; on short screens the top is cropped, keeping the robot. */}
         <div className="relative mt-4 mb-3 min-h-0 flex-1">
-          <img src={robot} alt="" className="absolute inset-x-1 bottom-0 max-h-full w-[calc(100%-0.5rem)] object-cover object-[center_76%] [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
+          <img src={robot} alt="" className="absolute bottom-0 left-1/2 max-h-full w-[80%] -translate-x-1/2 object-cover object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
         </div>
         <div className="space-y-3 rounded-2xl bg-white/10 p-3">
           {/* John's photo opens his page: persona, presets and sales playbook. */}
@@ -143,7 +143,7 @@ export default function App() {
             <div className="text-xs text-white/75">Simple. Yours. Ready when you are.</div>
           </div>
           {/* The banner art sits on the right and fades into the header on its left. */}
-          <img src={banner} alt="" className="absolute inset-y-0 right-0 h-full w-auto max-w-[70%] object-cover object-right [mask-image:linear-gradient(to_right,transparent,black_40%)]" />
+          <img src={banner} alt="" className="absolute inset-y-0 right-0 h-full w-auto max-w-[70%] object-cover object-right opacity-80 [mask-image:linear-gradient(to_right,transparent,black_40%)]" />
         </header>
         {page === "inbox" && (
           <Inbox contacts={state.contacts} last={state.last ?? {}} messages={messages} loadMessages={loadMessages} runs={runs} onCampaign={() => go("campaign")} />
