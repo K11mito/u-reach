@@ -379,6 +379,55 @@ func (c *Core) addOut(contactID, runID int64, waID, kind, text, audio string, du
 	c.Hub.Publish("message", m)
 }
 
+// HandleReceipt records delivered/read/played ticks for messages we sent.
+func (c *Core) HandleReceipt(waIDs []string, kind string) {
+	for _, id := range waIDs {
+		m, changed, err := c.Store.SetDelivery(id, kind)
+		if err != nil {
+			log.Printf("core: receipt: %v", err)
+			continue
+		}
+		if changed {
+			c.Hub.Publish("message", m)
+			if kind == "played" && m.Kind == "voice" {
+				c.Store.AddEvent(m.ContactID, "played", map[string]int64{"message_id": m.ID})
+			}
+		}
+	}
+}
+
+// HandleOwn records a message John typed on the demo phone itself. John
+// stepping in by hand means the AI steps back for that chat.
+func (c *Core) HandleOwn(m Msg) {
+	contact, created, err := c.Store.UpsertInbound(m.From.String(), m.Chat.String(), m.Phone, "")
+	if err != nil {
+		log.Printf("core: own message contact: %v", err)
+		return
+	}
+	if created {
+		c.Hub.Publish("contact", contact)
+	}
+	kind := "text"
+	if m.Voice != nil {
+		kind = "voice"
+		if m.Text == "" {
+			m.Text = "(voice note from John's phone)"
+		}
+	}
+	msg, err := c.Store.AddMessage(store.Message{ContactID: contact.ID, WAID: m.WAID, Direction: "out", Kind: kind, Source: "john", Text: m.Text, CreatedAt: m.At.UnixMilli()})
+	if err != nil {
+		if !errors.Is(err, store.ErrDuplicate) {
+			log.Printf("core: own message: %v", err)
+		}
+		return
+	}
+	c.Hub.Publish("message", msg)
+	if contact.Status != store.StatusHuman {
+		log.Printf("core: John replied to %s from the phone; pausing the AI for this chat", contact.DisplayName())
+		c.SetStatus(contact.ID, store.StatusHuman)
+	}
+}
+
 // SendAsJohn sends a text John typed in the dashboard.
 func (c *Core) SendAsJohn(ctx context.Context, contactID int64, text string) error {
 	contact, err := c.Store.Contact(contactID)
