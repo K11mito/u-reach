@@ -1,0 +1,19 @@
+# Harder cases. Run: go run ./cmd/brain-cli -samples data/brain-eval.txt
+Lena|Hi, who is this?
+Somsak|สวัสดีครับ U-topia คืออะไรครับ
+Mike|please stop messaging me
+Ana|do I need to know about crypto to use this?
+Tom|is my money safe? what happens if U-topia goes bust?
+Jai|does it work in India?
+Elena|how do I pay for the membership? I don't have any crypto
+Sam|what's the difference between bronze and gold?
+Lisa|is there a monthly fee?
+Omar|what is this Flow Summit everyone is talking about?
+Grace|can my 15 year old son use it?
+Paul|I'm busy, just send me the link
+Nina|😂👍
+Kofi|can I make money with this?
+Hana|my friend lost money on a crypto app last year, why is this different?
+Diego|what do you get if I join through you?
+Mary|is U-topia regulated?
+Leo|ok I joined with bronze! what now?
