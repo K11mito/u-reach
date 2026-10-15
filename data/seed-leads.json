@@ -1,0 +1,128 @@
+[
+  {
+    "name": "Somchai",
+    "phone": "66812340001",
+    "context": "Met at the U.Center meetup in Bangkok",
+    "status": "auto",
+    "memory": ["Lives in Bangkok", "Runs a small coffee shop"],
+    "messages": [
+      {"ago": "130h", "from": "lead", "text": "Hi John, good to meet you at the meetup! What was the app you showed me?"},
+      {"ago": "129h59m", "from": "ai", "kind": "voice", "text": "Hey Somchai! John here, so good to hear from you. So, the app is U-topia. It's one free app for your money: you hold it yourself, you send to people by their name, and you pay with your phone. And U.Center is the community behind it, where we learn together. I'm sending you my link, have a look and tell me what you think."},
+      {"ago": "129h59m", "from": "ai", "text": "Here's my link, Somchai. Happy to show you more over coffee!\n{REFERRAL_URL}"},
+      {"ago": "101h", "from": "lead", "text": "Cool. Can I use it to pay at my shop?"},
+      {"ago": "100h59m", "from": "ai", "kind": "voice", "text": "Hi Somchai! Honestly, I love that question. Today you can pay in shops with your phone anywhere Visa works, and receiving payments on your phone is coming later. Let's jump on a quick call this week and I'll bring someone from the team to walk you through it."}
+    ]
+  },
+  {
+    "name": "Priya",
+    "phone": "61412340002",
+    "context": "Friend of Daniel, lives in Melbourne",
+    "status": "needs_john",
+    "handoff_reason": "Asked how much she could earn per month",
+    "memory": ["Lives in Melbourne", "Interested in earning on the side"],
+    "messages": [
+      {"ago": "75h", "from": "lead", "text": "Hey John, Daniel said you could explain U.Center to me"},
+      {"ago": "74h59m", "from": "ai", "kind": "voice", "text": "Hey Priya! John here, any friend of Daniel is a friend of mine. So, let me tell you. U.Center is the community behind U-topia, a free app where you hold your own money and send it anywhere by name. Membership is a one-time payment, packages start at one hundred dollars. I'm sending you my link right now."},
+      {"ago": "74h59m", "from": "ai", "text": "Here's my link, Priya. Have a look!\n{REFERRAL_URL}"},
+      {"ago": "50h", "from": "lead", "text": "Thanks! How much can people actually earn per month with this?"},
+      {"ago": "49h59m", "from": "ai", "kind": "voice", "text": "Hey Priya, that's a really important question, and I want to answer it properly myself. Give me a little bit and I'll get back to you personally, okay?"}
+    ]
+  },
+  {
+    "name": "Daniel",
+    "phone": "61412340003",
+    "context": "Old colleague from Sydney",
+    "status": "auto",
+    "memory": ["Lives in Sydney", "Already uses Revolut"],
+    "messages": [
+      {"ago": "140h", "from": "lead", "text": "John! Long time. Does this U-topia thing work in Australia?"},
+      {"ago": "139h59m", "from": "ai", "kind": "voice", "text": "Daniel! So good to hear from you, my friend. Yes, Australia is one of the biggest markets. It works in more than fifty countries at launch, and you hold your own money, U-topia can't touch it. It goes live for everyone on October sixteenth. I'm sending you my link, join with me and I'll help you set up."},
+      {"ago": "139h59m", "from": "ai", "text": "Here's my link, mate!\n{REFERRAL_URL}"},
+      {"ago": "138h", "from": "lead", "text": "Signed up 👍 bronze for now"},
+      {"ago": "137h59m", "from": "ai", "kind": "voice", "text": "Daniel, welcome! That's fantastic. You don't need to be perfect from the beginning, just start. Let's do a quick call tomorrow, I'll show you the Academy and the first steps. It's so much fun, you'll see."}
+    ]
+  },
+  {
+    "name": "Mei Lin",
+    "phone": "6591230004",
+    "context": "Met at a fintech event in Singapore",
+    "status": "auto",
+    "memory": ["Lives in Singapore", "Worried about crypto safety"],
+    "messages": [
+      {"ago": "52h", "from": "lead", "text": "Hi John, is this safe? I lost money on an exchange before"},
+      {"ago": "51h59m", "from": "ai", "kind": "voice", "text": "Hi Mei Lin, thank you for telling me that. So, the big difference is that U-topia is non-custodial. You hold your own money, U-topia can't touch your funds. And it's built for normal people, most people figure it out in ten minutes. I'm sending you my link, have a look, and let's talk it through on a quick call."},
+      {"ago": "51h59m", "from": "ai", "text": "Here's my link, take your time!\n{REFERRAL_URL}"}
+    ]
+  },
+  {
+    "name": "Carlos",
+    "phone": "5215512340005",
+    "context": "Cousin of a team member, Mexico City",
+    "status": "human",
+    "memory": ["Lives in Mexico City", "Prefers to talk in Spanish"],
+    "messages": [
+      {"ago": "28h", "from": "lead", "text": "Hola John, my cousin told me about U-topia. Can I send money to my mom with it?"},
+      {"ago": "27h59m", "from": "ai", "kind": "voice", "text": "Hola Carlos! John here. Yes, that's exactly what it's made for. You send money to someone just by their name, and transfers between users are free. Your mom just needs the app too. I'm sending you my link, join with me and I'll help you both set up."},
+      {"ago": "27h59m", "from": "ai", "text": "Here's my link, Carlos!\n{REFERRAL_URL}"},
+      {"ago": "27h", "from": "lead", "text": "Can we talk in Spanish? My English is not so good"},
+      {"ago": "26h", "from": "john", "text": "Of course Carlos! I'll call you tonight with Maria from my team, she speaks Spanish 😊"}
+    ]
+  },
+  {
+    "name": "Fatima",
+    "phone": "923001230006",
+    "context": "Friend from Lahore, studies in Bangkok",
+    "status": "auto",
+    "memory": ["Student in Bangkok", "Family in Lahore"],
+    "messages": [
+      {"ago": "20h", "from": "lead", "text": "Salam John! My family sends me money from Lahore every month, the fees are crazy. Can U-topia help?"},
+      {"ago": "19h59m", "from": "ai", "kind": "voice", "text": "Salam Fatima! John here. Honestly, that's exactly why U-topia exists. Sending money between users is free and takes seconds, you just use their name. And you hold your own money. Your family installs the app, you install it, that's it. I'm sending you my link, join with me and I'll help you set it up today."},
+      {"ago": "19h59m", "from": "ai", "text": "Here's my link, Fatima!\n{REFERRAL_URL}"},
+      {"ago": "18h", "from": "lead", "text": "Amazing, my brother will install it tonight"}
+    ]
+  },
+  {
+    "name": "Ben",
+    "phone": "447700900007",
+    "context": "Friend of a friend in London",
+    "status": "needs_john",
+    "handoff_reason": "Asked whether it's a pyramid scheme",
+    "memory": ["Lives in London", "Skeptical"],
+    "messages": [
+      {"ago": "9h", "from": "lead", "text": "Be honest John, is this a pyramid scheme?"},
+      {"ago": "8h59m", "from": "ai", "kind": "voice", "text": "Hey Ben, thanks for asking me straight, I really respect that. That's a question I want to answer personally, properly. Give me a little time and I'll get back to you myself, okay?"}
+    ]
+  },
+  {
+    "name": "Kenji",
+    "phone": "819012340008",
+    "context": "Met on the flight to Bangkok",
+    "status": "auto",
+    "memory": ["From Osaka", "Travels a lot for work"],
+    "messages": [
+      {"ago": "6h", "from": "lead", "kind": "voice", "text": "Hi John, it's Kenji from the plane. I travel a lot, can I get a card to use at ATMs?"},
+      {"ago": "5h59m", "from": "ai", "kind": "voice", "text": "Kenji! So good to hear from you, by the way, great flight conversation. So, today you pay with your phone anywhere Visa works. Physical cards are coming after launch, delivered to your home, you just pay shipping. Perfect for ATMs when you travel. I'm sending you my link, join with me and you'll be ready."},
+      {"ago": "5h59m", "from": "ai", "text": "Here's my link, Kenji. Safe travels!\n{REFERRAL_URL}"}
+    ]
+  },
+  {
+    "name": "Nok",
+    "phone": "66812340009",
+    "context": "Neighbour in Sukhumvit",
+    "status": "auto",
+    "memory": ["Lives near Sukhumvit", "Curious about the Flow Summit"],
+    "messages": [
+      {"ago": "3h", "from": "lead", "text": "John what is happening at the Avani this week? So many people!"},
+      {"ago": "2h59m", "from": "ai", "kind": "voice", "text": "Hi Nok! Ha, yes, it's the Flow Summit. Two days on the future of money and community, plus a hackathon, and the launch of the U-topia app on October sixteenth. U-topia is one free app for your money, and you hold it yourself. I'm sending you my link, have a look, and come say hi at the Avani!"},
+      {"ago": "2h59m", "from": "ai", "text": "Here's my link, Nok!\n{REFERRAL_URL}"}
+    ]
+  },
+  {
+    "name": "Anna",
+    "phone": "4915112340010",
+    "context": "Friend from the Chiang Mai yoga retreat",
+    "status": "new",
+    "memory": [],
+    "messages": []
+  }
+]
