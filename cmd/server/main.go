@@ -97,6 +97,11 @@ func main() {
 		}()
 	}
 
+	go func() {
+		c.Prewarm(ctx)
+		prepareVoiceSamples(ctx, el, voiceID, c.TTSModel)
+	}()
+
 	api := &api{core: c, store: st, brain: br, wa: waClient, voiceID: voiceID}
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/events", hub)
@@ -234,6 +239,8 @@ func (a *api) snapshot() (map[string]any, error) {
 			"persona":      json.RawMessage(orJSON(persona)),
 			"faq":          string(faq),
 			"mock_voice":   a.core.Voice.Mock,
+			"samples":      samples(),
+			"clone_line":   cloneLine,
 		},
 		"contacts":    nonNil(contacts),
 		"last":        last,
@@ -291,6 +298,49 @@ func (a *api) send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]bool{"ok": true})
+}
+
+// The Profile page plays John's real voice next to the clone.
+const (
+	sampleOriginal = "profile/original.mp3"
+	sampleClone    = "profile/clone.mp3"
+	cloneLine      = "Hi, I'm John. I do most of my calls on WhatsApp, by the way. And now my voice can answer you, even when I'm already on another call."
+)
+
+// prepareVoiceSamples cuts a clip of John from the source video and renders
+// the same idea with the clone (once; TTS is cached).
+func prepareVoiceSamples(ctx context.Context, el *voice.Eleven, voiceID, model string) {
+	dir := filepath.Join("data/audio", "profile")
+	os.MkdirAll(dir, 0o755)
+	orig := filepath.Join("data/audio", sampleOriginal)
+	if _, err := os.Stat(orig); os.IsNotExist(err) {
+		if _, err := os.Stat("data/voice/source.wav"); err == nil {
+			if err := voice.Cut(ctx, "data/voice/source.wav", orig, 27*time.Second+800*time.Millisecond, 14*time.Second); err != nil {
+				log.Printf("voice sample (original): %v", err)
+			}
+		}
+	}
+	if el.Mock || voiceID == "" {
+		return
+	}
+	mp3, _, err := el.TTS(ctx, voiceID, model, cloneLine, voice.DefaultSettings)
+	if err != nil {
+		log.Printf("voice sample (clone): %v", err)
+		return
+	}
+	if data, err := os.ReadFile(mp3); err == nil {
+		os.WriteFile(filepath.Join("data/audio", sampleClone), data, 0o644)
+	}
+}
+
+func samples() map[string]string {
+	out := map[string]string{}
+	for k, p := range map[string]string{"original": sampleOriginal, "clone": sampleClone} {
+		if _, err := os.Stat(filepath.Join("data/audio", p)); err == nil {
+			out[k] = p
+		}
+	}
+	return out
 }
 
 // waStatus is the WhatsApp link state for the dashboard.

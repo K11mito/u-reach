@@ -333,11 +333,22 @@ func (c *Core) speak(ctx context.Context, runID int64, script string) (voice.Voi
 	return vn, rel(c.AudioDir, mp3), nil
 }
 
+// FallbackScript is the holding note sent when the brain is unavailable.
+const FallbackScript = "Hey! Got your message, thank you. Give me a little moment and I'll get back to you properly, okay?"
+
+// Prewarm renders the fallback note ahead of time, so the safety net is
+// instant and works even if ElevenLabs is slow at that moment.
+func (c *Core) Prewarm(ctx context.Context) {
+	if _, _, err := c.speak(ctx, 0, FallbackScript); err != nil {
+		log.Printf("core: prewarm fallback note: %v", err)
+	}
+}
+
 // fallback keeps the lead from being left hanging when the brain is down:
 // a short, pre-rendered holding note, and the chat goes to John.
 func (c *Core) fallback(ctx context.Context, runID int64, contact store.Contact, chatJID types.JID, simulated bool, cause error) {
 	log.Printf("core: brain unavailable for run %d: %v", runID, cause)
-	script := "Hey! Got your message, thank you. Give me a little moment and I'll get back to you properly, okay?"
+	script := FallbackScript
 	if vn, mp3Rel, err := c.speak(ctx, runID, script); err == nil {
 		waID := ""
 		if !simulated {
