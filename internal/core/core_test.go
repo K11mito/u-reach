@@ -233,3 +233,32 @@ func TestHandoffPausesTheAI(t *testing.T) {
 		t.Fatalf("no link or text on a handoff, got %q", texts)
 	}
 }
+
+func TestReplyAsJohnToDemoLeadIsNeverSent(t *testing.T) {
+	r := newRig(t)
+	demo, err := r.store.CreateContact(store.Contact{JID: "990000000042@s.whatsapp.net", Phone: "990000000042", Name: "Ben", Status: store.StatusNeedsJohn})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.core.SendAsJohn(context.Background(), demo.ID, "Hi Ben, John here!"); err != nil {
+		t.Fatal(err)
+	}
+	if _, texts := r.wa.sent(); len(texts) != 0 {
+		t.Fatalf("a made-up number must never be messaged, sent %q", texts)
+	}
+	msgs, _ := r.store.Messages(demo.ID, 10)
+	if len(msgs) != 1 || msgs[0].Source != "john" || msgs[0].Text != "Hi Ben, John here!" {
+		t.Fatalf("the reply should still show in the chat: %+v", msgs)
+	}
+
+	// A real lead does get it.
+	r.lead("hello")
+	r.waitRun(t)
+	_, before := r.wa.sent()
+	if err := r.core.SendAsJohn(context.Background(), r.contact(t).ID, "John here, calling you now"); err != nil {
+		t.Fatal(err)
+	}
+	if _, after := r.wa.sent(); len(after) != len(before)+1 || after[len(after)-1] != "John here, calling you now" {
+		t.Fatalf("a real lead should get John's text: %q", after)
+	}
+}

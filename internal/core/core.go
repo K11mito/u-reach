@@ -474,19 +474,23 @@ func (c *Core) HandleOwn(m Msg) {
 	}
 }
 
-// SendAsJohn sends a text John typed in the dashboard.
+// SendAsJohn sends a text John typed in the dashboard. Seeded and simulated
+// leads have made-up numbers, so their replies are only recorded, the same
+// way the simulate box never sends to WhatsApp.
 func (c *Core) SendAsJohn(ctx context.Context, contactID int64, text string) error {
 	contact, err := c.Store.Contact(contactID)
 	if err != nil {
 		return err
 	}
-	to, err := types.ParseJID(contact.Chat)
-	if err != nil {
-		return err
-	}
-	waID, err := c.Gateway.SendText(ctx, to, text)
-	if err != nil {
-		return err
+	waID := ""
+	if !store.IsDemoNumber(contact.Phone) {
+		to, err := types.ParseJID(contact.Chat)
+		if err != nil {
+			return err
+		}
+		if waID, err = c.Gateway.SendText(ctx, to, text); err != nil {
+			return err
+		}
 	}
 	m, err := c.Store.AddMessage(store.Message{ContactID: contactID, WAID: waID, Direction: "out", Kind: "text", Source: "john", Text: text})
 	if err == nil {
