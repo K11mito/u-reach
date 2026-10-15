@@ -3,7 +3,7 @@ import { FlaskConical, Mic, Send, Square, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { api } from "@/lib/api"
+import { api, errText } from "@/lib/api"
 import { toast } from "./Toast"
 
 // A stable fake number per name, so repeated tests land in the same chat.
@@ -27,7 +27,7 @@ export function SimulateBox() {
       await api.simulate(name, fakePhone(name), text.trim())
       setText("")
     } catch (e) {
-      toast(`Simulate failed: ${e}`, "error")
+      toast(`Simulate failed: ${errText(e)}`, "error")
     }
   }
 
@@ -47,7 +47,7 @@ export function SimulateBox() {
           await api.simulateVoice(name, fakePhone(name), blob)
           toast(`Voice note from ${name} sent to the pipeline`)
         } catch (e) {
-          toast(`Simulate failed: ${e}`, "error")
+          toast(`Simulate failed: ${errText(e)}`, "error")
         }
       }
       r.start()

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { ArrowDownRight, ArrowUpRight, AudioLines, Clock, Link2, Loader2, PartyPopper, Timer } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { api, useCountUp, type Analytics as Data, type State } from "@/lib/api"
+import { api, errText, useCountUp, type Analytics as Data, type State } from "@/lib/api"
 import { LineChart, Sparkline } from "./Chart"
 
 const C = { leads: "#6366f1", voice: "#a855f7", links: "#0ea5e9", joined: "#10b981", eleven: "#7c3aed", claude: "#d97757" }
@@ -41,7 +41,7 @@ export function Analytics({ state }: { state: State }) {
     const load = () =>
       fetchAnalytics()
         .then((d) => alive && (setData(d), setError("")))
-        .catch((e) => alive && setError(String(e)))
+        .catch((e) => alive && setError(errText(e)))
     load()
     const t = window.setInterval(load, 30_000)
     return () => {
