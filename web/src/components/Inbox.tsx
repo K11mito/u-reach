@@ -96,6 +96,7 @@ export function Inbox({
   }, [])
 
   const liveRuns = new Map(runs.filter((r) => r.status === "running").map((r) => [r.contact_id, r]))
+  const lastFinished = current && runs.find((r) => r.contact_id === current.id && r.status !== "running")
   const tabs: { id: Filter; label: string }[] = [
     { id: "all", label: "All" },
     { id: "needs_john", label: "Needs John" },
@@ -146,7 +147,14 @@ export function Inbox({
         <SimulateBox />
       </div>
       {current ? (
-        <ChatView key={current.id} contact={current} messages={messages[current.id]} run={liveRuns.get(current.id)} onCampaign={onCampaign} />
+        <ChatView
+          key={current.id}
+          contact={current}
+          messages={messages[current.id]}
+          run={liveRuns.get(current.id)}
+          failed={lastFinished?.status === "failed" ? lastFinished : undefined}
+          onCampaign={onCampaign}
+        />
       ) : (
         <div className="grid place-items-center rounded-2xl border bg-card text-muted-foreground">No chats yet. Text John's number or use Simulate.</div>
       )}
@@ -202,7 +210,7 @@ function preview(m: Message) {
   return who + m.text.split("\n")[0]
 }
 
-function ChatView({ contact, messages, run, onCampaign }: { contact: Contact; messages?: Message[]; run?: Run; onCampaign: () => void }) {
+function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Contact; messages?: Message[]; run?: Run; failed?: Run; onCampaign: () => void }) {
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
   const [draft, setDraft] = useState("")
@@ -269,6 +277,14 @@ function ChatView({ contact, messages, run, onCampaign }: { contact: Contact; me
         )}
       </div>
 
+      {failed && (
+        <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-5 py-2 text-sm text-red-800">
+          <TriangleAlert className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">
+            <b>Last reply failed</b> ({failed.error || "unknown error"}). The lead got a holding note; take over to answer.
+          </span>
+        </div>
+      )}
       {contact.status === "needs_john" && (
         <div className="flex items-center gap-2 border-b border-amber/40 bg-amber/15 px-5 py-2 text-sm text-amber-900">
           <TriangleAlert className="size-4 shrink-0" />

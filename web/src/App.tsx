@@ -127,7 +127,7 @@ export default function App() {
 
       <main className="flex min-w-0 flex-1 flex-col gap-4">
         <div className="grid grid-cols-4 gap-4">
-          <Stat icon={Clock} label="Hours saved this week" value={state.hours_saved} decimals={1} accent />
+          <Stat icon={Clock} label="Hours saved this week" value={state.hours_saved} decimals={1} accent hint="Each AI voice note replaces a ~15 minute call John would have made himself" />
           <Stat icon={Mic} label="Voice notes this week" value={state.stats.replies_week} />
           <Stat icon={Link2} label="Referral links sent" value={state.stats.links_sent} />
           <Stat icon={TriangleAlert} label="Waiting for John" value={state.stats.needs_john} warn={state.stats.needs_john > 0} />
@@ -170,10 +170,10 @@ function WhatsAppPill({ wa, onLink }: { wa: WhatsAppStatus; onLink: () => void }
   )
 }
 
-function Stat({ icon: Icon, label, value, decimals = 0, accent, warn }: { icon: typeof Clock; label: string; value: number; decimals?: number; accent?: boolean; warn?: boolean }) {
+function Stat({ icon: Icon, label, value, decimals = 0, accent, warn, hint }: { icon: typeof Clock; label: string; value: number; decimals?: number; accent?: boolean; warn?: boolean; hint?: string }) {
   const shown = useCountUp(value)
   return (
-    <div className={cn("flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-sm", accent && "border-transparent bg-gradient-to-br from-wa to-wa-dark text-white")}>
+    <div title={hint} className={cn("flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-sm", accent && "border-transparent bg-gradient-to-br from-wa to-wa-dark text-white")}>
       <div className={cn("grid size-11 shrink-0 place-items-center rounded-xl", accent ? "bg-white/20" : warn ? "bg-amber/25 text-amber-800" : "bg-secondary text-primary")}>
         <Icon className="size-5" />
       </div>

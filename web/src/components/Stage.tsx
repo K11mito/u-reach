@@ -38,7 +38,13 @@ export function Stage({
     if (run) loadMessages(run.contact_id)
   }, [run?.id, run?.status, loadMessages]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && onExit()
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !document.fullscreenElement) onExit()
+      if (e.key === "f" || e.key === "F") {
+        if (document.fullscreenElement) document.exitFullscreen()
+        else document.documentElement.requestFullscreen().catch(() => {})
+      }
+    }
     window.addEventListener("keydown", esc)
     return () => window.removeEventListener("keydown", esc)
   }, [onExit])
@@ -77,7 +83,7 @@ export function Stage({
         <div className="flex items-center gap-8">
           <Counter label="hours saved this week" value={state.hours_saved} decimals={1} />
           <Counter label="voice notes this week" value={state.stats.replies_week} />
-          <button onClick={onExit} className="rounded-full p-2 text-white/50 hover:bg-white/10 hover:text-white" title="Exit (Esc)">
+          <button onClick={onExit} className="rounded-full p-2 text-white/50 hover:bg-white/10 hover:text-white" title="Exit (Esc) · F for fullscreen">
             <X />
           </button>
         </div>

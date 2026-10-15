@@ -1,5 +1,7 @@
-import { BadgeCheck, Copy, Link2, Mic, MonitorPlay, Quote } from "lucide-react"
-import type { State } from "@/lib/api"
+import { useState } from "react"
+import { BadgeCheck, Copy, Link2, Loader2, Mic, MonitorPlay, Quote, RotateCcw } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { api, type State } from "@/lib/api"
 import { JohnAvatar, VoiceNote } from "./bits"
 import { toast } from "./Toast"
 
@@ -89,6 +91,7 @@ export function Profile({ state }: { state: State }) {
         <Card title="Signature phrases" items={p?.signature_phrases} chips />
         <Card title="Background" items={p?.background} />
         <Card title="Never" items={p?.never} />
+        <DemoTools />
         <div className="col-span-2 rounded-2xl border bg-card p-5 shadow-sm">
           <div className="mb-1 font-bold">What the assistant may say</div>
           <p className="mb-3 text-xs text-muted-foreground">Anything not on this page, it hands to John. Money, legal and "is this a pyramid" questions always go to him.</p>
@@ -122,6 +125,32 @@ function Card({ title, items, chips }: { title: string; items?: string[]; chips?
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+/** Rehearsal helper: put the seeded demo back. The WhatsApp link is kept. */
+function DemoTools() {
+  const [busy, setBusy] = useState(false)
+  const reset = async () => {
+    if (!window.confirm("Reset to the demo leads? This deletes every conversation since the last reset. WhatsApp stays linked.")) return
+    setBusy(true)
+    try {
+      await api.resetDemo() // every open dashboard reloads on the "reset" event
+    } catch (e) {
+      toast(`Reset failed: ${e}`, "error")
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="col-span-2 flex items-center gap-4 rounded-2xl border border-dashed bg-card/60 p-5">
+      <div className="min-w-0 flex-1">
+        <div className="font-bold">Demo tools</div>
+        <p className="text-xs text-muted-foreground">Between rehearsals: restore the 10 seeded leads and clear live chats. Seeded voice notes come from the cache, so it's free.</p>
+      </div>
+      <Button variant="outline" onClick={reset} disabled={busy} className="rounded-full">
+        {busy ? <Loader2 className="animate-spin" /> : <RotateCcw />} Reset demo
+      </Button>
     </div>
   )
 }

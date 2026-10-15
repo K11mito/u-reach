@@ -125,6 +125,7 @@ export const api = {
     fetch("/api/contacts", { method: "POST", body: JSON.stringify({ name, phone, context }) }).then(json<Contact>),
   draft: (contact_ids: number[]) =>
     fetch("/api/campaign/draft", { method: "POST", body: JSON.stringify({ contact_ids }) }).then(json<Draft[]>),
+  resetDemo: () => fetch("/api/demo/reset", { method: "POST" }).then(json<{ leads: number; messages: number }>),
   sendCampaign: (drafts: Draft[]) => fetch("/api/campaign/send", { method: "POST", body: JSON.stringify({ drafts }) }).then(json),
 }
 
@@ -148,6 +149,7 @@ type LiveEvent =
   | { type: "run"; data: Run }
   | { type: "campaign"; data: CampaignStatus & { contact_id: number } }
   | { type: "whatsapp"; data: WhatsAppStatus }
+  | { type: "reset"; data: null }
 
 /** Loads dashboard state and keeps it live via SSE. */
 declare global {
@@ -210,6 +212,8 @@ export function useLive() {
             }
           })
           refetch()
+        } else if (ev.type === "reset") {
+          window.location.reload()
         } else if (ev.type === "whatsapp") {
           setState((s) => (s ? { ...s, whatsapp: ev.data } : s))
         } else if (ev.type === "campaign") {
