@@ -7,8 +7,8 @@ let listeners: ((t: Toast[]) => void)[] = []
 let toasts: Toast[] = []
 let next = 1
 
-/** Shows a short message in the corner. Errors stay a little longer; `ms` overrides. */
-export function toast(text: string, kind: Toast["kind"] = "info", ms?: number) {
+/** Shows a short message in the corner. Errors stay a little longer. */
+export function toast(text: string, kind: Toast["kind"] = "info") {
   const t = { id: next++, text: text.replace(/^Error: /, ""), kind }
   toasts = [...toasts, t].slice(-4)
   listeners.forEach((l) => l(toasts))
@@ -17,7 +17,7 @@ export function toast(text: string, kind: Toast["kind"] = "info", ms?: number) {
       toasts = toasts.filter((x) => x.id !== t.id)
       listeners.forEach((l) => l(toasts))
     },
-    ms ?? (kind === "error" ? 6000 : 3000),
+    kind === "error" ? 6000 : 3000,
   )
 }
 
