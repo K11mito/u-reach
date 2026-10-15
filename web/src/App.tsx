@@ -87,74 +87,73 @@ export default function App() {
   ]
 
   return (
-    <div className="flex h-screen min-w-[1100px] gap-4 bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4">
-      <aside className="flex w-[clamp(220px,18vw,300px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/20">
-        <div className="flex items-center gap-2.5 px-2 py-1">
-          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-white shadow-sm">
-            <img src={logo} alt="U-Reach" className="size-7" />
-          </div>
-          <div>
+    <div className="flex h-screen min-w-[1100px] flex-col gap-4 bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4">
+      {/* Full-width brand bar, a shade darker than the nav: the brand sits over the nav column, the motto over the content. */}
+      <header className="relative flex h-16 shrink-0 items-center overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-700 to-purple-800 text-white shadow-lg shadow-indigo-500/20">
+        <div className="relative z-10 flex w-[clamp(220px,18vw,300px)] shrink-0 items-center gap-2.5 px-5">
+          <img src={logo} alt="U-Reach" className="size-9 shrink-0" />
+          <div className="min-w-0">
             <div className="text-lg leading-tight font-extrabold tracking-tight">U-Reach</div>
-            <div className="text-[11px] whitespace-nowrap text-white/65">for U.Center ambassadors</div>
+            <div className="truncate text-[11px] text-white/65">for U.Center ambassadors</div>
           </div>
         </div>
-        <nav className="mt-6 space-y-1">
-          {nav.map((n, i) => (
-            <button
-              key={n.id}
-              onClick={() => go(n.id)}
-              title={`${n.label} (${i + 1})`}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition",
-                page === n.id ? "bg-white text-indigo-700 shadow" : "text-white/85 hover:bg-white/10",
-              )}
-            >
-              <n.icon className="size-4" />
-              <span className="flex-1 text-left">{n.label}</span>
-              {!!n.badge && <span className="min-w-5 rounded-full bg-amber-100 px-1.5 text-center text-[11px] font-semibold text-amber-800 tabular-nums">{n.badge}</span>}
-            </button>
-          ))}
-        </nav>
-        {/* Fills the free space above John's card; on short screens the top is cropped, keeping the robot. */}
-        <div className="relative mt-4 mb-3 min-h-0 flex-1">
-          <img src={robot} alt="" className="absolute bottom-0 left-3 max-h-full w-[80%] object-cover object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
-        </div>
-        <div className="space-y-3 rounded-2xl bg-white/10 p-3">
-          {/* John's photo opens his page: persona, presets and sales playbook. */}
-          <button onClick={() => go("profile")} title="Edit how John's AI sells" className="-m-1 flex w-[calc(100%+0.5rem)] items-center gap-3 rounded-xl p-1 text-left transition hover:bg-white/10">
-            <JohnAvatar size={40} src={state.ambassador.avatar} />
-            <div className="min-w-0">
-              <div className="truncate font-bold">John Klensch</div>
-              <div className="text-xs text-white/70">U.Center ambassador</div>
-            </div>
-          </button>
-          <div className="space-y-1.5 text-xs">
-            <div className="flex items-center gap-2">
-              <Mic className="size-3.5" />
-              {state.ambassador.mock_voice ? "Voice: mock (no clone set)" : "Your voice, ready"}
-            </div>
-            <WhatsAppPill wa={state.whatsapp} onLink={() => setLinkOpen(true)} />
-            {!connected && <div className="text-amber">Live updates reconnecting…</div>}
-          </div>
-        </div>
-      </aside>
+        <div className="relative z-10 ml-2 border-l border-white/15 pl-6 text-xl font-extrabold tracking-tight">Let's Go! Let's Grow!</div>
+        {/* The banner art sits on the right and fades into the header on its left. */}
+        <img src={banner} alt="" className="absolute inset-y-0 right-0 h-full w-auto max-w-[70%] object-cover object-right opacity-80 [mask-image:linear-gradient(to_right,transparent,black_40%)]" />
+      </header>
 
-      <main className="flex min-w-0 flex-1 flex-col gap-4">
-        <header className="relative flex h-16 shrink-0 items-center overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-700 px-6 text-white shadow-lg shadow-indigo-500/20">
-          <div className="relative z-10">
-            <div className="text-lg leading-tight font-extrabold tracking-tight">U-topia built for YOU</div>
-            <div className="text-xs text-white/75">Simple. Yours. Ready when you are.</div>
+      <div className="flex min-h-0 flex-1 gap-4">
+        <aside className="flex w-[clamp(220px,18vw,300px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/20">
+          <nav className="space-y-1">
+            {nav.map((n, i) => (
+              <button
+                key={n.id}
+                onClick={() => go(n.id)}
+                title={`${n.label} (${i + 1})`}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition",
+                  page === n.id ? "bg-white text-indigo-700 shadow" : "text-white/85 hover:bg-white/10",
+                )}
+              >
+                <n.icon className="size-4" />
+                <span className="flex-1 text-left">{n.label}</span>
+                {!!n.badge && <span className="min-w-5 rounded-full bg-amber-100 px-1.5 text-center text-[11px] font-semibold text-amber-800 tabular-nums">{n.badge}</span>}
+              </button>
+            ))}
+          </nav>
+          {/* Fills the free space above John's card; on short screens the top is cropped, keeping the robot. */}
+          <div className="relative mt-4 mb-3 min-h-0 flex-1">
+            <img src={robot} alt="" className="absolute bottom-0 left-1.5 max-h-full w-[80%] object-cover object-[center_76%] opacity-80 [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_94%,transparent)]" />
           </div>
-          {/* The banner art sits on the right and fades into the header on its left. */}
-          <img src={banner} alt="" className="absolute inset-y-0 right-0 h-full w-auto max-w-[70%] object-cover object-right opacity-80 [mask-image:linear-gradient(to_right,transparent,black_40%)]" />
-        </header>
-        {page === "inbox" && (
-          <Inbox contacts={state.contacts} last={state.last ?? {}} messages={messages} loadMessages={loadMessages} runs={runs} onCampaign={() => go("campaign")} />
-        )}
-        {page === "profile" && <Profile state={state} />}
-        {page === "campaign" && <Campaign contacts={state.contacts} statuses={campaign} />}
-        {page === "analytics" && <Analytics state={state} />}
-      </main>
+          <div className="space-y-3 rounded-2xl bg-white/10 p-3">
+            {/* John's photo opens his page: persona, presets and sales playbook. */}
+            <button onClick={() => go("profile")} title="Edit how John's AI sells" className="-m-1 flex w-[calc(100%+0.5rem)] items-center gap-3 rounded-xl p-1 text-left transition hover:bg-white/10">
+              <JohnAvatar size={40} src={state.ambassador.avatar} />
+              <div className="min-w-0">
+                <div className="truncate font-bold">John Klensch</div>
+                <div className="text-xs text-white/70">U.Center ambassador</div>
+              </div>
+            </button>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center gap-2">
+                <Mic className="size-3.5" />
+                {state.ambassador.mock_voice ? "Voice: mock (no clone set)" : "Your voice, ready"}
+              </div>
+              <WhatsAppPill wa={state.whatsapp} onLink={() => setLinkOpen(true)} />
+              {!connected && <div className="text-amber">Live updates reconnecting…</div>}
+            </div>
+          </div>
+        </aside>
+
+        <main className="flex min-w-0 flex-1 flex-col gap-4">
+          {page === "inbox" && (
+            <Inbox contacts={state.contacts} last={state.last ?? {}} messages={messages} loadMessages={loadMessages} runs={runs} onCampaign={() => go("campaign")} />
+          )}
+          {page === "profile" && <Profile state={state} />}
+          {page === "campaign" && <Campaign contacts={state.contacts} statuses={campaign} />}
+          {page === "analytics" && <Analytics state={state} />}
+        </main>
+      </div>
       {linkOpen && <LinkWhatsApp wa={state.whatsapp} onClose={() => setLinkOpen(false)} />}
       <Toaster />
     </div>
