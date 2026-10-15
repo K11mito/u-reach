@@ -1,0 +1,2323 @@
+00:03 Hey everybody, welcome to Among the
+00:06 
+
+00:06 Ferns, the new podcast fireside
+00:10 
+
+00:10 uh experience that we're doing with
+00:13 
+
+00:13 Utopia. Um today is got a very special
+00:17 
+
+00:17 guest. We've got Belaloo BTC.
+00:19 
+
+00:19 >> That's right.
+00:20 
+
+00:20 >> Is that your real name?
+00:21 
+
+00:21 >> Not my real name. Pseudonym.
+00:23 
+
+00:23 >> Pseudonym. Well, just like Satoshi
+00:24 
+
+00:24 Nakamoto, right? What's a pseudonym
+00:27 
+
+00:27 mean?
+00:27 
+
+00:27 >> Uh fake name. fake name, also known as
+00:32 
+
+00:32 doing business as Belaloo BTC. So,
+00:35 
+
+00:35 Belaloo, um feel like you've been in the
+00:39 
+
+00:39 game for a while. When did you start in
+00:41 
+
+00:41 crypto?
+00:42 
+
+00:42 >> First got into Bitcoin in 2016.
+00:45 
+
+00:45 >> 10 years now.
+00:45 
+
+00:45 >> What was the price then?
+00:47 
+
+00:47 >> Uh it was around 1,200 bucks when I
+00:51 
+
+00:51 first got it. Yeah.
+00:56 
+
+00:56 >> 2016. 10 years. Well, congratulations,
+00:58 
+
+00:58 sir. Dude, you made it 10 years in the
+00:60 
+
+00:60 industry. Yeah.
+01:00 
+
+01:00 >> Let's go. Yeah. I started in 2013 was
+01:05 
+
+01:05 when I got I sold an iPhone case for
+01:08 
+
+01:08 half a bitcoin.
+01:09 
+
+01:09 >> Wow.
+01:09 
+
+01:09 >> That was it was custom iPhone case to
+01:12 
+
+01:12 btcquick.com,
+01:13 
+
+01:13 which was like an exchange. I don't
+01:16 
+
+01:16 really remember how I got in touch with
+01:17 
+
+01:17 them, but somehow, you know, they bought
+01:19 
+
+01:19 it. He I remember him asking like, "Can
+01:21 
+
+01:21 I pay you with Bitcoin?" I was like, "Of
+01:22 
+
+01:22 course." Yeah.
+01:23 
+
+01:23 >> It's got to be so that sounds great. And
+01:27 
+
+01:27 because I hadn't had I've been like
+01:28 
+
+01:28 looking at it and studying and trying
+01:29 
+
+01:29 like you know but I hadn't actually
+01:31 
+
+01:31 gotten any Bitcoin. So then I downloaded
+01:33 
+
+01:33 a wallet and then he sent me half a
+01:35 
+
+01:35 bitcoin and then and then I think I
+01:36 
+
+01:36 started using like local Bitcoin
+01:38 
+
+01:38 afterwards that to try and buy and sell
+01:39 
+
+01:39 and I end up launching a Bitcoin ATM in
+01:41 
+
+01:41 the space. But that was the very first
+01:44 
+
+01:44 iteration for me was like you know of of
+01:47 
+
+01:47 of doing you know a financial
+01:50 
+
+01:50 transaction of um of selling a good for
+01:55 
+
+01:55 Bitcoin. I didn't mine it. I didn't buy
+01:56 
+
+01:56 it. Uh I literally earned it, I say.
+01:60 
+
+01:60 >> Well, that's kind of a a similar story
+02:02 
+
+02:02 to my uh getting into Bitcoin, too. And
+02:05 
+
+02:05 just to put into perspective kind of the
+02:07 
+
+02:07 price appreciation, you got a half a
+02:10 
+
+02:10 Bitcoin for a phone case. A half a
+02:12 
+
+02:12 Bitcoin was my salary at my old work as
+02:15 
+
+02:15 an arborist. I was getting paid about a
+02:17 
+
+02:17 half a Bitcoin every uh every two weeks.
+02:20 
+
+02:20 >> They were paying you Bitcoin.
+02:21 
+
+02:21 >> They were paying me.
+02:22 
+
+02:22 >> Wow.
+02:23 
+
+02:23 >> Oh, amazing.
+02:25 
+
+02:25 ahead of the curve for sure. Yeah.
+02:27 
+
+02:27 >> Yeah. Um
+02:29 
+
+02:29 gosh, I just like believed I've been
+02:32 
+
+02:32 such an evangelist for this tech. Like
+02:34 
+
+02:34 just everyone I remember talking like
+02:36 
+
+02:36 the Bank of Canada.
+02:39 
+
+02:39 >> Bitcoin.
+02:40 
+
+02:40 >> Yeah, Bitcoin.
+02:43 
+
+02:43 It's going to change the world. Like you
+02:45 
+
+02:45 just sold all the gold. I don't know why
+02:47 
+
+02:47 you did that. Crazy, but you should put
+02:50 
+
+02:50 Bitcoin on the balance sheet. And you
+02:53 
+
+02:53 know that led to a question of like how
+02:56 
+
+02:56 much Bitcoin how much Bitcoin should we
+02:58 
+
+02:58 buy?
+03:00 
+
+03:00 How much Bitcoin should one buy?
+03:02 
+
+03:02 >> Uh this is a very personalized question
+03:06 
+
+03:06 and I think for me the way I tell people
+03:09 
+
+03:09 is just start with something anything
+03:11 
+
+03:11 just anything and then that's going to
+03:14 
+
+03:14 cause you to start to learn about it and
+03:16 
+
+03:16 then the more you learn about Bitcoin
+03:19 
+
+03:19 the higher your allocation becomes. I
+03:21 
+
+03:21 mean, you know, not financial advice
+03:23 
+
+03:23 here, but, you know, as you go down the
+03:25 
+
+03:25 the Bitcoin rabbit hole, you a grow more
+03:27 
+
+03:27 comfortable with it, but b you kind of
+03:29 
+
+03:29 realize the problem that it's solving
+03:32 
+
+03:32 and you just naturally increase your
+03:34 
+
+03:34 allocation. So, if you start at 1% and
+03:37 
+
+03:37 dive deep, now all of a sudden you look
+03:39 
+
+03:39 back and you're at 10%. And then the
+03:42 
+
+03:42 price appreciation skews that as well,
+03:44 
+
+03:44 too.
+03:45 
+
+03:45 >> Yeah. I think it was like I mean Tim
+03:47 
+
+03:47 Draper it was Tim Draper I think he said
+03:49 
+
+03:49 like a 100 Bitcoin was like you know 100
+03:51 
+
+03:51 Bitcoin you'll be able to like basically
+03:54 
+
+03:54 you know you'll be good.
+03:55 
+
+03:55 >> Yeah. You should be good for good
+03:57 
+
+03:57 forever. I dude Tim what a legend. I
+03:60 
+
+03:60 remember when he bought all those
+04:01 
+
+04:01 Bitcoin from Silk Road from the FBI or
+04:04 
+
+04:04 the Department of Justice. What was
+04:06 
+
+04:06 that? He bought he bought 27,000 Bitcoin
+04:08 
+
+04:08 at $777.
+04:10 
+
+04:10 [music]
+04:10 
+
+04:10 >> Legend.
+04:12 
+
+04:12 >> Legend.
+04:13 
+
+04:13 >> Legend. Bought it all. there was an open
+04:14 
+
+04:14 auction for these and like you know some
+04:17 
+
+04:17 private bids were submitted. He was like
+04:19 
+
+04:19 I want it all and I'll pay like a
+04:22 
+
+04:22 premium on it and for I know Tim talking
+04:24 
+
+04:24 to him he was like well he's like you
+04:26 
+
+04:26 know I know I'm getting those coins like
+04:28 
+
+04:28 from the DOJ so like there's like a
+04:31 
+
+04:31 story to those coins and it's also like
+04:33 
+
+04:33 you know they technically I guess really
+04:35 
+
+04:35 clean but
+04:38 
+
+04:38 yeah just a thought.
+04:41 
+
+04:41 Yeah. Getting paid in Bitcoin.
+04:44 
+
+04:44 >> Yeah.
+04:45 
+
+04:45 >> And so that started with the arborism,
+04:47 
+
+04:47 but that continues too.
+04:49 
+
+04:49 >> Yeah. I've uh started a company. We have
+04:52 
+
+04:52 a Discord server where we bring people
+04:55 
+
+04:55 together, teach them how to trade, teach
+04:57 
+
+04:57 them about Bitcoin, teach them about
+04:58 
+
+04:58 self custody, lots of different stuff.
+05:01 
+
+05:01 Any anything the community wants to
+05:02 
+
+05:02 learn, we we teach them about. [music]
+05:04 
+
+05:04 >> And what And how do people join the
+05:06 
+
+05:06 community? That sounds amazing.
+05:07 
+
+05:07 >> Yeah. you just got a lot of people that
+05:09 
+
+05:09 are like, you know, interested in
+05:11 
+
+05:11 learning more. And I know with trading
+05:13 
+
+05:13 it's always like, you know, where can
+05:14 
+
+05:14 you get,
+05:15 
+
+05:15 >> you know, intelligence because that's
+05:18 
+
+05:18 the big question is where's the market
+05:19 
+
+05:19 moving?
+05:20 
+
+05:20 >> Yeah. Yeah. Uh blackbox.pro bloox.pro
+05:25 
+
+05:25 is our website for you to learn more. Uh
+05:27 
+
+05:27 you can also follow me on Twitter at uh
+05:29 
+
+05:29 blue_btc.
+05:31 
+
+05:31 That's b a l o
+05:34 
+
+05:34 >> blue BTC. Yeah.
+05:36 
+
+05:36 >> Blkb [music]
+05:38 
+
+05:38 uh o blk b ox.pro.
+05:41 
+
+05:41 >> Yeah.
+05:42 
+
+05:42 >> And so what can people expect like you
+05:44 
+
+05:44 know how have you found um [music] you
+05:48 
+
+05:48 know the community or the appetite for
+05:50 
+
+05:50 the solution?
+05:52 
+
+05:52 >> Well, I mean it's it's very market
+05:54 
+
+05:54 dependent. Price kind of dictates the
+05:57 
+
+05:57 the thirst of the crowd to kind of learn
+05:59 
+
+05:59 about Bitcoin. But um yeah, I mean a lot
+06:02 
+
+06:02 of people get into it because of number
+06:04 
+
+06:04 go up and they get in because of number
+06:08 
+
+06:08 go up and they stay because they realize
+06:09 
+
+06:09 that it's a an important product that's
+06:12 
+
+06:12 solving a a pretty important problem in
+06:15 
+
+06:15 the world and that's the debasement of
+06:18 
+
+06:18 fiat currencies,
+06:20 
+
+06:20 >> right? And you you keep mentioning
+06:22 
+
+06:22 Bitcoin and but there's other coins. How
+06:26 
+
+06:26 do you feel about other coins?
+06:28 
+
+06:28 I feel like most of the market is kind
+06:31 
+
+06:31 of a test net for Bitcoin. I know that's
+06:34 
+
+06:34 a very controversial take. Um there are
+06:37 
+
+06:37 a lot of legitimate projects that are
+06:39 
+
+06:39 trying to do legitimate things. Um but
+06:43 
+
+06:43 when I me personally when I look at the
+06:45 
+
+06:45 blockchain itself, I feel like
+06:48 
+
+06:48 over time the internet of value transfer
+06:52 
+
+06:52 is going to consolidate onto the Bitcoin
+06:54 
+
+06:54 network. Now over time can be 30 years.
+06:57 
+
+06:57 I don't know. But uh I do feel like
+06:60 
+
+06:60 we're kind of in the early days of the
+07:01 
+
+07:01 internet. In the early days of the
+07:03 
+
+07:03 internet, there was like AOL online.
+07:05 
+
+07:05 There was all these little private um
+07:07 
+
+07:07 you know, college internets and then we
+07:10 
+
+07:10 had the open internet. So there was
+07:12 
+
+07:12 separate internets. Now we all use one
+07:14 
+
+07:14 internet. I kind of feel like
+07:16 
+
+07:16 blockchain's the same, but you know,
+07:18 
+
+07:18 there's lots of people that disagree
+07:19 
+
+07:19 with me on that.
+07:20 
+
+07:20 >> Uh yeah, I disagree with you on that.
+07:22 
+
+07:22 But it's cool. I totally respect that,
+07:24 
+
+07:24 too. And you know, um, I remember
+07:27 
+
+07:27 listening to Andreas Antonopoulos in
+07:29 
+
+07:29 2014 at the Toronto Bitcoin Expo
+07:34 
+
+07:34 and there was a kid named Vitalik who
+07:37 
+
+07:37 had a little booth there. Um, and it's
+07:39 
+
+07:39 an Ethereum behind it and like you know
+07:41 
+
+07:41 that was Genesis kind of like I think
+07:44 
+
+07:44 they were crowdfunding at that time.
+07:46 
+
+07:46 Wow. Um, but anyways, uh, the cool thing
+07:49 
+
+07:49 about Andreas's speech was he just
+07:53 
+
+07:53 believed that it was about choice. Like,
+07:54 
+
+07:54 you know, what Bitcoin, what the future
+07:58 
+
+07:58 unlocks is choice. We were born as
+08:02 
+
+08:02 Canadians, like in the Canadian dollar,
+08:04 
+
+08:04 we were forced to use. It was, it was
+08:06 
+
+08:06 not, we did not have choice. One is
+08:08 
+
+08:08 another. And but with the advent of
+08:13 
+
+08:13 Bitcoin and now I'll just say crypto as
+08:16 
+
+08:16 well and other other vehicles, we have
+08:19 
+
+08:19 been freed from the lockin
+08:24 
+
+08:24 decision that was put upon us by the
+08:26 
+
+08:26 system. Now we have choice. And he
+08:28 
+
+08:28 envisioned a future where you can send
+08:32 
+
+08:32 value in whatever you want and you know
+08:34 
+
+08:34 the recipient can receive value in
+08:36 
+
+08:36 whatever they want. And I got into the
+08:39 
+
+08:39 space like you know originally as like
+08:41 
+
+08:41 an acolyte of Ron Paul and like you know
+08:44 
+
+08:44 looking for like a a a solution to the
+08:48 
+
+08:48 Fed and Federal and and the fiat [music]
+08:51 
+
+08:51 money printing you know problem and I
+08:54 
+
+08:54 don't really feel that stable coins like
+08:56 
+
+08:56 you know solve that at all. it's
+08:59 
+
+08:59 actually, you know, kind of furtherance
+09:02 
+
+09:02 of they kind of represent,
+09:04 
+
+09:04 you know, a light CBDC, if you will, or
+09:07 
+
+09:07 a one world dollar. Um, but I've also
+09:12 
+
+09:12 like just accept, you know what, people
+09:14 
+
+09:14 like that stability. They like to not
+09:16 
+
+09:16 have the the they like to price things
+09:19 
+
+09:19 in US dollars. It's understandable.
+09:21 
+
+09:21 I spent so much time trying to change
+09:24 
+
+09:24 and like you know move people into the
+09:26 
+
+09:26 Bitcoin standard kind of mentality like
+09:29 
+
+09:29 let's price things in bits for a long
+09:32 
+
+09:32 time sats and bits my bits make more
+09:35 
+
+09:35 sense but it's it just
+09:38 
+
+09:38 >> you know
+09:40 
+
+09:40 we can choose I really believe in
+09:43 
+
+09:43 Bitcoin and you watch Bitcoin is such a
+09:45 
+
+09:45 behemoth too it moves the market like it
+09:46 
+
+09:46 goes everything kind of follow follows
+09:48 
+
+09:48 it and I think just as we have further
+09:49 
+
+09:49 digitization like Bitcoin,
+09:52 
+
+09:52 you know, it's really to I think it's,
+09:55 
+
+09:55 you know, wasn't intended to be like,
+09:58 
+
+09:58 you know, the digital gold, but that's
+10:01 
+
+10:01 kind of
+10:02 
+
+10:02 >> that seems to be where it's at right
+10:03 
+
+10:03 now. I mean, we'll see what happens
+10:06 
+
+10:06 later on and as more,
+10:08 
+
+10:08 you know, layers are built on top of it
+10:10 
+
+10:10 and more functionality is added to it.
+10:13 
+
+10:13 But, uh, yeah, I I agree. I agree with
+10:16 
+
+10:16 the kind of free market approach to um
+10:20 
+
+10:20 different blockchains giving access and
+10:23 
+
+10:23 freedom to choose. I I agree with that
+10:25 
+
+10:25 for sure. I do like how stable coins
+10:29 
+
+10:29 kind of force people into using wallets
+10:31 
+
+10:31 though. So that's that's a big benefit
+10:33 
+
+10:33 is you get
+10:34 
+
+10:34 >> Absolutely.
+10:34 
+
+10:34 >> they become cryptonative without
+10:36 
+
+10:36 >> absolutely and like you know with with
+10:38 
+
+10:38 with Utopia we're kind of bringing
+10:41 
+
+10:41 people in in the stable coin and then
+10:45 
+
+10:45 you know then you're exposed and then
+10:47 
+
+10:47 then you know then it becomes much
+10:49 
+
+10:49 easier to swap out.
+10:51 
+
+10:51 >> You're on the rails to convert. Okay. Do
+10:54 
+
+10:54 you want to do you want to choose the
+10:56 
+
+10:56 Bitcoin plan? Okay. Do you want a dollar
+10:58 
+
+10:58 cost average? like okay let's set up
+10:60 
+
+10:60 let's let's let's set up the program for
+11:02 
+
+11:02 this like you know these are all kind of
+11:03 
+
+11:03 things that can you know come up but we
+11:05 
+
+11:05 need to kind of bring them in and so the
+11:08 
+
+11:08 stable coins I think are a nice uh a
+11:11 
+
+11:11 nice pathway for that and [music] it's
+11:14 
+
+11:14 not this isn't an I think anymore this
+11:16 
+
+11:16 is like validated we're seeing
+11:20 
+
+11:20 adoption kind of at scale globally right
+11:22 
+
+11:22 now and just you know massive increase
+11:26 
+
+11:26 so but ultimately as you come And then
+11:28 
+
+11:28 they're like, "Okay." So, cuz at the end
+11:30 
+
+11:30 of the day, like what makes number go
+11:32 
+
+11:32 up.
+11:34 
+
+11:34 >> I mean, adoption, demand,
+11:36 
+
+11:36 >> demand [music] like the buying pressure
+11:39 
+
+11:39 needs to be bigger than the selling
+11:41 
+
+11:41 pressure. If there's more buying
+11:42 
+
+11:42 pressure, then there's selling pressure,
+11:44 
+
+11:44 number goes up. If there's more selling
+11:46 
+
+11:46 pressure than buying pressure, number
+11:48 
+
+11:48 goes down. like that's like you know so
+11:50 
+
+11:50 how like from a I remember from a
+11:52 
+
+11:52 Bitcoin perspective always thinking get
+11:54 
+
+11:54 paid in Bitcoin get um you know dollar
+11:58 
+
+11:58 cost average set up like long-term
+12:01 
+
+12:01 vaults like set it and forget it like
+12:03 
+
+12:03 you know how do you you know move and I
+12:05 
+
+12:05 think that's a lot of like you know like
+12:07 
+
+12:07 the sailor strategy like never sell your
+12:10 
+
+12:10 Bitcoin and like the Trump strate I
+12:12 
+
+12:12 remember when Trump at Bitcoin
+12:14 
+
+12:14 conference 24 was like never sell your
+12:18 
+
+12:18 Bitcoin I was Oh my god. Like that is
+12:20 
+
+12:20 just like the worst. That was like, you
+12:23 
+
+12:23 know, as someone that really just
+12:25 
+
+12:25 believed that like this is the tech,
+12:26 
+
+12:26 like never selling your Bitcoin. It's
+12:28 
+
+12:28 like never use your Bitcoin and then
+12:30 
+
+12:30 talking to like people that just like,
+12:32 
+
+12:32 you know, are hoarding Bitcoin versus
+12:34 
+
+12:34 like, you know, ever like saying like,
+12:37 
+
+12:37 "Hey, let's like why don't we exchange
+12:40 
+
+12:40 in this?" Yeah. Cuz it works, right?
+12:42 
+
+12:42 It's like like do you have a w like at a
+12:44 
+
+12:44 crypto conference like asking people
+12:46 
+
+12:46 like, "Do you have a wallet on your
+12:47 
+
+12:47 phone?" like why would I ever do that?
+12:50 
+
+12:50 Like that's like an obssec nightmare.
+12:52 
+
+12:52 Like I don't I'm like bro
+12:54 
+
+12:54 >> no. It's like you need like a like you
+12:56 
+
+12:56 know you don't keep your whole big You
+12:58 
+
+12:58 don't walk around with your safe with
+12:60 
+
+12:60 all your money.
+13:01 
+
+13:01 >> Exactly.
+13:01 
+
+13:01 >> You keep a couple hundred bucks like you
+13:03 
+
+13:03 know in a hall wallet
+13:04 
+
+13:04 >> called a wallet for a reason.
+13:06 
+
+13:06 >> Exactly. Exactly. not bald like you know
+13:08 
+
+13:08 there's like just recognize and and my
+13:11 
+
+13:11 my call always to everyone was like you
+13:13 
+
+13:13 know just like encourage other people
+13:15 
+
+13:15 like offer them Bitcoin teach them show
+13:18 
+
+13:18 them and uh so I feel like you know but
+13:22 
+
+13:22 it's it's it's been this eb and flow and
+13:25 
+
+13:25 you know from my feelings like in the
+13:27 
+
+13:27 beginning like I just like this is going
+13:29 
+
+13:29 to change everything like everything is
+13:32 
+
+13:32 going to change and we're going to have
+13:37 
+
+13:37 people businesses accepting amounts in
+13:40 
+
+13:40 Bitcoin. Everyone needs a wallet and
+13:43 
+
+13:43 then watching the complexities of it and
+13:46 
+
+13:46 being like, you know, really optimistic
+13:49 
+
+13:49 and enthusiastic and looking for the
+13:52 
+
+13:52 solutions like I've tested so many
+13:54 
+
+13:54 different walls. I've set up so many
+13:56 
+
+13:56 friends and, you know, I've watched a
+13:58 
+
+13:58 lot of my friends um you know, have a
+14:01 
+
+14:01 really great kind of return. Like I
+14:03 
+
+14:03 remember I paid one friend for a canoe
+14:05 
+
+14:05 trip in Bitcoin. Um you know years later
+14:08 
+
+14:08 he crashed his truck and he bought a new
+14:11 
+
+14:11 truck with uh with that little $200 in
+14:14 
+
+14:14 Bitcoin that I had sent to him.
+14:15 
+
+14:15 >> Yeah.
+14:16 
+
+14:16 >> Oh man. [laughter]
+14:19 
+
+14:19 Oh man. Uh but I also have friends that
+14:22 
+
+14:22 bought Bitcoin and lost the keys,
+14:24 
+
+14:24 >> right?
+14:25 
+
+14:25 >> Yeah.
+14:26 
+
+14:26 >> Yeah.
+14:27 
+
+14:27 >> Yeah. Custody is a responsibility and
+14:30 
+
+14:30 it's got to be taken seriously and
+14:32 
+
+14:32 [music] you know education is kind of
+14:34 
+
+14:34 the first step for that.
+14:36 
+
+14:36 >> And like what do you if you've got like
+14:38 
+
+14:38 family members like what do you kind of
+14:40 
+
+14:40 recommend to them? Like where where
+14:41 
+
+14:41 where would you get started?
+14:45 
+
+14:45 >> I mean
+14:47 
+
+14:47 I've given up on trying to orange pill
+14:49 
+
+14:49 my family members. [laughter]
+14:50 
+
+14:50 if they were receptive where I would
+14:52 
+
+14:52 start them is is probably you know a
+14:55 
+
+14:55 simple
+14:57 
+
+14:57 u lightning wallet like wallet of
+14:59 
+
+14:59 Satoshi I think that's super easy and
+15:01 
+
+15:01 then once they just get [music] their
+15:03 
+
+15:03 head wrapped around the idea of
+15:05 
+
+15:05 transferring value um you know check in
+15:09 
+
+15:09 with them and see what their balances
+15:10 
+
+15:10 are and if it's getting to be you know
+15:12 
+
+15:12 [music] a thousand bucks or more then
+15:14 
+
+15:14 maybe we we start talking about onchain
+15:17 
+
+15:17 Bitcoin and and other ways um to secure
+15:20 
+
+15:20 their funds. But you got to start slow.
+15:23 
+
+15:23 It's it's so new. It's such a big topic.
+15:26 
+
+15:26 It's such a new way of operating
+15:29 
+
+15:29 in value on the internet that uh you
+15:34 
+
+15:34 know throwing people in the deep end and
+15:37 
+
+15:37 having them do like the industry best
+15:39 
+
+15:39 practices right off the the rip. It's
+15:42 
+
+15:42 not really realistic at least where we
+15:44 
+
+15:44 are right now.
+15:44 
+
+15:44 >> You tell like someone who doesn't know
+15:46 
+
+15:46 anything like, "Okay, get a seed signer
+15:48 
+
+15:48 wallet. You're going to get the dice.
+15:49 
+
+15:49 You're going to roll the dice. You're
+15:51 
+
+15:51 going to pick out the little tiles.
+15:53 
+
+15:53 You're going to roll the dice. You're
+15:54 
+
+15:54 going to program it. It's like what?
+15:56 
+
+15:56 Like,
+15:56 
+
+15:56 >> yeah. It's like
+15:58 
+
+15:58 >> download Wendy's. It's like
+16:01 
+
+16:01 >> download Wallet of Satoshi. It's done.
+16:03 
+
+16:03 [laughter]
+16:05 
+
+16:05 >> Yeah. I mean, I like, you know, I would
+16:07 
+
+16:07 say Wal Satoshi. I mean, personally, no.
+16:10 
+
+16:10 I would I would not recommend that one.
+16:12 
+
+16:12 I would recommend
+16:12 
+
+16:12 >> Well, I'm excited for the launch. I
+16:14 
+
+16:14 would recommend I would recommend Utopia
+16:16 
+
+16:16 like you know I would recommend w I
+16:19 
+
+16:19 recommended edge wallet over the years
+16:21 
+
+16:21 because
+16:22 
+
+16:22 >> like you know wallet of Satoshi is just
+16:24 
+
+16:24 a bitcoin only lightning solution but
+16:27 
+
+16:27 people have you know thirst for other
+16:30 
+
+16:30 ones like people want to sometimes play
+16:32 
+
+16:32 in the salano world or the ethereum
+16:34 
+
+16:34 world or like you know as we're moving
+16:37 
+
+16:37 into like you know the realm of
+16:38 
+
+16:38 tokenized stocks and stable coins and
+16:41 
+
+16:41 you know you need you need additional
+16:43 
+
+16:43 access to this. I encourage people like,
+16:46 
+
+16:46 you know, sign up for Coinbase. Sure.
+16:48 
+
+16:48 And but it's understand like when you're
+16:50 
+
+16:50 dealing with an exchange, they're
+16:52 
+
+16:52 holding your money. They know who you
+16:54 
+
+16:54 are. They know the money that's coming
+16:55 
+
+16:55 in. They know that the money that's
+16:57 
+
+16:57 going out. If you use an exchange to buy
+16:60 
+
+16:60 Bitcoin, um, [music] you know, I like
+17:03 
+
+17:03 just just kind of smart policy to after
+17:06 
+
+17:06 you get it, move it out of that
+17:08 
+
+17:08 exchange. like move it out to like you
+17:10 
+
+17:10 know a a self-custody wallet that you're
+17:13 
+
+17:13 not broadcasting um you know ownership
+17:16 
+
+17:16 of. There's it's uh you know privacy is
+17:21 
+
+17:21 security
+17:22 
+
+17:22 um be like you know be conscious of your
+17:27 
+
+17:27 privacy uh and like you know how you
+17:29 
+
+17:29 operate in the space. So
+17:31 
+
+17:31 >> yeah I agree.
+17:33 
+
+17:33 >> Yeah. Okay. So what what's what's what
+17:35 
+
+17:35 are you excited about right now? Uh I'm
+17:39 
+
+17:39 excited
+17:40 
+
+17:40 at at uh like projects or just like the
+17:43 
+
+17:43 way the industry is going
+17:45 
+
+17:45 >> in the industry. Well, I mean because
+17:47 
+
+17:47 one of the questions that we wanted to
+17:48 
+
+17:48 like ask was like you know where we
+17:50 
+
+17:50 where it was before and where where we
+17:53 
+
+17:53 kind of are now and like what you think
+17:55 
+
+17:55 is kind of maybe next.
+17:56 
+
+17:56 >> Yeah. Well, the thing that I have
+17:59 
+
+17:59 observed as someone who lives on a
+18:01 
+
+18:01 Bitcoin standard is it's just getting so
+18:03 
+
+18:03 much easier to operate in the world like
+18:06 
+
+18:06 the the gap between traditional finance
+18:10 
+
+18:10 and decentralized finance is closing and
+18:12 
+
+18:12 and it's becoming a lot more
+18:14 
+
+18:14 interconnected. [music] So, my ability
+18:16 
+
+18:16 [clears throat] to be a cryptonative
+18:18 
+
+18:18 person and operate in the real world and
+18:21 
+
+18:21 make real purchases, buy coffee, pay
+18:23 
+
+18:23 rent, do this, do that has gotten way
+18:26 
+
+18:26 easier. And uh I think that that's a
+18:30 
+
+18:30 huge step forward and it's it's a trend
+18:34 
+
+18:34 that's going in the right direction and
+18:36 
+
+18:36 I'm I'm excited about that. It just
+18:38 
+
+18:38 makes life easy.
+18:39 
+
+18:39 >> I'm excited about that, too. And it's
+18:40 
+
+18:40 like, you know, we look at the buy and
+18:42 
+
+18:42 the sell pressure too. It's like you
+18:44 
+
+18:44 know because this was especially in the
+18:46 
+
+18:46 beginning I remember there was like
+18:48 
+
+18:48 bitay which enabled you to spend your
+18:51 
+
+18:51 bitcoin and effectively just sell
+18:53 
+
+18:53 pressure.
+18:54 
+
+18:54 >> Yeah.
+18:54 
+
+18:54 >> I was like it was effectively just sell
+18:56 
+
+18:56 pressure. I was always looking for the
+18:57 
+
+18:57 reverse pay like I want to sell the
+18:59 
+
+18:59 goods. I want to sell the iPhone case
+19:02 
+
+19:02 for like the customer pays you know with
+19:05 
+
+19:05 a credit card and I settle in bitcoin.
+19:07 
+
+19:07 So it creates like you know for those
+19:09 
+
+19:09 who choose you get that easy offramp.
+19:11 
+
+19:11 that you know we made the solution so
+19:13 
+
+19:13 that if you have the bitcoin you can
+19:16 
+
+19:16 like you know [music] you can spend it
+19:17 
+
+19:17 which creates kind of net sell pressure
+19:19 
+
+19:19 but I also know we're now just in this
+19:21 
+
+19:21 like agentic connected like vibe coding
+19:25 
+
+19:25 solutionoriented world where like I
+19:27 
+
+19:27 think about like you know the next bit
+19:30 
+
+19:30 or like you know the guys over castle
+19:32 
+
+19:32 are doing like you know they're enabling
+19:34 
+
+19:34 you if you have a Shopify site you can
+19:36 
+
+19:36 say do you want from 10% up to 100% of
+19:40 
+
+19:40 your sale to convert in Bitcoin and send
+19:42 
+
+19:42 you that it's it's happening. Yeah. And
+19:45 
+
+19:45 if you want to pay like you know if you
+19:48 
+
+19:48 want to go and like tap tap pay you
+19:50 
+
+19:50 might be spending off Bitcoin but you
+19:52 
+
+19:52 can also now like be borrowing against
+19:55 
+
+19:55 Bitcoin and unlocking stable coins like
+19:58 
+
+19:58 you know as a collateral that's owed
+20:00 
+
+20:00 back but then you can be using that to
+20:03 
+
+20:03 go and pay and save. So you don't
+20:04 
+
+20:04 actually need to sell the Bitcoin
+20:06 
+
+20:06 anymore. you can borrow against the
+20:08 
+
+20:08 Bitcoin, use that, you know, pay it back
+20:11 
+
+20:11 and and and you know, have those. So,
+20:13 
+
+20:13 like that just was that was that we knew
+20:15 
+
+20:15 that was coming, but now that's
+20:16 
+
+20:16 available.
+20:17 
+
+20:17 >> Yeah,
+20:17 
+
+20:17 >> that's here.
+20:18 
+
+20:18 >> It's here.
+20:20 
+
+20:20 >> Wow. Have you ever done any hackathons
+20:22 
+
+20:22 before?
+20:23 
+
+20:23 >> I have not actually.
+20:24 
+
+20:24 >> No.
+20:25 
+
+20:25 >> So, this is going to be my first one.
+20:27 
+
+20:27 I'm really excited about this. Like
+20:28 
+
+20:28 really fun. And uh you know what? like
+20:31 
+
+20:31 the like I I'm I'm thinking because I'm
+20:34 
+
+20:34 I'm really excited because we're we're
+20:36 
+
+20:36 you know we've got the the flow summit
+20:38 
+
+20:38 happening and then we've got the
+20:40 
+
+20:40 hackathon you know happening as well.
+20:42 
+
+20:42 So, we're trying to we're we're bringing
+20:44 
+
+20:44 together like, you know, the Utopia
+20:46 
+
+20:46 Maxis community and then we're going to
+20:48 
+
+20:48 bring together like the builders and,
+20:51 
+
+20:51 you know, Maya uh has built this Yubot
+20:55 
+
+20:55 like which she's an AI engineer and
+20:58 
+
+20:58 she's really excited about this and
+21:00 
+
+21:00 she's like,
+21:01 
+
+21:01 >> "Oh, yeah. It's like, you know, it's
+21:03 
+
+21:03 like your chat GPT, but it'll be able to
+21:05 
+
+21:05 like buy a flight. like go actually like
+21:07 
+
+21:07 do the flight purchase and I'll do the
+21:09 
+
+21:09 hotel bookings and because we have the
+21:12 
+
+21:12 wallet layer it's like know we can kind
+21:14 
+
+21:14 of connect through that and then with
+21:16 
+
+21:16 like
+21:16 
+
+21:16 >> and and
+21:18 
+
+21:18 >> you know when I look at our youth center
+21:19 
+
+21:19 and our membership it's like they're
+21:21 
+
+21:21 looking for some alternatives and some
+21:23 
+
+21:23 cool things. So if like we could just
+21:26 
+
+21:26 provide an alternative to chat GPT or to
+21:28 
+
+21:28 Grock or to Claude. Yeah.
+21:29 
+
+21:29 >> It's like you know and pay that and it's
+21:31 
+
+21:31 like again like with Utopia like our
+21:34 
+
+21:34 members own it. They have shared
+21:36 
+
+21:36 ownership. They have stake in they have
+21:38 
+
+21:38 stake in the project and you have stake
+21:40 
+
+21:40 as well in like you know Grock or Claude
+21:42 
+
+21:42 or like you know so it's it's like you
+21:44 
+
+21:44 know all these digital products. It's
+21:46 
+
+21:46 powerful. That's really that's a really
+21:48 
+
+21:48 interesting
+21:50 
+
+21:50 kind of
+21:52 
+
+21:52 thing that's happening is like not only
+21:54 
+
+21:54 are we create you're a pioneer by the
+21:56 
+
+21:56 way creating the rails to allow agentic
+22:00 
+
+22:00 AI to actually execute purchases but
+22:03 
+
+22:03 that's a trend that's going to continue
+22:04 
+
+22:04 where you'll have AIs talking with other
+22:06 
+
+22:06 AIs where they're paying each other and
+22:10 
+
+22:10 like having a percentage of that payment
+22:13 
+
+22:13 rail where you you own that payment rail
+22:16 
+
+22:16 where the, you know, the agentic world
+22:18 
+
+22:18 of AI starts taking off and they all
+22:21 
+
+22:21 start trading with each other to do
+22:22 
+
+22:22 tasks and this and that. It's it's going
+22:25 
+
+22:25 to be a pretty crazy world. The next
+22:28 
+
+22:28 decade is going to be nuts.
+22:29 
+
+22:29 >> It's going to like it's it's like on
+22:31 
+
+22:31 this path towards
+22:34 
+
+22:34 seamless experience. Like that was
+22:36 
+
+22:36 literally like you know what I've been
+22:38 
+
+22:38 saying seamless experience. It just
+22:40 
+
+22:40 happens naturally. a lot of like the you
+22:44 
+
+22:44 know the technical issues that we deal
+22:47 
+
+22:47 with the the the setup the bugs like
+22:49 
+
+22:49 glitches this system talking to that
+22:51 
+
+22:51 system not understanding the language
+22:53 
+
+22:53 between the two no it's just like you
+22:56 
+
+22:56 know like think it achieved and it's you
+22:59 
+
+22:59 know just thinking even like where we
+23:01 
+
+23:01 are today like from from at least for me
+23:04 
+
+23:04 versus a couple years ago like you know
+23:06 
+
+23:06 the the power of the individual so like
+23:11 
+
+23:11 now is the time like you know for anyone
+23:14 
+
+23:14 that's one looking to build or create
+23:16 
+
+23:16 it's like just challenge yourself like
+23:20 
+
+23:20 one thing I'd say is don't set a low bar
+23:22 
+
+23:22 like set a high bar like go go go go
+23:25 
+
+23:25 after it try it like you know or and you
+23:27 
+
+23:27 can and you can experiment and and one
+23:29 
+
+23:29 of I'd say like try and fail fast on
+23:32 
+
+23:32 these things like you know set yourself
+23:33 
+
+23:33 a time limit if you want to build
+23:34 
+
+23:34 something create something that's why
+23:36 
+
+23:36 like like the idea of the hackathon it's
+23:38 
+
+23:38 like okay you got like you know 24 hours
+23:41 
+
+23:41 to or 28 hours to create you know a
+23:46 
+
+23:46 functioning product or service and you
+23:49 
+
+23:49 know now and then back in the day it
+23:51 
+
+23:51 would be like okay you'd make it you'd
+23:53 
+
+23:53 hack it people would be coding and then
+23:55 
+
+23:55 it's like you'd present it and then like
+23:58 
+
+23:58 you know but now it's like okay you can
+24:00 
+
+24:00 hack it you can like we can also feed
+24:03 
+
+24:03 like okay to get ready for judging like
+24:06 
+
+24:06 here are some prompts like create use
+24:08 
+
+24:08 Higsfield to create like a video demo of
+24:11 
+
+24:11 your product and like here's what the
+24:13 
+
+24:13 demo should kind of go over and it's
+24:15 
+
+24:15 like you know who's your ICP and this
+24:18 
+
+24:18 and that and like no write a press
+24:20 
+
+24:20 release about this going to market like
+24:22 
+
+24:22 you know so that we kind of understand
+24:23 
+
+24:23 cuz
+24:24 
+
+24:24 >> have you ever heard of Jeff Bezos's
+24:26 
+
+24:26 working backwards model?
+24:27 
+
+24:27 >> No.
+24:29 
+
+24:29 So this is one of like this I think this
+24:31 
+
+24:31 is one of Jeff Bezos's keys to success
+24:35 
+
+24:35 was as he was growing his company and
+24:36 
+
+24:36 his organization he had this method this
+24:40 
+
+24:40 process called working backwards. So if
+24:44 
+
+24:44 anybody came to him with a new proposal
+24:46 
+
+24:46 or a new feature or a new direction to
+24:49 
+
+24:49 take he would say present it to me in a
+24:51 
+
+24:51 press release of the ideal outcome of
+24:55 
+
+24:55 what you want this to look like. Present
+24:57 
+
+24:57 it to me in a press release. So like one
+24:59 
+
+24:59 page, one and a half pages like spoken
+25:01 
+
+25:01 language clear of like this is what I
+25:03 
+
+25:03 want to get across and then it would
+25:05 
+
+25:05 come with maybe like you know uh an
+25:08 
+
+25:08 accompanying like you know checklist or
+25:09 
+
+25:09 action list. But I like really believe
+25:12 
+
+25:12 in this because press releases as like
+25:15 
+
+25:15 the way that you want your company or
+25:18 
+
+25:18 your project to be presented to the
+25:20 
+
+25:20 world and understood by the world oftent
+25:22 
+
+25:22 times like in you know plain speech if
+25:26 
+
+25:26 you will or clear speech. So you know in
+25:29 
+
+25:29 this age I just like always like you
+25:31 
+
+25:31 know I'll make a proposal make a big
+25:32 
+
+25:32 dog. It's like okay now turn this into a
+25:34 
+
+25:34 press release make it very delightful
+25:36 
+
+25:36 and very bullish and it's like boom.
+25:39 
+
+25:39 Yeah.
+25:39 
+
+25:39 >> Okay. And then we can like you know you
+25:42 
+
+25:42 can sync on it as as people. So Bezos
+25:44 
+
+25:44 like use that process and you know I've
+25:47 
+
+25:47 been using that process for years and
+25:48 
+
+25:48 I'd encourage like you know everybody to
+25:50 
+
+25:50 do that and so I think that'll be like
+25:52 
+
+25:52 you know part of you know this this you
+25:55 
+
+25:55 know you we've just filmed a couple
+25:57 
+
+25:57 videos before this like talking about
+25:59 
+
+25:59 the flow summit, you know, bring
+26:01 
+
+26:01 together all these people and it's like
+26:05 
+
+26:05 I we've done you've done bunch of
+26:07 
+
+26:07 conferences. is I mean we we met at
+26:09 
+
+26:09 Coinfest in Bali uh a month ago and you
+26:12 
+
+26:12 know there's different types of events
+26:14 
+
+26:14 but one of the great thing is just
+26:15 
+
+26:15 people
+26:16 
+
+26:16 >> collision you never know what you're
+26:18 
+
+26:18 going to get
+26:18 
+
+26:18 >> you never know who you're going to meet
+26:20 
+
+26:20 and um you know there's there's an
+26:23 
+
+26:23 element of like you know talking and
+26:25 
+
+26:25 learning and absorbing but it's like now
+26:27 
+
+26:27 how many talks did you listen to
+26:29 
+
+26:29 >> uh we don't need to answer that
+26:32 
+
+26:32 [laughter]
+26:33 
+
+26:33 >> it's all about the networking it's about
+26:35 
+
+26:35 >> the networking is all and Uh I I
+26:38 
+
+26:38 actually once hosted a a conf um a
+26:40 
+
+26:40 conference in Ottawa in in Canada and it
+26:44 
+
+26:44 was called the blockchain government
+26:45 
+
+26:45 forum. So uh my history was in 2014 at
+26:50 
+
+26:50 that Bitcoin expo I was elected to the
+26:53 
+
+26:53 board of the Bitcoin Alliance of Canada.
+26:56 
+
+26:56 Um we renamed it to the Blockchain
+26:58 
+
+26:58 Association of Canada. We did I was
+27:01 
+
+27:01 involved with it for like five years as
+27:03 
+
+27:03 the executive director. We hosted a
+27:07 
+
+27:07 event in Ottawa called the blockchain
+27:09 
+
+27:09 government forum and I'd been working
+27:12 
+
+27:12 with IBM's advanced studies labs and
+27:16 
+
+27:16 deoits like you know futurist program
+27:20 
+
+27:20 and then this other group called Horizon
+27:25 
+
+27:25 Canada or something like that uh policy
+27:28 
+
+27:28 horizons Canada which was like a
+27:29 
+
+27:29 government think tank that was just a
+27:32 
+
+27:32 bunch of like kind of wild thinkers like
+27:34 
+
+27:34 thinking about the future of all the
+27:35 
+
+27:35 industry and they all helped design this
+27:38 
+
+27:38 [snorts] this event because I was so
+27:41 
+
+27:41 tired of the events where you show up
+27:42 
+
+27:42 and it's just speaky speakaky and so we
+27:45 
+
+27:45 had all these facilitators from IBM from
+27:49 
+
+27:49 Deote from policy horizons come and like
+27:52 
+
+27:52 break out the room into like groups of
+27:53 
+
+27:53 10 on roundts whiteboards sticky notes
+27:57 
+
+27:57 everywhere talking about the future of
+27:58 
+
+27:58 work talking about the future of
+27:60 
+
+27:60 taxation talking about this that like
+28:02 
+
+28:02 you know and the core like I think it
+28:05 
+
+28:05 was just one day. Well, yeah, it was
+28:06 
+
+28:06 just one day. But like, you know, the
+28:08 
+
+28:08 output from that was you got people
+28:10 
+
+28:10 working together and like, you know,
+28:12 
+
+28:12 acting together and brains working in a
+28:15 
+
+28:15 creative process mode as opposed to just
+28:18 
+
+28:18 like uh, you know, a death by
+28:21 
+
+28:21 PowerPoint. death by PowerPoint or like
+28:24 
+
+28:24 here's a 30 minute keynote from someone
+28:27 
+
+28:27 and there's, you know, 10 people in the
+28:30 
+
+28:30 audience and they're on their phones and
+28:33 
+
+28:33 there's a guy over there sleeping.
+28:35 
+
+28:35 >> It's like,
+28:36 
+
+28:36 >> okay, but it's being recorded and nobody
+28:38 
+
+28:38 will watch it afterwards.
+28:40 
+
+28:40 >> Yeah. Yeah.
+28:42 
+
+28:42 So creating like you know the event and
+28:44 
+
+28:44 I think that this is this is why I'm
+28:46 
+
+28:46 also excited about this flow summit
+28:48 
+
+28:48 because we're launching and key thing is
+28:51 
+
+28:51 the only you only need two things. You
+28:53 
+
+28:53 only really need two things to have a
+28:56 
+
+28:56 successful event and that's a time and a
+28:58 
+
+28:58 venue. Like after that it's like you
+29:01 
+
+29:01 know this is like the unconference
+29:02 
+
+29:02 model. It's like you've just time well
+29:05 
+
+29:05 time three things time venue people.
+29:07 
+
+29:07 >> Yeah. and you bring them together and
+29:09 
+
+29:09 honestly like with a good unconference
+29:11 
+
+29:11 it's kind of unorganized self organized
+29:13 
+
+29:13 but it's good to have a purpose and
+29:14 
+
+29:14 we're launching Utopia we've got all
+29:16 
+
+29:16 these members that are super excited
+29:17 
+
+29:17 we've got a hackathon so we got the
+29:19 
+
+29:19 conditions for something really great um
+29:22 
+
+29:22 I look forward to seeing you there
+29:23 
+
+29:23 >> I'm excited
+29:24 
+
+29:24 >> so thank you for joining me
+29:26 
+
+29:26 >> yeah thanks for inviting
+29:28 
+
+29:28 >> blue what do you think about these ferns
+29:30 
+
+29:30 >> I think we need more of them
+29:32 
+
+29:32 >> you think we I kind of felt like that at
+29:33 
+
+29:33 some kind I was like yeah we should
+29:35 
+
+29:35 >> maybe five Five. I'm
