@@ -101,6 +101,13 @@ export const api = {
     fetch(`/api/contacts/${id}/send`, { method: "POST", body: JSON.stringify({ text }) }).then(json),
   simulate: (name: string, phone: string, text: string) =>
     fetch("/api/simulate", { method: "POST", body: JSON.stringify({ name, phone, text }) }).then(json),
+  simulateVoice: (name: string, phone: string, audio: Blob) => {
+    const f = new FormData()
+    f.append("name", name)
+    f.append("phone", phone)
+    f.append("audio", audio, "voice-note")
+    return fetch("/api/simulate", { method: "POST", body: f }).then(json)
+  },
   addContact: (name: string, phone: string, context: string) =>
     fetch("/api/contacts", { method: "POST", body: JSON.stringify({ name, phone, context }) }).then(json<Contact>),
   draft: (contact_ids: number[]) =>

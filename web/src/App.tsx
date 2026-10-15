@@ -7,6 +7,7 @@ import { Stage } from "@/components/Stage"
 import { Profile } from "@/components/Profile"
 import { Campaign } from "@/components/Campaign"
 import { JohnAvatar } from "@/components/bits"
+import { Toaster } from "@/components/Toast"
 
 type Page = "inbox" | "stage" | "campaign" | "profile"
 const pageFromPath = (): Page => {
@@ -31,7 +32,12 @@ export default function App() {
     return <div className="grid h-screen place-items-center text-muted-foreground">{connected ? "Loading…" : "Connecting to U-Reach…"}</div>
   }
   if (page === "stage") {
-    return <Stage state={state} runs={runs} messages={messages} loadMessages={loadMessages} onExit={() => go("inbox")} />
+    return (
+      <>
+        <Stage state={state} runs={runs} messages={messages} loadMessages={loadMessages} onExit={() => go("inbox")} />
+        <Toaster />
+      </>
+    )
   }
 
   const nav = [
@@ -94,6 +100,7 @@ export default function App() {
         {page === "profile" && <Profile state={state} />}
         {page === "campaign" && <Campaign contacts={state.contacts} statuses={campaign} />}
       </main>
+      <Toaster />
     </div>
   )
 }
