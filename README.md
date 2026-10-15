@@ -17,7 +17,15 @@ Needs Go 1.26+, Node 20+, ffmpeg with libopus, and yt-dlp (only for pulling John
 bin/ureach                  # first run prints a QR: WhatsApp > Linked devices > Link a device
 bin/ureach -wa=false        # no WhatsApp; use "Simulate a lead message" in the Inbox
 ```
-Dashboard: http://localhost:8080. Stage view (projector): http://localhost:8080/stage, Esc exits.
+Dashboard: http://localhost:8080. If WhatsApp isn't linked yet, click **Link WhatsApp** in the sidebar to scan the QR from the browser.
+
+- **Inbox:** live chats with search (`/`), filters, voice notes, and delivered/read/played ticks. **Take over** pauses the AI for a chat; replying from the demo phone itself does the same.
+- **Simulate** (bottom of the chat list): type a message, or press the mic to record a voice note. It runs the real pipeline but sends nothing to WhatsApp.
+- **Stage view** (`/stage`, or press `P`): the projector screen. `F` toggles fullscreen and `Esc` exits.
+- **Campaign:** add teammates' numbers under demo names, generate personal openers, listen and edit them, then send.
+- **Profile:** John's real voice next to his clone, the persona, the FAQ, and **Reset demo** for between rehearsals.
+- Keys `1` to `4` switch pages.
+
 `TTS_MOCK=1` replaces ElevenLabs with a tone, so no credits are spent.
 
 Only one process can hold the WhatsApp session (`data/wa-session.db`). Stop `wa-spike` before starting the server; it reuses the same link.
