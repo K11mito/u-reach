@@ -222,17 +222,17 @@ export function VoiceNote({ src, durationMs, seed, outgoing, big, dark }: { src?
           seek(e.clientX)
         }}
         onPointerMove={(e) => e.currentTarget.hasPointerCapture(e.pointerId) && seek(e.clientX)}
-        className={cn("relative min-w-0 flex-1 touch-none select-none", big ? "h-10" : "h-6", src && "cursor-pointer")}
+        className={cn("relative min-w-0 touch-none select-none", big ? "h-10" : "h-6", src && "cursor-pointer")}
         title={src ? "Drag to skip" : undefined}
       >
         <div className="flex h-full items-center gap-[2px] overflow-hidden">
           {heights.map((h, i) => (
-            <span key={i} className={cn("w-[3px] min-w-px shrink rounded-full", i / heights.length < progress ? played : dark ? "bg-white/35" : "bg-foreground/25")} style={{ height: `${h * 100}%` }} />
+            <span key={i} className={cn("w-[3px] min-w-px shrink rounded-full", (i + 0.5) / heights.length <= progress ? played : dark ? "bg-white/35" : "bg-foreground/25")} style={{ height: `${h * 100}%` }} />
           ))}
         </div>
         {src && <span className={cn("pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full", played, big ? "size-4" : "size-3")} style={{ left: `${progress * 100}%` }} />}
       </div>
-      <span className={cn("shrink-0 tabular-nums", muted, big ? "text-base" : "text-xs")}>{fmtDur(progress > 0 ? progress * (durationMs ?? 0) : durationMs)}</span>
+      <span className={cn("ml-auto shrink-0 tabular-nums", muted, big ? "text-base" : "text-xs")}>{fmtDur(progress > 0 ? progress * (durationMs ?? 0) : durationMs)}</span>
       {src && (
         <button
           onClick={nextSpeed}
