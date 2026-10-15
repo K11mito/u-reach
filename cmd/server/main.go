@@ -56,6 +56,12 @@ func main() {
 	defer st.Close()
 	br, err := brain.New("data/persona/john.json", "data/faq.md")
 	must(err)
+	br.OnUsage = func(m brain.Meta) {
+		if err := st.AddAPICall(store.APICall{Provider: "anthropic", Model: m.Model, InputTokens: m.InputTokens, OutputTokens: m.OutputTokens,
+			CacheRead: m.CacheRead, CacheWrite: m.CacheWrite, CostUSD: m.CostUSD()}); err != nil {
+			log.Printf("usage: %v", err)
+		}
+	}
 	hs, err := harness.New(st, br, "data/persona/john.json", "data/faq.md")
 	must(err)
 	el := voice.New()
@@ -136,6 +142,7 @@ func main() {
 	mux.HandleFunc("POST /api/contacts/{id}/send", api.send)
 	mux.HandleFunc("POST /api/contacts/{id}/reset", api.resetChat)
 	mux.HandleFunc("GET /api/runs", api.runs)
+	mux.HandleFunc("GET /api/analytics", api.analytics)
 	mux.HandleFunc("GET /api/whatsapp/qr.png", api.qrPNG)
 	mux.HandleFunc("POST /api/simulate", api.simulate)
 	mux.HandleFunc("POST /api/demo/reset", api.resetDemo)
