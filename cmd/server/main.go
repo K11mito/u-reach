@@ -269,11 +269,9 @@ func (a *api) snapshot() (map[string]any, error) {
 		return nil, err
 	}
 	waState := waStatus(a.wa)
-	last := map[int64]store.Message{}
-	for _, c := range contacts {
-		if m, _ := a.store.Messages(c.ID, 1); len(m) == 1 {
-			last[c.ID] = m[0]
-		}
+	last, err := a.store.LastMessages()
+	if err != nil {
+		return nil, err
 	}
 	minPerReply := atoi(config.Get("MIN_SAVED_PER_REPLY", "15"))
 	return map[string]any{
