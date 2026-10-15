@@ -125,6 +125,7 @@ export const api = {
     fetch("/api/contacts", { method: "POST", body: JSON.stringify({ name, phone, context }) }).then(json<Contact>),
   draft: (contact_ids: number[]) =>
     fetch("/api/campaign/draft", { method: "POST", body: JSON.stringify({ contact_ids }) }).then(json<Draft[]>),
+  resetChat: (id: number) => fetch(`/api/contacts/${id}/reset`, { method: "POST" }).then(json),
   resetDemo: () => fetch("/api/demo/reset", { method: "POST" }).then(json<{ leads: number; messages: number }>),
   sendCampaign: (drafts: Draft[]) => fetch("/api/campaign/send", { method: "POST", body: JSON.stringify({ drafts }) }).then(json),
 }
@@ -150,6 +151,7 @@ type LiveEvent =
   | { type: "campaign"; data: CampaignStatus & { contact_id: number } }
   | { type: "whatsapp"; data: WhatsAppStatus }
   | { type: "reset"; data: null }
+  | { type: "chat_reset"; data: { contact_id: number } }
 
 /** Loads dashboard state and keeps it live via SSE. */
 declare global {
@@ -211,6 +213,10 @@ export function useLive() {
               contacts: exists ? s.contacts.map((c) => (c.id === ev.data.id ? ev.data : c)) : [ev.data, ...s.contacts],
             }
           })
+          refetch()
+        } else if (ev.type === "chat_reset") {
+          setMessages((prev) => ({ ...prev, [ev.data.contact_id]: [] }))
+          setRuns((prev) => prev.filter((r) => r.contact_id !== ev.data.contact_id))
           refetch()
         } else if (ev.type === "reset") {
           window.location.reload()

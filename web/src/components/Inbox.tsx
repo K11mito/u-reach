@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { Bot, Hand, Link2, Megaphone, Mic, Search, Send, Sparkles, TriangleAlert, Undo2, UserRound } from "lucide-react"
+import { Bot, Hand, Link2, Megaphone, Mic, RotateCcw, Search, Send, Sparkles, TriangleAlert, Undo2, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -266,6 +266,24 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
             {contact.context || (contact.push_name ? `WhatsApp name: ${contact.push_name}` : "New lead")}
           </div>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={async () => {
+            if (!window.confirm(`Reset the chat with ${displayName(contact)}? Their messages are cleared and their next message starts fresh (great for re-running the demo).`)) return
+            try {
+              await api.resetChat(contact.id)
+              toast(`Chat with ${displayName(contact)} reset`)
+            } catch (e) {
+              toast(String(e), "error")
+            }
+          }}
+          className="rounded-full text-muted-foreground"
+          title="Reset this chat (fresh start)"
+          aria-label="Reset this chat"
+        >
+          <RotateCcw />
+        </Button>
         {paused ? (
           <Button variant="outline" onClick={() => setStatus("auto")} className="rounded-full">
             <Undo2 /> Hand back to AI
