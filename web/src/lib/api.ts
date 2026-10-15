@@ -204,8 +204,26 @@ export const harnessApi = {
     fetch("/api/harness/try", { method: "POST", body: JSON.stringify({ name, message, ...draft }) }).then(json<TryResult>),
 }
 
+export interface FunnelDay {
+  date: string // YYYY-MM-DD
+  leads: number
+  voice: number
+  links: number
+  purchased: number
+}
+export interface Analytics {
+  days: FunnelDay[]
+  hours: { t: number; elevenlabs: number; claude: number }[] // USD per hour
+  spend: {
+    elevenlabs: { usd_window?: number; credits_window?: number; credits_used?: number; credits_limit?: number; usd_per_credit?: number; plan?: string; error?: string }
+    claude: { usd_window?: number; usd_total?: number; calls?: number; usd_per_call?: number; tracked_since?: number; error?: string }
+  }
+  response: { replies?: number; avg_ms?: number }
+}
+
 export const api = {
   state: () => fetch("/api/state").then(json<State>),
+  analytics: () => fetch("/api/analytics").then(json<Analytics>),
   messages: (id: number) => fetch(`/api/contacts/${id}/messages`).then(json<Message[]>),
   runs: () => fetch("/api/runs").then(json<Run[]>),
   setStatus: (id: number, status: Status) =>
