@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { Pause, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Grain } from "./Grain"
+import logo from "@/assets/logo.webp"
 import type { Status } from "@/lib/api"
 
 const STATUS: Record<Status, { label: string; dot: string }> = {
@@ -26,15 +27,6 @@ export function StatusChip({ status, bare, className }: { status: Status; bare?:
       <span className={cn("size-1.5 rounded-full", s.dot)} />
       {s.label}
     </span>
-  )
-}
-
-/** The U-Reach mark: a small grain square. */
-export function Mark({ size = 32, className }: { size?: number; className?: string }) {
-  return (
-    <Grain seed="u-reach" palette="dusk" className={cn("grid shrink-0 place-items-center rounded-[28%] font-semibold text-white", className)} style={{ width: size, height: size, fontSize: size * 0.45 }}>
-      <span>U</span>
-    </Grain>
   )
 }
 
@@ -289,7 +281,7 @@ export function Linkified({ text }: { text: string }) {
             rel="noreferrer"
             className="mt-1 flex items-center gap-1.5 rounded-md bg-white/70 px-2 py-1.5 text-[13px] font-medium text-sky-700 ring-1 ring-black/5 hover:underline"
           >
-            <Mark size={20} />
+            <img src={logo} alt="" className="size-5 shrink-0" />
             <span className="truncate">{p.replace(/^https?:\/\//, "")}</span>
           </a>
         ) : (
