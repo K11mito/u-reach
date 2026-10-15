@@ -94,6 +94,9 @@ func main() {
 	mux.HandleFunc("POST /api/contacts/{id}/send", api.send)
 	mux.HandleFunc("GET /api/runs", api.runs)
 	mux.HandleFunc("POST /api/simulate", api.simulate)
+	mux.HandleFunc("POST /api/contacts", api.addContact)
+	mux.HandleFunc("POST /api/campaign/draft", api.campaignDraft)
+	mux.HandleFunc("POST /api/campaign/send", api.campaignSend)
 	mux.Handle("GET /audio/", http.StripPrefix("/audio/", http.FileServer(http.Dir("data/audio"))))
 	mux.Handle("GET /", spa(api.boot))
 
@@ -284,6 +287,48 @@ func (a *api) send(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]bool{"ok": true})
 }
 
+// addContact saves a phone number under a name (e.g. a teammate as "Raj").
+func (a *api) addContact(w http.ResponseWriter, r *http.Request) {
+	var body struct{ Name, Phone, Context string }
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httpErr(w, err)
+		return
+	}
+	phone := digits(body.Phone)
+	if len(phone) < 8 || strings.TrimSpace(body.Name) == "" {
+		http.Error(w, "name and phone (with country code) required", http.StatusBadRequest)
+		return
+	}
+	c, err := a.store.UpsertByPhone(phone, strings.TrimSpace(body.Name), strings.TrimSpace(body.Context))
+	if err != nil {
+		httpErr(w, err)
+		return
+	}
+	a.core.Hub.Publish("contact", c)
+	writeJSON(w, c)
+}
+
+func (a *api) campaignDraft(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ContactIDs []int64 `json:"contact_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.ContactIDs) == 0 || len(body.ContactIDs) > 8 {
+		http.Error(w, "pick 1 to 8 contacts", http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, a.core.DraftOpeners(r.Context(), body.ContactIDs))
+}
+
+func (a *api) campaignSend(w http.ResponseWriter, r *http.Request) {
+	var body struct{ Drafts []core.Draft }
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.Drafts) == 0 {
+		http.Error(w, "drafts required", http.StatusBadRequest)
+		return
+	}
+	a.core.SendOpeners(body.Drafts)
+	writeJSON(w, map[string]bool{"ok": true})
+}
+
 // simulate runs the real pipeline for a pretend lead without touching WhatsApp.
 func (a *api) simulate(w http.ResponseWriter, r *http.Request) {
 	var body struct{ Name, Phone, Text string }
@@ -291,12 +336,7 @@ func (a *api) simulate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "text required", http.StatusBadRequest)
 		return
 	}
-	phone := strings.Map(func(r rune) rune {
-		if r >= '0' && r <= '9' {
-			return r
-		}
-		return -1
-	}, body.Phone)
+	phone := digits(body.Phone)
 	if phone == "" {
 		phone = "990000000001"
 	}
@@ -385,4 +425,13 @@ func must(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func digits(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, s)
 }
