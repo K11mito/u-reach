@@ -327,7 +327,10 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
         </div>
       )}
 
-      <div ref={scroller} className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[oklch(0.975_0.003_150)] px-6 py-5">
+      <div
+        ref={scroller}
+        className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,oklch(0.9_0.02_285)_1px,transparent_0)] bg-[length:22px_22px] px-6 py-5"
+      >
         {!messages ? (
           <div className="space-y-3">
             {[60, 40, 70].map((w, i) => (
