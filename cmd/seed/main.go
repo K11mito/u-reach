@@ -90,8 +90,12 @@ func main() {
 			if kind == "" {
 				kind = "text"
 			}
+			status := ""
+			if dir == "out" {
+				status = map[string]string{"voice": "played", "text": "read"}[kind] // a lived-in history has been listened to
+			}
 			msg, err := st.AddMessage(store.Message{
-				ContactID: created.ID, Direction: dir, Kind: kind, Source: source,
+				ContactID: created.ID, Direction: dir, Kind: kind, Source: source, Status: status,
 				Text: strings.ReplaceAll(m.Text, "{REFERRAL_URL}", referral), CreatedAt: at(now, m.Ago),
 			})
 			must(err)
