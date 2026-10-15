@@ -323,8 +323,15 @@ export function useLive() {
         } else if (ev.type === "ambassador_avatar") {
           setState((s) => (s ? { ...s, ambassador: { ...s.ambassador, avatar: ev.data.avatar } } : s))
         } else if (ev.type === "chat_reset") {
-          setMessages((prev) => ({ ...prev, [ev.data.contact_id]: [] }))
-          setRuns((prev) => prev.filter((r) => r.contact_id !== ev.data.contact_id))
+          // The lead is removed everywhere; a new message brings them back fresh.
+          const id = ev.data.contact_id
+          setState((s) => (s ? { ...s, contacts: s.contacts.filter((c) => c.id !== id) } : s))
+          setMessages((prev) => {
+            const next = { ...prev }
+            delete next[id]
+            return next
+          })
+          setRuns((prev) => prev.filter((r) => r.contact_id !== id))
           refetch()
         } else if (ev.type === "reset") {
           window.location.reload()

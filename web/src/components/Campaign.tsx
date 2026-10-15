@@ -9,7 +9,8 @@ import { Initials, StatusChip, VoiceNote } from "./bits"
 
 /** Outbound: personal voice-note openers in John's voice, approved before sending. */
 export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses: Record<number, CampaignStatus> }) {
-  const [picked, setPicked] = useState<number[]>([])
+  const [chosen, setPicked] = useState<number[]>([])
+  const picked = chosen.filter((id) => contacts.some((c) => c.id === id)) // a reset chat drops out
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)

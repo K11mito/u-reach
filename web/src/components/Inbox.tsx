@@ -270,7 +270,7 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
           variant="ghost"
           size="icon"
           onClick={async () => {
-            if (!window.confirm(`Reset the chat with ${displayName(contact)}? Their messages are cleared and their next message starts fresh (great for re-running the demo).`)) return
+            if (!window.confirm(`Reset the chat with ${displayName(contact)}? They disappear from the inbox and campaign. If they message again they come back as a new lead (great for re-running the demo).`)) return
             try {
               await api.resetChat(contact.id)
               toast(`Chat with ${displayName(contact)} reset`)
@@ -279,7 +279,7 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
             }
           }}
           className="rounded-full text-muted-foreground"
-          title="Reset this chat (fresh start)"
+          title="Reset this chat (removes the lead)"
           aria-label="Reset this chat"
         >
           <RotateCcw />

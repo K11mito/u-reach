@@ -565,20 +565,21 @@ func writeFile(path string, data []byte) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
-// ResetChat wipes one conversation (e.g. the presenter's own chat between
-// rehearsals) and forgets any pending reply for it.
+// ResetChat removes a lead and their whole conversation (e.g. the presenter's
+// own chat between rehearsals) and forgets any pending reply for them. If they
+// message again they arrive as a brand-new lead.
 func (c *Core) ResetChat(contactID int64) error {
 	c.mu.Lock()
 	if ch := c.chats[contactID]; ch != nil && ch.timer != nil {
 		ch.timer.Stop()
 	}
 	delete(c.chats, contactID)
+	delete(c.avatarChecked, contactID)
 	c.mu.Unlock()
-	if err := c.Store.ResetContact(contactID); err != nil {
+	if err := c.Store.DeleteContact(contactID); err != nil {
 		return err
 	}
 	c.Hub.Publish("chat_reset", map[string]int64{"contact_id": contactID})
-	c.publishContact(contactID)
 	return nil
 }
 
