@@ -473,6 +473,23 @@ func (c *Core) SetStatus(contactID int64, status string) error {
 	return nil
 }
 
+// ResetChat wipes one conversation (e.g. the presenter's own chat between
+// rehearsals) and forgets any pending reply for it.
+func (c *Core) ResetChat(contactID int64) error {
+	c.mu.Lock()
+	if ch := c.chats[contactID]; ch != nil && ch.timer != nil {
+		ch.timer.Stop()
+	}
+	delete(c.chats, contactID)
+	c.mu.Unlock()
+	if err := c.Store.ResetContact(contactID); err != nil {
+		return err
+	}
+	c.Hub.Publish("chat_reset", map[string]int64{"contact_id": contactID})
+	c.publishContact(contactID)
+	return nil
+}
+
 // Reset forgets in-flight chats (pending debounces, rate limits), for a
 // demo reset. Runs already in progress finish against the old data.
 func (c *Core) Reset() {

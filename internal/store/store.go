@@ -257,6 +257,15 @@ func (s *Store) UpsertByPhone(phone, name, context string) (Contact, error) {
 	return s.Contact(c.ID)
 }
 
+// ResetContact wipes a contact's conversation so their next message is a
+// fresh first contact. The name and context (e.g. a teammate saved as "Raj")
+// are kept.
+func (s *Store) ResetContact(id int64) error {
+	_, err := s.db.Exec(`DELETE FROM messages WHERE contact_id = ?; DELETE FROM runs WHERE contact_id = ?; DELETE FROM events WHERE contact_id = ?;
+		UPDATE contacts SET status = 'new', handoff_reason = '', memory = '[]', link_sent_at = 0, last_message_at = 0 WHERE id = ?`, id, id, id, id)
+	return err
+}
+
 // SetStatus changes a contact's status chip.
 func (s *Store) SetStatus(id int64, status, reason string) error {
 	_, err := s.db.Exec(`UPDATE contacts SET status = ?, handoff_reason = ? WHERE id = ?`, status, reason, id)
