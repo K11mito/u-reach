@@ -10,31 +10,31 @@ export function Help({ state }: { state: State }) {
   const phone = state.whatsapp.phone
   return (
     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 pb-2">
-      <section className="grid gap-6 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 p-7 text-white shadow-lg shadow-indigo-500/25 lg:grid-cols-[minmax(0,1fr)_auto]">
-        <div className="max-w-2xl">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold">For the judges</span>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight">Try U-Reach yourself</h1>
-          <p className="mt-3 text-[15px] leading-relaxed text-white/85">
+      <section className="grid gap-8 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 p-9 text-white shadow-lg shadow-indigo-500/25 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="max-w-3xl">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-sm font-semibold">For the judges</span>
+          <h1 className="mt-3 text-5xl font-extrabold tracking-tight">Try U-Reach yourself</h1>
+          <p className="mt-4 text-xl leading-relaxed text-white/90">
             U-Reach turns U.Center ambassador John Klensch into a WhatsApp assistant. When a lead messages him, his AI answers in about ten seconds with a
             personal voice note in John's own cloned voice, then sends his referral link. This dashboard is John's control room. The best way to see it is to
             become one of his leads: it takes two minutes.
           </p>
         </div>
-        <div className="flex items-center gap-5 self-center rounded-xl bg-white p-4 text-foreground shadow-xl">
+        <div className="flex items-center gap-6 self-center rounded-xl bg-white p-5 text-foreground shadow-xl">
           {phone ? (
             <>
-              <img src="/api/whatsapp/chat-qr.png" alt={`QR code to message John on WhatsApp at ${pretty(phone)}`} className="size-36 [image-rendering:pixelated]" />
+              <img src="/api/whatsapp/chat-qr.png" alt={`QR code to message John on WhatsApp at ${pretty(phone)}`} className="size-48 [image-rendering:pixelated]" />
               <div>
-                <div className="text-xs font-medium text-muted-foreground">Scan with your phone's camera</div>
-                <div className="mt-1 text-lg font-bold">Message John</div>
-                <div className="font-mono text-base">{pretty(phone)}</div>
-                <a href={`https://wa.me/${phone}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-medium text-indigo-600 hover:underline">
+                <div className="text-sm font-medium text-muted-foreground">Scan with your phone's camera</div>
+                <div className="mt-1 text-2xl font-bold">Message John</div>
+                <div className="font-mono text-lg">{pretty(phone)}</div>
+                <a href={`https://wa.me/${phone}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm font-medium text-indigo-600 hover:underline">
                   or open wa.me/{phone}
                 </a>
               </div>
             </>
           ) : (
-            <div className="max-w-56 text-sm text-muted-foreground">John's WhatsApp isn't connected right now. Ask the team and we'll bring it back up.</div>
+            <div className="max-w-64 text-base text-muted-foreground">John's WhatsApp isn't connected right now. Ask the team and we'll bring it back up.</div>
           )}
         </div>
       </section>
@@ -52,9 +52,10 @@ export function Help({ state }: { state: State }) {
           Your chat jumps to the top of the <b>Inbox</b> as it arrives. Open <b>Stage view</b> (press 2) to see each step live: received, heard, thinking,
           speaking, sent, with how long each one took.
         </Step>
-        <Step n={4} icon={ShieldCheck} title="Test the guardrails">
-          Ask about money: "How much can I earn?" or "Is this a pyramid scheme?" The AI never promises income or answers legal questions. It hands the chat
-          to the real John, and the chat turns <b>Needs John</b> here.
+        <Step n={4} icon={ShieldCheck} title="Ask the hard questions">
+          "How much can I earn?", "Is this a pyramid scheme?", "How many countries does it work in?" It answers from what it learned from U.Center's calls
+          and websites, honestly, and never promises income. Then say your payment didn't arrive: only a person can fix that, so it hands the chat to the
+          real John and it turns <b>Needs John</b> here.
         </Step>
         <Step n={5} icon={Hand} title="Take over as John">
           In the Inbox, open your chat and press <b>Take over</b> or <b>Reply as John</b>. Type a message and it lands on your phone from John's number.
@@ -91,16 +92,16 @@ export function Help({ state }: { state: State }) {
 
 function Step({ n, icon: Icon, title, children }: { n: number; icon: typeof Info; title: string; children: ReactNode }) {
   return (
-    <section className="flex gap-4 rounded-xl border bg-card p-5 shadow-sm">
+    <section className="flex gap-5 rounded-xl border bg-card p-6 shadow-sm">
       <div className="relative shrink-0">
-        <div className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-md shadow-indigo-500/25">
-          <Icon className="size-5" />
+        <div className="grid size-14 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-md shadow-indigo-500/25">
+          <Icon className="size-7" />
         </div>
-        <span className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full bg-card text-[11px] font-bold text-indigo-700 ring-1 ring-border">{n}</span>
+        <span className="absolute -top-2 -right-2 grid size-6 place-items-center rounded-full bg-card text-xs font-bold text-indigo-700 ring-1 ring-border">{n}</span>
       </div>
       <div className="min-w-0">
-        <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground [&_b]:font-semibold [&_b]:text-foreground">{children}</p>
+        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+        <p className="mt-1.5 text-base leading-relaxed text-muted-foreground [&_b]:font-semibold [&_b]:text-foreground">{children}</p>
       </div>
     </section>
   )
@@ -108,15 +109,15 @@ function Step({ n, icon: Icon, title, children }: { n: number; icon: typeof Info
 
 function Note({ icon: Icon, title, children }: { icon: typeof Info; title: string; children: ReactNode }) {
   return (
-    <section className="rounded-xl border bg-card p-5 shadow-sm">
-      <h2 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
-        <Icon className="size-4 text-indigo-600" /> {title}
+    <section className="rounded-xl border bg-card p-6 shadow-sm">
+      <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+        <Icon className="size-5 text-indigo-600" /> {title}
       </h2>
-      <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-muted-foreground marker:text-indigo-300 [&_b]:font-semibold [&_b]:text-foreground">{children}</ul>
+      <ul className="mt-3 list-disc space-y-2 pl-5 text-base leading-relaxed text-muted-foreground marker:text-indigo-300 [&_b]:font-semibold [&_b]:text-foreground">{children}</ul>
     </section>
   )
 }
 
 function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">{children}</kbd>
+  return <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-sm text-foreground">{children}</kbd>
 }
