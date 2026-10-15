@@ -28,6 +28,7 @@ import (
 	"ureach/internal/brain"
 	"ureach/internal/config"
 	"ureach/internal/core"
+	"ureach/internal/seed"
 	"ureach/internal/store"
 	"ureach/internal/voice"
 	"ureach/internal/wa"
@@ -112,6 +113,7 @@ func main() {
 	mux.HandleFunc("GET /api/runs", api.runs)
 	mux.HandleFunc("GET /api/whatsapp/qr.png", api.qrPNG)
 	mux.HandleFunc("POST /api/simulate", api.simulate)
+	mux.HandleFunc("POST /api/demo/reset", api.resetDemo)
 	mux.HandleFunc("POST /api/contacts", api.addContact)
 	mux.HandleFunc("POST /api/campaign/draft", api.campaignDraft)
 	mux.HandleFunc("POST /api/campaign/send", api.campaignSend)
@@ -373,6 +375,25 @@ func (a *api) qrPNG(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Write(q.PNG())
+}
+
+// resetDemo restores the seeded demo between rehearsals. The WhatsApp link is
+// untouched, and seeded audio comes from the TTS cache (free after the first time).
+func (a *api) resetDemo(w http.ResponseWriter, r *http.Request) {
+	a.core.Reset()
+	res, err := seed.Load(a.store, "data/seed-leads.json", a.brain.ReferralURL)
+	if err != nil {
+		httpErr(w, err)
+		return
+	}
+	if !a.core.Voice.Mock && a.voiceID != "" {
+		if err := seed.RenderAudio(r.Context(), a.store, a.core.Voice, a.voiceID, a.core.TTSModel, res.VoiceNotes, nil); err != nil {
+			log.Printf("reset: seeded audio: %v", err)
+		}
+	}
+	log.Printf("demo reset: %d leads, %d messages", res.Leads, res.Messages)
+	a.core.Hub.Publish("reset", nil)
+	writeJSON(w, map[string]int{"leads": res.Leads, "messages": res.Messages})
 }
 
 // addContact saves a phone number under a name (e.g. a teammate as "Raj").

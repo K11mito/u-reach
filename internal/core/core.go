@@ -473,6 +473,19 @@ func (c *Core) SetStatus(contactID int64, status string) error {
 	return nil
 }
 
+// Reset forgets in-flight chats (pending debounces, rate limits), for a
+// demo reset. Runs already in progress finish against the old data.
+func (c *Core) Reset() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, ch := range c.chats {
+		if ch.timer != nil {
+			ch.timer.Stop()
+		}
+	}
+	c.chats = nil
+}
+
 func (c *Core) allowVoice(contactID int64) bool {
 	if c.MaxVoicePerHour <= 0 {
 		return true
