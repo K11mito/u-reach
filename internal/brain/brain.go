@@ -12,6 +12,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
@@ -21,8 +22,66 @@ import (
 	"ureach/internal/config"
 )
 
-// MaxWords caps the spoken script: ~110 words is ~45 s of speech.
+// MaxWords caps the spoken script for the default style: ~110 words is
+// ~45 s of speech. A style's cap is its MaxWords plus a little slack.
 const MaxWords = 110
+
+// Link timing: when John's referral link goes out.
+const (
+	LinkFirstReply     = "first_reply"     // in the first reply (the original behaviour)
+	LinkWhenInterested = "when_interested" // once the lead shows real interest
+	LinkWhenAsked      = "when_asked"      // only when they ask how to join (enforced in code)
+)
+
+// Reply language.
+const (
+	LangEnglish = "english"
+	LangMatch   = "match" // the lead's language; the cloned voice is multilingual
+)
+
+// Style is how John replies. Each dashboard preset carries one.
+type Style struct {
+	MinWords   int    `json:"min_words"`
+	MaxWords   int    `json:"max_words"`
+	LinkTiming string `json:"link_timing"`
+	Language   string `json:"language"`
+}
+
+// DefaultStyle is the original tuning: 50 to 90 words, link in the first reply.
+var DefaultStyle = Style{MinWords: 50, MaxWords: 90, LinkTiming: LinkFirstReply, Language: LangEnglish}
+
+// Normalized fills unset fields from DefaultStyle and keeps lengths sane.
+func (st Style) Normalized() Style {
+	if st.MaxWords <= 0 {
+		st.MaxWords = DefaultStyle.MaxWords
+	}
+	if st.MinWords <= 0 {
+		st.MinWords = DefaultStyle.MinWords
+	}
+	st.MaxWords = min(max(st.MaxWords, 20), 150)
+	st.MinWords = min(max(st.MinWords, 10), st.MaxWords)
+	switch st.LinkTiming {
+	case LinkFirstReply, LinkWhenInterested, LinkWhenAsked:
+	default:
+		st.LinkTiming = DefaultStyle.LinkTiming
+	}
+	if st.Language != LangMatch {
+		st.Language = LangEnglish
+	}
+	return st
+}
+
+// Doc is a sales playbook document John reads before every reply.
+type Doc struct{ Name, Text string }
+
+// Config is everything about John that can be edited from the dashboard.
+type Config struct {
+	Persona     string // persona card, JSON
+	FAQ         string // facts the assistant may state, markdown
+	Playbook    []Doc  // active sales playbook documents
+	Style       Style
+	ReferralURL string
+}
 
 // Contact is what we know about the lead.
 type Contact struct {
@@ -64,14 +123,18 @@ type Meta struct {
 	ForcedHandoff string // keyword that forced a handoff the model missed
 }
 
-// Brain holds the client and the cached system prompt (persona + FAQ + rules).
+// Brain holds the client and the cached system prompt (persona + FAQ +
+// playbook + rules). Configure swaps them live; replies in flight keep the
+// version they started with.
 type Brain struct {
 	Model       string
 	Effort      string
-	ReferralURL string
+	ReferralURL string // read through Referral(); set through Configure
 
 	client anthropic.Client
+	mu     sync.RWMutex
 	system string
+	style  Style
 }
 
 // New loads the persona card and FAQ. Call config.Load first.
@@ -87,13 +150,43 @@ func New(personaPath, faqPath string) (*Brain, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Brain{
-		Model:       config.Get("BRAIN_MODEL", "claude-opus-5-5"),
-		Effort:      config.Get("BRAIN_EFFORT", "low"),
-		ReferralURL: config.Get("REFERRAL_URL", ""),
-		client:      anthropic.NewClient(option.WithRequestTimeout(45 * time.Second)),
-		system:      systemPrompt(string(persona), string(faq)),
-	}, nil
+	b := &Brain{
+		Model:  config.Get("BRAIN_MODEL", "claude-opus-5-5"),
+		Effort: config.Get("BRAIN_EFFORT", "low"),
+		client: anthropic.NewClient(option.WithRequestTimeout(45 * time.Second)),
+	}
+	b.Configure(Config{Persona: string(persona), FAQ: string(faq), Style: DefaultStyle, ReferralURL: config.Get("REFERRAL_URL", "")})
+	return b, nil
+}
+
+// Configure rebuilds the system prompt. Safe to call while replies run.
+func (b *Brain) Configure(c Config) {
+	c.Style = c.Style.Normalized()
+	system := systemPrompt(c)
+	b.mu.Lock()
+	b.system, b.style, b.ReferralURL = system, c.Style, c.ReferralURL
+	b.mu.Unlock()
+}
+
+// Referral is John's referral link ("" when none is set).
+func (b *Brain) Referral() string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.ReferralURL
+}
+
+// Style is the reply style currently in use.
+func (b *Brain) Style() Style {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.style.Normalized()
+}
+
+// SystemPrompt is the prompt currently sent with every reply (for previews).
+func (b *Brain) SystemPrompt() string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.system
 }
 
 var schema = json.RawMessage(`{
@@ -144,7 +237,7 @@ func (b *Brain) generate(ctx context.Context, prompt string, c Contact, history 
 		Model:     b.Model,
 		MaxTokens: 8000,
 		System: []anthropic.BetaTextBlockParam{{
-			Text:         b.system,
+			Text:         b.SystemPrompt(),
 			CacheControl: anthropic.NewBetaCacheControlEphemeralParam(),
 		}},
 		Messages: []anthropic.BetaMessageParam{
@@ -208,6 +301,7 @@ var (
 // enforce applies the rules that must hold regardless of what the model wrote.
 func (b *Brain) enforce(r Reply, c Contact, history []Turn, meta *Meta) Reply {
 	latest := latestLeadText(history)
+	style, referral := b.Style(), b.Referral()
 
 	if !r.Handoff {
 		if kw := handoffRe.FindString(latest); kw != "" {
@@ -224,17 +318,23 @@ func (b *Brain) enforce(r Reply, c Contact, history []Turn, meta *Meta) Reply {
 	}
 
 	r.SpokenScript = strings.TrimSpace(urlRe.ReplaceAllString(r.SpokenScript, ""))
-	r.SpokenScript, meta.Trimmed = capWords(r.SpokenScript, MaxWords)
+	r.SpokenScript, meta.Trimmed = capWords(r.SpokenScript, style.MaxWords+20)
 	meta.Words = len(strings.Fields(r.SpokenScript))
 
 	// The model never writes the link; code adds the real one, once, unless asked again.
 	r.FollowupText = strings.TrimSpace(urlRe.ReplaceAllString(r.FollowupText, ""))
-	r.IncludeReferral = r.IncludeReferral && b.ReferralURL != "" && (!c.LinkSent || linkAskRe.MatchString(latest))
+	asked := linkAskRe.MatchString(latest)
+	r.IncludeReferral = r.IncludeReferral && referral != "" && (!c.LinkSent || asked)
+	// "Only when asked" holds in code too. Openers (no history) are the
+	// campaign's deliberate first message and always carry the link.
+	if style.LinkTiming == LinkWhenAsked && len(history) > 0 && !asked {
+		r.IncludeReferral = false
+	}
 	if r.IncludeReferral {
 		if r.FollowupText == "" {
 			r.FollowupText = "Here's my link to get started:"
 		}
-		r.FollowupText += "\n" + b.ReferralURL
+		r.FollowupText += "\n" + referral
 	}
 	return r
 }
@@ -299,27 +399,53 @@ func userPrompt(c Contact, history []Turn) string {
 	return s.String()
 }
 
-func systemPrompt(persona, faq string) string {
+func systemPrompt(c Config) string {
+	st := c.Style.Normalized()
+	var playbook strings.Builder
+	if len(c.Playbook) > 0 {
+		playbook.WriteString("\n<sales_playbook>\nJohn's own sales strategy notes. Follow them for how he approaches leads: what to lead with, how to handle objections, what the next step is. They never override the handoff, opt-out and honesty rules below.\n")
+		for _, d := range c.Playbook {
+			fmt.Fprintf(&playbook, "<document name=%q>\n%s\n</document>\n", d.Name, strings.TrimSpace(d.Text))
+		}
+		playbook.WriteString("</sales_playbook>\n")
+	}
+
+	closing := "- Always end by moving them forward with one clear invitation: tell them you're sending your link so they can join with you, and offer to help them set up personally or jump on a quick call."
+	linkRule := "include_referral: true unless handoff is true or the lead clearly says they're not interested."
+	switch st.LinkTiming {
+	case LinkWhenInterested:
+		closing = "- Move them forward one step at a time. Offer your link only once they show real interest or ask how to join; before that, end with one warm question about them or an offer of a quick call."
+		linkRule = "include_referral: true only once the lead shows real interest (asks how to join, what it costs, or says they want in). False before that, and false when handoff is true."
+	case LinkWhenAsked:
+		closing = "- Don't push your link. End with one warm question about them or an offer of a quick call. Send the link only when they ask how to join or ask for it."
+		linkRule = "include_referral: true only when the lead asks how to join or asks for the link. The system enforces this."
+	}
+	language := "- Reply in English."
+	if st.Language == LangMatch {
+		language = "- Reply in the language the lead writes in (John's cloned voice speaks it). If unsure, use English."
+	}
+	length := fmt.Sprintf("- %d to %d words, about %d to %d seconds. Shorter is better than rushed.", st.MinWords, st.MaxWords, st.MinWords*2/5, st.MaxWords*2/5)
+
 	return `You write WhatsApp voice notes as John, a U.Center ambassador. Your words are spoken aloud by a clone of John's own voice and sent to a lead who messaged him. They must sound exactly like John talking into his phone: warm, personal, and excited to bring this person into U-topia with him as their sponsor.
 
 <persona>
-` + persona + `
+` + c.Persona + `
 </persona>
 
 <faq>
-` + faq + `
+` + c.FAQ + `
 </faq>
-
+` + playbook.String() + `
 How to write spoken_script:
 - Write for the ear: short sentences, contractions, John's own openers, phrases and rhythm from the persona. No lists, no markdown, no emojis, no URLs. Write numbers as words.
 - Start by greeting the lead by first name, once, if the name looks like a real first name. Otherwise greet without a name.
 - You are selling, the way a good friend recommends something they love. Answer what they asked, make it personal to them, then answer the one or two questions they would most likely ask next (what it is, what it costs, how to start).
-- Always end by moving them forward with one clear invitation: tell them you're sending your link so they can join with you, and offer to help them set up personally or jump on a quick call.
-- 50 to 90 words, about 20 to 35 seconds. Shorter is better than rushed.
+` + closing + `
+` + length + `
 - Don't repeat lines you already said earlier in this conversation; vary how you open and close.
-- Only state facts that are in the FAQ. If the FAQ doesn't cover something, say you'll walk them through it on a quick call. Never invent numbers, dates, features or promises.
+- Only state facts that are in the FAQ or the sales playbook. If neither covers something, say you'll walk them through it on a quick call. Never invent numbers, dates, features or promises.
 - Never sound like a brochure or a support bot. Never say "I'd be happy to help", "Great question", "As an AI", or "Feel free to reach out".
-- Reply in English.
+` + language + `
 
 Handoff: if the lead asks about earnings, income, commissions, returns, payments or withdrawals, anything legal or regulatory, complaints, or whether it's a scam or pyramid, set handoff to true. Then spoken_script is only a short, warm holding line (20 to 40 words) saying John will get back to them personally. Do not answer the question. Put the topic in handoff_reason.
 
@@ -327,7 +453,7 @@ Opt-out: if the lead asks you to stop messaging them or clearly says they're not
 
 followup_text: one short text message sent after the voice note, or an empty string. Never put a URL in it; the system appends John's referral link when include_referral is true.
 
-include_referral: true unless handoff is true or the lead clearly says they're not interested. The system sends the link at most once unless they ask for it again, so when it was already sent, don't say you're sending it again; point them back to it instead.
+` + linkRule + ` The system sends the link at most once unless they ask for it again, so when it was already sent, don't say you're sending it again; point them back to it instead.
 
 remember: short new facts about the lead worth keeping (where they live, interests, concerns). Empty if none.`
 }
