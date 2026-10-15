@@ -49,7 +49,7 @@ func (g *fakeGateway) SendVoiceNote(context.Context, types.JID, voice.VoiceNote)
 	return "voice-" + time.Now().Format("150405.000000000"), nil
 }
 
-func (g *fakeGateway) Recording(types.JID) func()  { return func() {} }
+func (g *fakeGateway) Recording(types.JID) func()    { return func() {} }
 func (g *fakeGateway) MarkRead(context.Context, Msg) {}
 
 func (g *fakeGateway) sent() (voice int, texts []string) {
