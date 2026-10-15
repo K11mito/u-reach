@@ -28,6 +28,12 @@ func TestEnforce(t *testing.T) {
 		t.Fatal("link already sent and not asked for again: don't resend")
 	}
 
+	m = Meta{}
+	r = b.enforce(Reply{SpokenScript: "No problem, take care.", OptOut: true, IncludeReferral: true}, Contact{}, lead("please stop messaging me"), &m)
+	if r.IncludeReferral {
+		t.Fatal("never send the link to someone who opted out")
+	}
+
 	long := strings.Repeat("This is a sentence with seven words. ", 20)
 	got, trimmed := capWords(long, MaxWords)
 	if !trimmed || len(strings.Fields(got)) > MaxWords || !strings.HasSuffix(got, ".") {

@@ -47,6 +47,7 @@ type Reply struct {
 	IncludeReferral bool     `json:"include_referral"`
 	Handoff         bool     `json:"handoff"`
 	HandoffReason   string   `json:"handoff_reason"`
+	OptOut          bool     `json:"opt_out"` // asked to stop; the chat pauses for John
 	Remember        []string `json:"remember"`
 }
 
@@ -98,13 +99,14 @@ func New(personaPath, faqPath string) (*Brain, error) {
 var schema = json.RawMessage(`{
   "type": "object",
   "additionalProperties": false,
-  "required": ["spoken_script", "followup_text", "include_referral", "handoff", "handoff_reason", "remember"],
+  "required": ["spoken_script", "followup_text", "include_referral", "handoff", "handoff_reason", "opt_out", "remember"],
   "properties": {
     "spoken_script":    {"type": "string"},
     "followup_text":    {"type": "string"},
     "include_referral": {"type": "boolean"},
     "handoff":          {"type": "boolean"},
     "handoff_reason":   {"type": "string"},
+    "opt_out":          {"type": "boolean"},
     "remember":         {"type": "array", "items": {"type": "string"}}
   }
 }`)
@@ -216,7 +218,7 @@ func (b *Brain) enforce(r Reply, c Contact, history []Turn, meta *Meta) Reply {
 			r.FollowupText = ""
 		}
 	}
-	if r.Handoff {
+	if r.Handoff || r.OptOut {
 		r.IncludeReferral = false
 	}
 
@@ -319,6 +321,8 @@ How to write spoken_script:
 - Reply in English.
 
 Handoff: if the lead asks about earnings, income, commissions, returns, payments or withdrawals, anything legal or regulatory, complaints, or whether it's a scam or pyramid, set handoff to true. Then spoken_script is only a short, warm holding line (20 to 40 words) saying John will get back to them personally. Do not answer the question. Put the topic in handoff_reason.
+
+Opt-out: if the lead asks you to stop messaging them or clearly says they're not interested, set opt_out to true. Then spoken_script is one or two kind sentences with no pitch, followup_text is empty, and include_referral is false.
 
 followup_text: one short text message sent after the voice note, or an empty string. Never put a URL in it; the system appends John's referral link when include_referral is true.
 
