@@ -411,13 +411,15 @@ func enforce(cfg setup, r Reply, c Contact, history []Turn, meta *Meta) Reply {
 	return r
 }
 
+// holdingLine replaces a reply the code won't send. It fits a question, a
+// complaint or a statement ("my lawyer will contact you") alike.
 func holdingLine(name string) string {
 	hey := "Hey"
 	if name != "" {
 		hey = "Hey " + name
 	}
-	return hey + ", that's a really important question, and I want to answer it properly myself. " +
-		"Give me a little bit and I'll get back to you personally, okay?"
+	return hey + ", thanks for your message. This is one I want to handle myself, " +
+		"so give me a little bit and I'll get back to you personally, okay?"
 }
 
 func latestLeadText(history []Turn) string {
