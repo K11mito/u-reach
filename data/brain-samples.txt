@@ -1,0 +1,7 @@
+# Name|message. Run: go run ./cmd/brain-cli -samples data/brain-samples.txt
+Raj|hey John, saw your post about U.Center, what is it?
+Aunty Malee|Hello John, my daughter told me about this app. Is it safe? I don't understand crypto
+Meera|how much does it cost to join?
+Tom|ok sounds interesting. how do I sign up?
+Priya|how much can I realistically make per month doing this?
+Ben|be honest, is this a pyramid scheme?
