@@ -9,11 +9,13 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -329,23 +331,73 @@ func (a *api) campaignSend(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]bool{"ok": true})
 }
 
-// simulate runs the real pipeline for a pretend lead without touching WhatsApp.
+// simulate runs the real pipeline for a pretend lead without touching
+// WhatsApp. JSON {name, phone, text} sends a text; multipart with an "audio"
+// file (e.g. recorded in the browser) sends a voice note through Scribe.
 func (a *api) simulate(w http.ResponseWriter, r *http.Request) {
-	var body struct{ Name, Phone, Text string }
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Text) == "" {
-		http.Error(w, "text required", http.StatusBadRequest)
-		return
+	var name, phone, text string
+	var ogg []byte
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
+		if err := r.ParseMultipartForm(25 << 20); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		name, phone = r.FormValue("name"), r.FormValue("phone")
+		f, _, err := r.FormFile("audio")
+		if err != nil {
+			http.Error(w, "audio file required", http.StatusBadRequest)
+			return
+		}
+		defer f.Close()
+		if ogg, err = toOgg(r.Context(), f); err != nil {
+			httpErr(w, err)
+			return
+		}
+	} else {
+		var body struct{ Name, Phone, Text string }
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Text) == "" {
+			http.Error(w, "text required", http.StatusBadRequest)
+			return
+		}
+		name, phone, text = body.Name, body.Phone, body.Text
 	}
-	phone := digits(body.Phone)
-	if phone == "" {
+	if phone = digits(phone); phone == "" {
 		phone = "990000000001"
 	}
 	jid := wa.PhoneJID(phone)
-	go a.core.Handle(core.Msg{
+	m := core.Msg{
 		WAID: "sim-" + strconv.FormatInt(time.Now().UnixNano(), 36), Chat: jid, From: jid, Phone: phone,
-		PushName: body.Name, Text: body.Text, Simulated: true, At: time.Now(),
-	})
+		PushName: name, Text: text, Simulated: true, At: time.Now(),
+	}
+	if ogg != nil {
+		m.Voice = func(context.Context) ([]byte, error) { return ogg, nil }
+	}
+	go a.core.Handle(m)
 	writeJSON(w, map[string]bool{"ok": true})
+}
+
+// toOgg normalizes any uploaded audio (browser webm/ogg, mp3, m4a) to Ogg Opus,
+// the format WhatsApp voice notes arrive in.
+func toOgg(ctx context.Context, src io.Reader) ([]byte, error) {
+	dir, err := os.MkdirTemp("", "ureach-sim-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dir)
+	in, out := filepath.Join(dir, "in"), filepath.Join(dir, "out.ogg")
+	f, err := os.Create(in)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := io.Copy(f, src); err != nil {
+		f.Close()
+		return nil, err
+	}
+	f.Close()
+	if err := voice.ToOggOpus(ctx, in, out); err != nil {
+		return nil, err
+	}
+	return os.ReadFile(out)
 }
 
 // spa serves the embedded dashboard, falling back to index.html for client
