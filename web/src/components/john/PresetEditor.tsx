@@ -1,7 +1,7 @@
 import { useState } from "react"
-import { CircleCheck, MessageSquareQuote, RotateCcw, SlidersHorizontal, Target, Trash2, UserRoundPen } from "lucide-react"
-import { harnessApi, type Approach, type Harness, type HarnessPreset, type HarnessSnapshot, type HarnessStyle, type LinkTiming } from "@/lib/api"
-import { Choice, EditorBar, Label, ListEditor, Section } from "./editors"
+import { CircleCheck, RotateCcw, SlidersHorizontal, Target, Trash2, UserRoundPen } from "lucide-react"
+import { harnessApi, type Harness, type HarnessPreset, type HarnessSnapshot, type HarnessStyle, type LinkTiming } from "@/lib/api"
+import { Choice, EditorBar, Label, Section } from "./editors"
 import { TryIt } from "./TryIt"
 import { toast } from "../Toast"
 
@@ -26,7 +26,6 @@ export function PresetEditor({ snap, preset, run, onBack, onEditProfile }: { sna
   const harnessDirty = JSON.stringify(draft) !== base
   const dirty = harnessDirty || name !== preset.name || description !== preset.description
 
-  const setApproach = (patch: Partial<Approach>) => setDraft({ ...draft, approach: { ...draft.approach, ...patch } })
   const setStyle = (patch: Partial<HarnessStyle>) => setDraft({ ...draft, style: { ...draft.style, ...patch } })
   const discard = () => {
     setDraft(structuredClone(preset.harness))
@@ -112,22 +111,20 @@ export function PresetEditor({ snap, preset, run, onBack, onEditProfile }: { sna
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(320px,380px)] gap-4">
         <div className="min-h-0 space-y-4 overflow-y-auto pr-1 pb-6">
-          <Section title="Reply style" hint="How long his voice notes are, when the link goes out, and which language he answers in." icon={SlidersHorizontal}>
+          <Section title="Reply style" hint="How long his voice notes are and when the link goes out." icon={SlidersHorizontal}>
             <StyleEditor style={draft.style} onChange={setStyle} />
           </Section>
-          <Section title="How John sells" hint="His approach, step by step. The AI follows it on every reply." icon={Target}>
-            <ListEditor items={draft.approach.how_he_sells} onChange={(v) => setApproach({ how_he_sells: v })} placeholder="e.g. He connects U-topia to something in the lead's life." addLabel="Add a step" />
-          </Section>
-          <Section title="Openers and closers" hint="Ways he starts and ends a voice note. {name} becomes the lead's first name." icon={MessageSquareQuote}>
-            <div className="grid gap-5 xl:grid-cols-2">
-              <div>
-                <Label>Openers</Label>
-                <ListEditor items={draft.approach.openers} onChange={(v) => setApproach({ openers: v })} placeholder="Hey {name}! John here…" addLabel="Add opener" />
-              </div>
-              <div>
-                <Label>Closers</Label>
-                <ListEditor items={draft.approach.closers} onChange={(v) => setApproach({ closers: v })} placeholder="Shall we jump on a quick call?" addLabel="Add closer" />
-              </div>
+          <Section title="How John sells" hint="Write it the way you'd brief a new teammate: what he leads with, what he asks, how he closes. The AI follows it on every reply." icon={Target}>
+            <textarea
+              value={draft.approach}
+              onChange={(e) => setDraft({ ...draft, approach: e.target.value })}
+              placeholder={"e.g. He starts by asking where they're based and what made them curious.\n\nHe connects U-topia to the one thing that matters to them, then offers a quick call with someone from the team."}
+              rows={14}
+              className="field-sizing-content min-h-72 w-full resize-y rounded-lg border border-input bg-background px-4 py-3 text-sm leading-relaxed outline-none transition placeholder:text-muted-foreground/70 focus:border-ring focus:ring-[3px] focus:ring-ring/30"
+            />
+            <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground">
+              <span>His openers, closers and phrases come from Edit John.</span>
+              <span className="tabular-nums">{draft.approach.split(/\s+/).filter(Boolean).length} words</span>
             </div>
           </Section>
         </div>
@@ -173,17 +170,6 @@ function StyleEditor({ style, onChange }: { style: HarnessStyle; onChange: (p: P
             { value: "first_reply", label: "First reply", hint: "Right away, with an offer to help set up" },
             { value: "when_interested", label: "Once interested", hint: "After they ask how to join or say they want in" },
             { value: "when_asked", label: "Only when asked", hint: "Never pushed; sent when they ask for it" },
-          ]}
-        />
-      </div>
-      <div>
-        <Label>Language</Label>
-        <Choice
-          value={style.language}
-          onChange={(v) => onChange({ language: v })}
-          options={[
-            { value: "english", label: "English", hint: "Always replies in English" },
-            { value: "match", label: "Match the lead", hint: "Replies in the language they write in" },
           ]}
         />
       </div>

@@ -16,6 +16,7 @@ Distilled from `transcripts/` (community calls Aug to Oct 2026, Emmanuel's expla
 - **DAO points ("dows")** and promised **ownership/stake** in U-topia sit on top of that.
 - The calls talk about all of this freely, with almost no disclaimers. Examples: "an investment for your grandkids", "massive stake position", "scarcity event".
 - **The bot answers these itself, honestly.** It explains how rewards work without ever promising income, calling the membership an investment, or giving legal verdicts (`data/faq.md`, "Rewards for sharing" and "Is it legit?"). It only hands off when truly stuck: money or accounts gone wrong, legal or tax advice, upset leads, or questions the knowledge base can't answer safely. A code net also blocks any reply that promises money.
+- That is the default ("Balanced") on the **autonomy slider** on the John page. "Cautious" also hands off prices, earnings, safety and doubts; "Full autonomy" handles complaints and gaps too and only hands off money gone wrong, legal threats and emergencies. Levels are nested, and the income net applies at every level (`internal/brain/autonomy.go`).
 
 ## How an ambassador conversation goes (John's three-way call)
 1. An ambassador meets a **prospect** (WhatsApp, Zoom, or a cafe table).

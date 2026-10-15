@@ -64,7 +64,7 @@ export interface Persona {
   background: string[]
   voice: Record<string, string>
   signature_phrases: string[]
-  how_he_sells?: string[]
+  how_he_sells?: string
   values: string[]
   never: string[]
   sample_lines: string[]
@@ -122,9 +122,6 @@ export interface HarnessProfile {
   sample_lines: string[]
   metaphors: string[]
   never: string[]
-}
-export interface Approach {
-  how_he_sells: string[]
   openers: string[]
   closers: string[]
 }
@@ -133,10 +130,10 @@ export interface HarnessStyle {
   min_words: number
   max_words: number
   link_timing: LinkTiming
-  language: "english" | "match"
 }
+/** A preset: how John sells with it (free text) and his reply style. */
 export interface Harness {
-  approach: Approach
+  approach: string
   style: HarnessStyle
 }
 export interface HarnessPreset {
@@ -166,7 +163,17 @@ export interface HarnessSnapshot {
   referral_url: string
   documents: PlaybookDoc[]
   playbook_max_chars: number
-  always_handoff: string[]
+  always_handoff: string[] // at the current autonomy
+  autonomy: Autonomy
+  levels: AutonomyLevel[]
+}
+export type Autonomy = "low" | "medium" | "high"
+export interface AutonomyLevel {
+  key: Autonomy
+  label: string
+  summary: string
+  ai_handles: string[]
+  hands_off: string[]
 }
 export interface TryResult {
   reply: { spoken_script: string; followup_text: string; include_referral: boolean; handoff: boolean; handoff_reason: string; opt_out: boolean; remember: string[] }
@@ -190,6 +197,7 @@ export const harnessApi = {
   remove: (id: number) => send("DELETE", `/api/harness/presets/${id}`),
   rename: (id: number, name: string, description: string) => send("PATCH", `/api/harness/presets/${id}`, { name, description }),
   setFAQ: (text: string) => send("PUT", "/api/harness/faq", { text }),
+  setAutonomy: (level: Autonomy) => send("PUT", "/api/harness/autonomy", { level }),
   setReferral: (url: string) => send("PUT", "/api/harness/referral", { url }),
   upload: (file: File) => {
     const f = new FormData()

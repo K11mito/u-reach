@@ -33,22 +33,15 @@ const (
 	LinkWhenAsked      = "when_asked"      // only when they ask how to join (enforced in code)
 )
 
-// Reply language.
-const (
-	LangEnglish = "english"
-	LangMatch   = "match" // the lead's language; the cloned voice is multilingual
-)
-
 // Style is how John replies. Each dashboard preset carries one.
 type Style struct {
 	MinWords   int    `json:"min_words"`
 	MaxWords   int    `json:"max_words"`
 	LinkTiming string `json:"link_timing"`
-	Language   string `json:"language"`
 }
 
 // DefaultStyle is the original tuning: 50 to 90 words, link in the first reply.
-var DefaultStyle = Style{MinWords: 50, MaxWords: 90, LinkTiming: LinkFirstReply, Language: LangEnglish}
+var DefaultStyle = Style{MinWords: 50, MaxWords: 90, LinkTiming: LinkFirstReply}
 
 // Normalized fills unset fields from DefaultStyle and keeps lengths sane.
 func (st Style) Normalized() Style {
@@ -65,9 +58,6 @@ func (st Style) Normalized() Style {
 	default:
 		st.LinkTiming = DefaultStyle.LinkTiming
 	}
-	if st.Language != LangMatch {
-		st.Language = LangEnglish
-	}
 	return st
 }
 
@@ -81,6 +71,7 @@ type Config struct {
 	Playbook    []Doc  // active sales playbook documents
 	Style       Style
 	ReferralURL string
+	Autonomy    string // low | medium | high; see autonomy.go
 }
 
 // Contact is what we know about the lead.
@@ -132,10 +123,11 @@ type Brain struct {
 	ReferralURL string     // read through Referral(); set through Configure
 	OnUsage     func(Meta) // called after every billed request, e.g. to record spend
 
-	client anthropic.Client
-	mu     sync.RWMutex
-	system string
-	style  Style
+	client   anthropic.Client
+	mu       sync.RWMutex
+	system   string
+	style    Style
+	autonomy string
 }
 
 // New loads the persona card and FAQ. Call config.Load first.
@@ -165,7 +157,7 @@ func (b *Brain) Configure(c Config) {
 	c.Style = c.Style.Normalized()
 	system := systemPrompt(c)
 	b.mu.Lock()
-	b.system, b.style, b.ReferralURL = system, c.Style, c.ReferralURL
+	b.system, b.style, b.ReferralURL, b.autonomy = system, c.Style, c.ReferralURL, NormalizeAutonomy(c.Autonomy)
 	b.mu.Unlock()
 }
 
@@ -219,19 +211,19 @@ func (b *Brain) Reply(ctx context.Context, c Contact, history []Turn) (Reply, Me
 // Live replies keep using the configured version.
 func (b *Brain) Preview(ctx context.Context, cfg Config, c Contact, history []Turn) (Reply, Meta, error) {
 	cfg.Style = cfg.Style.Normalized()
-	return b.generate(ctx, setup{system: systemPrompt(cfg), style: cfg.Style, referral: cfg.ReferralURL}, userPrompt(c, history), c, history)
+	return b.generate(ctx, setup{system: systemPrompt(cfg), style: cfg.Style, referral: cfg.ReferralURL, autonomy: NormalizeAutonomy(cfg.Autonomy)}, userPrompt(c, history), c, history)
 }
 
 // setup is one consistent view of the config, taken once per reply.
 type setup struct {
-	system, referral string
-	style            Style
+	system, referral, autonomy string
+	style                      Style
 }
 
 func (b *Brain) current() setup {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	return setup{system: b.system, style: b.style.Normalized(), referral: b.ReferralURL}
+	return setup{system: b.system, style: b.style.Normalized(), referral: b.ReferralURL, autonomy: NormalizeAutonomy(b.autonomy)}
 }
 
 // Opener writes John's first, unprompted voice note to someone he knows
@@ -314,11 +306,6 @@ func (b *Brain) generate(ctx context.Context, cfg setup, prompt string, c Contac
 
 var (
 	urlRe = regexp.MustCompile(`https?://\S+|www\.\S+`)
-	// Messages only a person can deal with: money that went wrong, or legal
-	// trouble. The model is told the same; this is the net for when it
-	// doesn't listen. Everything else, earnings and "is it a scam" included,
-	// the AI answers from the knowledge base.
-	handoffRe = regexp.MustCompile(`(?i)\b(refund\w*|chargebacks?|lawsuits?|lawyers?|attorneys?|sue|police|hacked|scammed|stolen)\b`)
 	// Replies that would promise money. The model is told never to; if one
 	// slips through anyway it's swapped for a holding line and John takes over.
 	incomeClaimRe = regexp.MustCompile(`(?i)\b(` +
@@ -341,7 +328,7 @@ func enforce(cfg setup, r Reply, c Contact, history []Turn, meta *Meta) Reply {
 	style, referral := cfg.style, cfg.referral
 
 	if !r.Handoff {
-		if kw := handoffRe.FindString(latest); kw != "" {
+		if kw := handoffTrigger(cfg.autonomy, latest); kw != "" {
 			meta.ForcedHandoff = strings.ToLower(kw)
 			r.Handoff = true
 			r.HandoffReason = "mentioned " + meta.ForcedHandoff
@@ -464,10 +451,6 @@ func systemPrompt(c Config) string {
 		closing = "- Don't push your link. End with one warm question about them or an offer of a quick call. Send the link only when they ask how to join or ask for it."
 		linkRule = "include_referral: true only when the lead asks how to join or asks for the link. The system enforces this."
 	}
-	language := "- Reply in English."
-	if st.Language == LangMatch {
-		language = "- Reply in the language the lead writes in (John's cloned voice speaks it). If unsure, use English."
-	}
 	length := fmt.Sprintf("- %d to %d words, about %d to %d seconds. Shorter is better than rushed.", st.MinWords, st.MaxWords, st.MinWords*2/5, st.MaxWords*2/5)
 
 	return `You write WhatsApp voice notes as John, a U.Center ambassador. Your words are spoken aloud by a clone of John's own voice and sent to a lead who messaged him. They must sound exactly like John talking into his phone: warm, personal, and excited to bring this person into U-topia with him as their sponsor.
@@ -489,18 +472,9 @@ How to write spoken_script:
 - Don't repeat lines you already said earlier in this conversation; vary how you open and close.
 - The knowledge base and the sales playbook are your facts: answer from them with confidence, the way someone who knows this inside out would. If a detail isn't covered, say what you do know and offer to go through the rest on a quick call. Never invent numbers, dates, features or promises.
 - Never sound like a brochure or a support bot. Never say "I'd be happy to help", "Great question", "As an AI", or "Feel free to reach out".
-` + language + `
+- Reply in English.
 
-Answer, don't defer. The whole point is to save John time, so you answer questions yourself, including prices, packages, rewards and earnings, risks, and whether it's legit, the way the knowledge base says to talk about them.
-
-Honesty, always: never promise or estimate income, earnings or returns, and never say what anyone has earned. Never call the membership an investment or say what points or a membership might be worth. Never say U-topia is a bank, regulated or licensed, and never give a legal verdict like "it's legal" or "it's not a pyramid"; describe how it works and let them decide.
-
-Handoff is rare: set it to true only when you're truly stuck.
-1. Something only a person can fix: a payment, purchase, transfer or account that went wrong, a refund, or lost access.
-2. They want legal, tax or regulatory advice, or ask whether it's allowed where they live.
-3. They're upset or complaining, or ask to speak to John himself.
-4. They ask something important the knowledge base can't answer and a guess could mislead them, like whether the card works in their specific country.
-When you hand off, still help: say what you can, warmly, then say John will get back to them personally on the rest (20 to 50 words). Put the topic in handoff_reason.
+` + handoffPrompt(c.Autonomy) + `
 
 Opt-out: if the lead asks you to stop messaging them or clearly says they're not interested, set opt_out to true. Then spoken_script is one or two kind sentences with no pitch, followup_text is empty, and include_referral is false.
 
