@@ -29,6 +29,7 @@ export interface Message {
   audio_path?: string
   duration_ms?: number
   run_id?: number
+  status?: "sent" | "delivered" | "read" | "played"
   created_at: number
 }
 
@@ -78,12 +79,24 @@ export interface State {
     persona: Persona | null
     faq: string
     mock_voice: boolean
+    samples?: { original?: string; clone?: string }
+    clone_line?: string
   }
   contacts: Contact[]
   last: Record<number, Message>
   stats: Stats
   hours_saved: number
-  whatsapp: { enabled: boolean; connected: boolean; phone?: string; push_name?: string }
+  whatsapp: WhatsAppStatus
+}
+
+export interface WhatsAppStatus {
+  enabled: boolean
+  connected: boolean
+  linked: boolean
+  phone?: string
+  push_name?: string
+  has_qr?: boolean
+  logged_out?: boolean
 }
 
 async function json<T>(r: Response): Promise<T> {
@@ -134,6 +147,7 @@ type LiveEvent =
   | { type: "message"; data: Message }
   | { type: "run"; data: Run }
   | { type: "campaign"; data: CampaignStatus & { contact_id: number } }
+  | { type: "whatsapp"; data: WhatsAppStatus }
 
 /** Loads dashboard state and keeps it live via SSE. */
 declare global {
@@ -196,6 +210,8 @@ export function useLive() {
             }
           })
           refetch()
+        } else if (ev.type === "whatsapp") {
+          setState((s) => (s ? { ...s, whatsapp: ev.data } : s))
         } else if (ev.type === "campaign") {
           setCampaign((prev) => ({ ...prev, [ev.data.contact_id]: { status: ev.data.status, error: ev.data.error } }))
         } else if (ev.type === "run") {
@@ -227,4 +243,38 @@ export function timeAgo(ms: number) {
 
 export function clock(ms: number) {
   return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+}
+
+/** Animates a number toward its new value (for the stat counters). */
+export function useCountUp(target: number, ms = 900) {
+  const [value, setValue] = useState(target)
+  const from = useRef(target)
+  useEffect(() => {
+    const start = performance.now()
+    const a = from.current
+    let raf = 0
+    const step = (t: number) => {
+      const p = Math.min(1, (t - start) / ms)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setValue(a + (target - a) * eased)
+      if (p < 1) raf = requestAnimationFrame(step)
+      else from.current = target
+    }
+    raf = requestAnimationFrame(step)
+    return () => {
+      cancelAnimationFrame(raf)
+      from.current = target
+    }
+  }, [target, ms])
+  return value
+}
+
+export function dayLabel(ms: number) {
+  const d = new Date(ms)
+  const today = new Date()
+  const yesterday = new Date(Date.now() - 86400000)
+  const same = (a: Date, b: Date) => a.toDateString() === b.toDateString()
+  if (same(d, today)) return "Today"
+  if (same(d, yesterday)) return "Yesterday"
+  return d.toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" })
 }

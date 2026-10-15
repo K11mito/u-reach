@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react"
-import { Bot, Hand, Link2, Mic, Send, Sparkles, Undo2, UserRound } from "lucide-react"
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { Bot, Hand, Link2, Megaphone, Mic, Search, Send, Sparkles, TriangleAlert, Undo2, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { api, clock, displayName, timeAgo, type Contact, type Message, type Run } from "@/lib/api"
-import { Initials, StatusChip, VoiceNote } from "./bits"
+import { api, clock, dayLabel, displayName, timeAgo, type Contact, type Message, type Run, type Status } from "@/lib/api"
+import { Initials, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
 import { SimulateBox } from "./SimulateBox"
+import { toast } from "./Toast"
+
+type Filter = "all" | Status
 
 export function Inbox({
   contacts,
@@ -13,16 +16,57 @@ export function Inbox({
   messages,
   loadMessages,
   runs,
+  onCampaign,
 }: {
   contacts: Contact[]
   last: Record<number, Message>
   messages: Record<number, Message[]>
   loadMessages: (id: number) => void
   runs: Run[]
+  onCampaign: () => void
 }) {
   const [selected, setSelected] = useState<number | null>(null)
+  const [filter, setFilter] = useState<Filter>("all")
+  const [query, setQuery] = useState("")
+  const search = useRef<HTMLInputElement>(null)
+
   const sorted = useMemo(() => [...contacts].sort((a, b) => (b.last_message_at || b.created_at) - (a.last_message_at || a.created_at)), [contacts])
-  const current = sorted.find((c) => c.id === selected) ?? sorted[0]
+  const visible = sorted.filter(
+    (c) => (filter === "all" || c.status === filter) && (!query || `${displayName(c)} ${c.context} ${c.phone}`.toLowerCase().includes(query.toLowerCase())),
+  )
+  const current = sorted.find((c) => c.id === selected) ?? visible[0] ?? sorted[0]
+
+  // Unread: a lead's newest message arrived after we last looked at that chat.
+  const [seen, setSeen] = useState<Record<number, number>>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("ureach.seen") ?? "null")
+      if (saved && typeof saved === "object") return saved
+    } catch {
+      /* storage unavailable: fall back to "everything so far is seen" */
+    }
+    return Object.fromEntries(Object.entries(last).map(([id, m]) => [id, m.id]))
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem("ureach.seen", JSON.stringify(seen))
+    } catch {
+      /* ignore */
+    }
+  }, [seen])
+  const newest = (id: number) => messages[id]?.at(-1) ?? last[id]
+  const currentNewest = current ? newest(current.id)?.id : undefined
+  useEffect(() => {
+    if (current && currentNewest) setSeen((s) => (s[current.id] === currentNewest ? s : { ...s, [current.id]: currentNewest }))
+  }, [current, currentNewest])
+  const unread = (c: Contact) => {
+    const m = newest(c.id)
+    return !!m && m.direction === "in" && m.id > (seen[c.id] ?? 0)
+  }
+  const counts = useMemo(() => {
+    const n: Record<string, number> = { all: contacts.length }
+    contacts.forEach((c) => (n[c.status] = (n[c.status] ?? 0) + 1))
+    return n
+  }, [contacts])
 
   useEffect(() => {
     if (current && !messages[current.id]) loadMessages(current.id)
@@ -39,49 +83,111 @@ export function Inbox({
     }
   }, [latestRun, loadMessages])
 
-  const running = new Set(runs.filter((r) => r.status === "running").map((r) => r.contact_id))
+  // "/" focuses search, like most inboxes.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "/" && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault()
+        search.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", key)
+    return () => window.removeEventListener("keydown", key)
+  }, [])
+
+  const liveRuns = new Map(runs.filter((r) => r.status === "running").map((r) => [r.contact_id, r]))
+  const tabs: { id: Filter; label: string }[] = [
+    { id: "all", label: "All" },
+    { id: "needs_john", label: "Needs John" },
+    { id: "auto", label: "Auto" },
+    { id: "human", label: "John" },
+    { id: "new", label: "New" },
+  ]
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[340px_1fr] gap-4">
+    <div className="grid min-h-0 flex-1 grid-cols-[minmax(300px,340px)_1fr] gap-4">
       <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="font-bold">Chats</h2>
-          <span className="text-xs text-muted-foreground">{contacts.length} leads</span>
+        <div className="space-y-2.5 border-b px-3 pt-3 pb-2.5">
+          <div className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2 ring-primary/30 focus-within:ring-2">
+            <Search className="size-4 text-muted-foreground" />
+            <input
+              ref={search}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Escape" && (setQuery(""), e.currentTarget.blur())}
+              placeholder="Search leads"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+            <kbd className="rounded border bg-card px-1.5 text-[10px] text-muted-foreground">/</kbd>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setFilter(t.id)}
+                className={cn(
+                  "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap transition",
+                  filter === t.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                  t.id === "needs_john" && filter !== t.id && counts.needs_john && "text-amber-700",
+                )}
+              >
+                {t.label}
+                {!!counts[t.id] && <span className={cn("ml-1 tabular-nums", filter === t.id ? "opacity-80" : "opacity-60")}>{counts[t.id]}</span>}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {sorted.map((c) => (
-            <ChatRow key={c.id} c={c} active={current?.id === c.id} live={running.has(c.id)} last={messages[c.id]?.at(-1) ?? last[c.id]} onClick={() => setSelected(c.id)} />
+          {visible.map((c) => (
+            <ChatRow key={c.id} c={c} active={current?.id === c.id} unread={current?.id !== c.id && unread(c)} run={liveRuns.get(c.id)} last={newest(c.id)} onClick={() => setSelected(c.id)} />
           ))}
+          {!visible.length && <p className="px-4 py-10 text-center text-sm text-muted-foreground">No leads match.</p>}
         </div>
         <SimulateBox />
       </div>
       {current ? (
-        <ChatView contact={current} messages={messages[current.id] ?? []} live={running.has(current.id)} />
+        <ChatView key={current.id} contact={current} messages={messages[current.id]} run={liveRuns.get(current.id)} onCampaign={onCampaign} />
       ) : (
-        <div className="grid place-items-center rounded-2xl border bg-card text-muted-foreground">No chats yet</div>
+        <div className="grid place-items-center rounded-2xl border bg-card text-muted-foreground">No chats yet. Text John's number or use Simulate.</div>
       )}
     </div>
   )
 }
 
-function ChatRow({ c, active, live, last, onClick }: { c: Contact; active: boolean; live: boolean; last?: Message; onClick: () => void }) {
+function ChatRow({ c, active, unread, run, last, onClick }: { c: Contact; active: boolean; unread: boolean; run?: Run; last?: Message; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={cn("flex w-full items-center gap-3 border-b border-border/60 px-4 py-3 text-left transition hover:bg-muted/60", active && "bg-accent/60 hover:bg-accent/60")}
+      className={cn(
+        "relative flex w-full items-center gap-3 border-b border-border/60 px-4 py-3 text-left transition hover:bg-muted/60",
+        active && "bg-accent/60 hover:bg-accent/60",
+      )}
     >
+      {active && <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary" />}
       <div className="relative">
         <Initials name={displayName(c)} size={42} />
-        {live && <span className="absolute -right-0.5 -bottom-0.5 size-3.5 animate-pulse rounded-full border-2 border-card bg-wa" />}
+        {run && <span className="absolute -right-0.5 -bottom-0.5 size-3.5 animate-pulse rounded-full border-2 border-card bg-wa" />}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate font-semibold">{displayName(c)}</span>
-          <span className="shrink-0 text-[11px] text-muted-foreground">{timeAgo(c.last_message_at)}</span>
+          <span className={cn("truncate font-semibold", unread && "font-extrabold")}>{displayName(c)}</span>
+          <span className={cn("flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums", unread ? "font-bold text-wa-dark" : "text-muted-foreground")}>
+            {timeAgo(c.last_message_at || c.created_at)}
+            {unread && <span className="size-2 rounded-full bg-wa" />}
+          </span>
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
-          <span className="truncate text-xs text-muted-foreground">
-            {live ? <span className="font-medium text-wa-dark">recording audio…</span> : last ? preview(last) : c.context}
+          <span className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground">
+            {run ? (
+              <span className="font-medium text-wa-dark">{run.thought_at ? "recording audio…" : "thinking…"}</span>
+            ) : last ? (
+              <>
+                {last.direction === "out" && <Ticks status={last.status} voice={last.kind === "voice"} />}
+                <span className="truncate">{preview(last)}</span>
+              </>
+            ) : (
+              <span className="truncate">{c.context || "New lead"}</span>
+            )}
           </span>
           <StatusChip status={c.status} />
         </div>
@@ -91,15 +197,25 @@ function ChatRow({ c, active, live, last, onClick }: { c: Contact; active: boole
 }
 
 function preview(m: Message) {
-  const who = m.direction === "out" ? (m.source === "john" ? "You: " : "AI: ") : ""
-  return m.kind === "voice" ? `${who}🎤 Voice note` : who + m.text.split("\n")[0]
+  const who = m.direction === "out" ? (m.source === "john" ? "You: " : "") : ""
+  if (m.kind === "voice") return `${who}🎤 Voice note${m.duration_ms ? ` (${Math.round(m.duration_ms / 1000)}s)` : ""}`
+  return who + m.text.split("\n")[0]
 }
 
-function ChatView({ contact, messages, live }: { contact: Contact; messages: Message[]; live: boolean }) {
-  const bottom = useRef<HTMLDivElement>(null)
+function ChatView({ contact, messages, run, onCampaign }: { contact: Contact; messages?: Message[]; run?: Run; onCampaign: () => void }) {
+  const scroller = useRef<HTMLDivElement>(null)
+  const composer = useRef<HTMLTextAreaElement>(null)
   const [draft, setDraft] = useState("")
   const [busy, setBusy] = useState(false)
-  useEffect(() => bottom.current?.scrollIntoView({ behavior: "smooth" }), [messages.length, live])
+  const first = useRef(true)
+
+  // Jump to the newest message on open; glide for new arrivals.
+  useLayoutEffect(() => {
+    const el = scroller.current
+    if (!el || !messages) return
+    el.scrollTo({ top: el.scrollHeight, behavior: first.current ? "auto" : "smooth" })
+    first.current = false
+  }, [messages?.length, run?.thought_at, messages])
 
   const paused = contact.status === "human" || contact.status === "needs_john"
   const send = async () => {
@@ -108,8 +224,18 @@ function ChatView({ contact, messages, live }: { contact: Contact; messages: Mes
     try {
       await api.send(contact.id, draft.trim())
       setDraft("")
+    } catch (e) {
+      toast(`Couldn't send: ${e}`, "error")
     } finally {
       setBusy(false)
+    }
+  }
+  const setStatus = async (s: Status) => {
+    try {
+      await api.setStatus(contact.id, s)
+      if (s === "human") window.setTimeout(() => composer.current?.focus(), 50)
+    } catch (e) {
+      toast(String(e), "error")
     }
   }
 
@@ -118,11 +244,11 @@ function ChatView({ contact, messages, live }: { contact: Contact; messages: Mes
       <div className="flex items-center gap-3 border-b px-5 py-3">
         <Initials name={displayName(contact)} size={44} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-lg font-bold">{displayName(contact)}</span>
             <StatusChip status={contact.status} />
             {contact.link_sent_at > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground">
+              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-secondary-foreground">
                 <Link2 className="size-3" /> Link sent
               </span>
             )}
@@ -133,22 +259,28 @@ function ChatView({ contact, messages, live }: { contact: Contact; messages: Mes
           </div>
         </div>
         {paused ? (
-          <Button variant="outline" onClick={() => api.setStatus(contact.id, "auto")} className="rounded-full">
+          <Button variant="outline" onClick={() => setStatus("auto")} className="rounded-full">
             <Undo2 /> Hand back to AI
           </Button>
         ) : (
-          <Button onClick={() => api.setStatus(contact.id, "human")} className="rounded-full">
+          <Button onClick={() => setStatus("human")} className="rounded-full">
             <Hand /> Take over
           </Button>
         )}
       </div>
 
-      {(contact.handoff_reason || (contact.memory?.length ?? 0) > 0) && (
+      {contact.status === "needs_john" && (
+        <div className="flex items-center gap-2 border-b border-amber/40 bg-amber/15 px-5 py-2 text-sm text-amber-900">
+          <TriangleAlert className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">
+            <b>John's turn.</b> {contact.handoff_reason || "The AI handed this chat to you."} The AI is paused here.
+          </span>
+        </div>
+      )}
+      {!!contact.memory?.length && (
         <div className="flex flex-wrap items-center gap-1.5 border-b bg-muted/40 px-5 py-2 text-xs">
-          {contact.status === "needs_john" && contact.handoff_reason && (
-            <span className="rounded-full bg-amber/25 px-2 py-0.5 font-semibold text-amber-900">⚑ {contact.handoff_reason}</span>
-          )}
-          {contact.memory?.map((m) => (
+          <span className="font-semibold text-muted-foreground">Remembers:</span>
+          {contact.memory.map((m) => (
             <span key={m} className="rounded-full bg-card px-2 py-0.5 text-muted-foreground ring-1 ring-border">
               {m}
             </span>
@@ -156,23 +288,60 @@ function ChatView({ contact, messages, live }: { contact: Contact; messages: Mes
         </div>
       )}
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,oklch(0.9_0.02_285)_1px,transparent_0)] bg-[length:22px_22px] px-6 py-5">
-        {messages.map((m) => (
-          <Bubble key={m.id} m={m} />
-        ))}
-        {live && (
+      <div
+        ref={scroller}
+        className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,oklch(0.9_0.02_285)_1px,transparent_0)] bg-[length:22px_22px] px-6 py-5"
+      >
+        {!messages ? (
+          <div className="space-y-3">
+            {[60, 40, 70].map((w, i) => (
+              <div key={i} className={cn("h-12 animate-pulse rounded-2xl bg-muted", i % 2 ? "ml-auto" : "")} style={{ width: `${w}%` }} />
+            ))}
+          </div>
+        ) : messages.length === 0 && !run ? (
+          <div className="grid h-full place-items-center text-center text-sm text-muted-foreground">
+            <div>
+              <Megaphone className="mx-auto mb-2 size-7 text-primary/60" />
+              No messages with {displayName(contact)} yet.
+              <br />
+              <button onClick={onCampaign} className="mt-2 font-semibold text-primary hover:underline">
+                Send them a personal voice note from John →
+              </button>
+            </div>
+          </div>
+        ) : (
+          messages.map((m, i) => (
+            <Fragment key={m.id}>
+              {(i === 0 || dayLabel(messages[i - 1].created_at) !== dayLabel(m.created_at)) && (
+                <div className="sticky top-0 z-10 flex justify-center py-1">
+                  <span className="rounded-full bg-card/90 px-3 py-0.5 text-[11px] font-semibold text-muted-foreground shadow-sm ring-1 ring-border backdrop-blur">{dayLabel(m.created_at)}</span>
+                </div>
+              )}
+              <Bubble m={m} />
+            </Fragment>
+          ))
+        )}
+        {run && (
           <div className="flex justify-end">
             <div className="inline-flex items-center gap-2 rounded-2xl bg-wa-bubble px-3 py-2 text-sm font-medium text-wa-dark shadow-sm">
-              <Mic className="size-4 animate-pulse" /> John is recording audio…
+              {run.thought_at ? (
+                <>
+                  <Mic className="size-4 animate-pulse" /> John is recording audio…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="size-4 animate-pulse" /> John is thinking…
+                </>
+              )}
             </div>
           </div>
         )}
-        <div ref={bottom} />
       </div>
 
       {paused ? (
         <div className="flex items-end gap-2 border-t p-3">
           <Textarea
+            ref={composer}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -181,11 +350,11 @@ function ChatView({ contact, messages, live }: { contact: Contact; messages: Mes
                 send()
               }
             }}
-            placeholder={`Reply to ${displayName(contact)} as John…`}
-            className="min-h-11 resize-none rounded-xl"
+            placeholder={`Reply to ${displayName(contact)} as John… (Enter to send)`}
+            className="max-h-32 min-h-11 resize-none rounded-xl"
             rows={1}
           />
-          <Button onClick={send} disabled={busy || !draft.trim()} className="h-11 rounded-xl bg-wa-dark hover:bg-wa-dark/90">
+          <Button onClick={send} disabled={busy || !draft.trim()} className="h-11 rounded-xl bg-wa-dark hover:bg-wa-dark/90" aria-label="Send">
             <Send />
           </Button>
         </div>
@@ -210,7 +379,9 @@ function Bubble({ m }: { m: Message }) {
             {m.text && <p className="border-t border-foreground/10 pt-1.5 text-[13px] leading-snug text-foreground/80 italic">“{m.text}”</p>}
           </div>
         ) : (
-          <p className="text-sm leading-snug whitespace-pre-wrap [overflow-wrap:anywhere]">{m.text}</p>
+          <div className="text-sm leading-snug whitespace-pre-wrap [overflow-wrap:anywhere]">
+            <Linkified text={m.text.trim()} />
+          </div>
         )}
         <div className="mt-1 flex items-center justify-end gap-1.5 text-[10px] text-muted-foreground">
           {out && ai && (
@@ -224,6 +395,8 @@ function Bubble({ m }: { m: Message }) {
             </span>
           )}
           {clock(m.created_at)}
+          {out && <Ticks status={m.status} voice={m.kind === "voice"} />}
+          {out && m.kind === "voice" && m.status === "played" && <span className="font-semibold text-sky-600">played</span>}
         </div>
       </div>
     </div>

@@ -103,7 +103,7 @@ export function VoiceNote({ src, durationMs, seed, outgoing, big }: { src?: stri
   }
 
   return (
-    <div className={cn("flex items-center gap-3", big ? "min-w-[420px]" : "min-w-[230px]")}>
+    <div className={cn("flex items-center gap-3", big ? "w-full min-w-0" : "min-w-[230px]")}>
       {src && <audio ref={ref} src={`/audio/${src}`} preload="none" />}
       <button
         onClick={toggle}
@@ -117,16 +117,16 @@ export function VoiceNote({ src, durationMs, seed, outgoing, big }: { src?: stri
       >
         {playing ? <Pause className={big ? "size-6" : "size-4"} /> : <Play className={cn(big ? "size-6" : "size-4", "translate-x-px")} />}
       </button>
-      <div className={cn("flex flex-1 items-center gap-[2px]", big ? "h-10" : "h-6")}>
+      <div className={cn("flex min-w-0 flex-1 items-center gap-[2px] overflow-hidden", big ? "h-10" : "h-6")}>
         {heights.map((h, i) => (
           <span
             key={i}
-            className={cn("w-[3px] rounded-full transition-colors", i / heights.length <= progress && playing ? (outgoing ? "bg-wa-dark" : "bg-primary") : "bg-foreground/25")}
+            className={cn("w-[3px] min-w-px shrink rounded-full transition-colors", i / heights.length <= progress && playing ? (outgoing ? "bg-wa-dark" : "bg-primary") : "bg-foreground/25")}
             style={{ height: `${h * 100}%` }}
           />
         ))}
       </div>
-      <span className={cn("tabular-nums text-muted-foreground", big ? "text-base" : "text-xs")}>{fmtDur(durationMs)}</span>
+      <span className={cn("shrink-0 tabular-nums text-muted-foreground", big ? "text-base" : "text-xs")}>{fmtDur(durationMs)}</span>
     </div>
   )
 }
@@ -138,5 +138,41 @@ export function Equalizer({ className }: { className?: string }) {
         <span key={d} className="w-[3px] rounded-full bg-current" style={{ height: "100%", animationDelay: `${d}s` }} />
       ))}
     </span>
+  )
+}
+
+/** WhatsApp-style delivery ticks for outbound messages. */
+export function Ticks({ status, voice }: { status?: string; voice?: boolean }) {
+  if (!status) return null
+  const blue = status === "read" || status === "played"
+  const label = status === "played" ? (voice ? "Played" : "Read") : status === "read" ? "Read" : status === "delivered" ? "Delivered" : "Sent"
+  return (
+    <span className={cn("inline-flex items-center", blue ? "text-sky-500" : "text-muted-foreground")} title={label}>
+      <svg viewBox="0 0 18 12" className="h-3 w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M1 6.5 4.5 10 11 2" />
+        {status !== "sent" && <path d="M7.5 9.5 8 10l6.5-8" />}
+      </svg>
+    </span>
+  )
+}
+
+const URL_RE = /(https?:\/\/[^\s]+)/g
+
+/** Text with tappable links, shown like a link preview pill. */
+export function Linkified({ text }: { text: string }) {
+  const parts = text.split(URL_RE)
+  return (
+    <>
+      {parts.map((p, i) =>
+        /^https?:\/\//.test(p) ? (
+          <a key={i} href={p} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 text-[13px] font-semibold text-sky-700 ring-1 ring-black/5 hover:underline">
+            <span className="grid size-5 shrink-0 place-items-center rounded bg-gradient-to-br from-indigo-500 to-purple-600 text-[10px] font-extrabold text-white">U</span>
+            <span className="truncate">{p.replace(/^https?:\/\//, "")}</span>
+          </a>
+        ) : (
+          <span key={i}>{p}</span>
+        ),
+      )}
+    </>
   )
 }
