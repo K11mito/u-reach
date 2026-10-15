@@ -127,10 +127,9 @@ function nextSpeed() {
 
 /**
  * A WhatsApp-style voice-note player. Click or drag along the waveform to
- * seek; the pill on the right changes the speed. `dark` matches WhatsApp's
- * dark theme.
+ * seek; the pill on the right changes the speed.
  */
-export function VoiceNote({ src, durationMs, seed, outgoing, big, dark }: { src?: string; durationMs?: number; seed: number; outgoing?: boolean; big?: boolean; dark?: boolean }) {
+export function VoiceNote({ src, durationMs, seed, outgoing, big }: { src?: string; durationMs?: number; seed: number; outgoing?: boolean; big?: boolean }) {
   const ref = useRef<HTMLAudioElement>(null)
   const wave = useRef<HTMLDivElement>(null)
   const [playing, setPlaying] = useState(false)
@@ -197,8 +196,7 @@ export function VoiceNote({ src, durationMs, seed, outgoing, big, dark }: { src?
     setProgress(f)
   }
 
-  const played = dark ? "bg-[#53bdeb]" : outgoing ? "bg-wa-dark" : "bg-primary"
-  const muted = dark ? "text-white/60" : "text-muted-foreground"
+  const played = outgoing ? "bg-wa-dark" : "bg-primary"
   return (
     <div className={cn("flex items-center gap-3", big ? "w-full min-w-0" : "min-w-[260px]")}>
       {src && <audio ref={ref} src={`/audio/${src}`} preload="none" />}
@@ -208,7 +206,7 @@ export function VoiceNote({ src, durationMs, seed, outgoing, big, dark }: { src?
         className={cn(
           "grid shrink-0 place-items-center rounded-full transition disabled:opacity-40",
           big ? "size-14" : "size-9",
-          dark ? "bg-white/15 text-white hover:bg-white/25" : outgoing ? "bg-wa-dark text-white hover:bg-wa-dark/90" : "bg-primary text-white hover:bg-primary/90",
+          outgoing ? "bg-wa-dark text-white hover:bg-wa-dark/90" : "bg-primary text-white hover:bg-primary/90",
         )}
         title={src ? (playing ? "Pause" : "Play") : "Audio not rendered yet"}
       >
@@ -227,12 +225,12 @@ export function VoiceNote({ src, durationMs, seed, outgoing, big, dark }: { src?
       >
         <div className="flex h-full items-center gap-[2px] overflow-hidden">
           {heights.map((h, i) => (
-            <span key={i} className={cn("w-[3px] min-w-px shrink rounded-full", (i + 0.5) / heights.length <= progress ? played : dark ? "bg-white/35" : "bg-foreground/25")} style={{ height: `${h * 100}%` }} />
+            <span key={i} className={cn("w-[3px] min-w-px shrink rounded-full", (i + 0.5) / heights.length <= progress ? played : "bg-foreground/25")} style={{ height: `${h * 100}%` }} />
           ))}
         </div>
         {src && <span className={cn("pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full", played, big ? "size-4" : "size-3")} style={{ left: `${progress * 100}%` }} />}
       </div>
-      <span className={cn("ml-auto shrink-0 tabular-nums", muted, big ? "text-base" : "text-xs")}>{fmtDur(progress > 0 ? progress * (durationMs ?? 0) : durationMs)}</span>
+      <span className={cn("ml-auto shrink-0 text-muted-foreground tabular-nums", big ? "text-base" : "text-xs")}>{fmtDur(progress > 0 ? progress * (durationMs ?? 0) : durationMs)}</span>
       {src && (
         <button
           onClick={nextSpeed}
@@ -240,7 +238,7 @@ export function VoiceNote({ src, durationMs, seed, outgoing, big, dark }: { src?
           className={cn(
             "shrink-0 rounded-full text-center font-semibold tabular-nums transition",
             big ? "min-w-14 px-2 py-1 text-sm" : "min-w-10 px-1.5 py-0.5 text-[11px]",
-            dark ? "bg-white/10 text-white/80 hover:bg-white/20" : "bg-black/[0.06] text-foreground/70 hover:bg-black/10",
+            "bg-black/[0.06] text-foreground/70 hover:bg-black/10",
           )}
         >
           {rate}×
@@ -261,12 +259,12 @@ export function Equalizer({ className }: { className?: string }) {
 }
 
 /** WhatsApp-style delivery ticks for outbound messages. */
-export function Ticks({ status, voice, dark }: { status?: string; voice?: boolean; dark?: boolean }) {
+export function Ticks({ status, voice }: { status?: string; voice?: boolean }) {
   if (!status) return null
   const blue = status === "read" || status === "played"
   const label = status === "played" ? (voice ? "Played" : "Read") : status === "read" ? "Read" : status === "delivered" ? "Delivered" : "Sent"
   return (
-    <span className={cn("inline-flex items-center", blue ? (dark ? "text-[#53bdeb]" : "text-sky-500") : dark ? "text-white/50" : "text-muted-foreground")} title={label}>
+    <span className={cn("inline-flex items-center", blue ? "text-sky-500" : "text-muted-foreground")} title={label}>
       <svg viewBox="0 0 18 12" className="h-3 w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M1 6.5 4.5 10 11 2" />
         {status !== "sent" && <path d="M7.5 9.5 8 10l6.5-8" />}
@@ -278,7 +276,7 @@ export function Ticks({ status, voice, dark }: { status?: string; voice?: boolea
 const URL_RE = /(https?:\/\/[^\s]+)/g
 
 /** Text with tappable links, shown like a link preview pill. */
-export function Linkified({ text, dark }: { text: string; dark?: boolean }) {
+export function Linkified({ text }: { text: string }) {
   const parts = text.split(URL_RE)
   return (
     <>
@@ -289,10 +287,7 @@ export function Linkified({ text, dark }: { text: string; dark?: boolean }) {
             href={p}
             target="_blank"
             rel="noreferrer"
-            className={cn(
-              "mt-1 flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-medium hover:underline",
-              dark ? "bg-black/20 text-[#53bdeb]" : "bg-white/70 text-sky-700 ring-1 ring-black/5",
-            )}
+            className="mt-1 flex items-center gap-1.5 rounded-md bg-white/70 px-2 py-1.5 text-[13px] font-medium text-sky-700 ring-1 ring-black/5 hover:underline"
           >
             <Mark size={20} />
             <span className="truncate">{p.replace(/^https?:\/\//, "")}</span>
