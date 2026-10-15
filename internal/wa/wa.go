@@ -14,7 +14,9 @@ import (
 
 	"github.com/mdp/qrterminal/v3"
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/proto/waCompanionReg"
 	"go.mau.fi/whatsmeow/proto/waE2E"
+	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
@@ -36,9 +38,13 @@ type Inbound struct {
 	Timestamp time.Time
 }
 
-// Client is a linked WhatsApp companion device.
+// Client is a linked WhatsApp companion device. If WhatsApp logs the device
+// out, it starts a fresh link on its own (new QR on the dashboard).
 type Client struct {
-	WA *whatsmeow.Client
+	wa        *whatsmeow.Client
+	container *sqlstore.Container
+	ctx       context.Context // from Connect; used to relink after a logout
+	relinking bool
 
 	// OnMessage runs in its own goroutine per message; it may block.
 	OnMessage func(Inbound)
@@ -55,8 +61,7 @@ type Client struct {
 	startedAt time.Time
 	allow     map[string]bool
 
-	connOnce  sync.Once
-	connected chan struct{}
+	connected chan struct{} // closed on the first Connected event of the current device
 
 	mu        sync.Mutex
 	qr        string // current pairing QR code, while unlinked
@@ -78,8 +83,8 @@ type Status struct {
 func (c *Client) Status() Status {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	st := Status{Connected: c.WA.IsConnected() && c.WA.IsLoggedIn(), QR: c.qr, HasQR: c.qr != "", LoggedOut: c.loggedOut, PushName: c.WA.Store.PushName}
-	if id := c.WA.Store.ID; id != nil {
+	st := Status{Connected: c.wa.IsConnected() && c.wa.IsLoggedIn(), QR: c.qr, HasQR: c.qr != "", LoggedOut: c.loggedOut, PushName: c.wa.Store.PushName}
+	if id := c.wa.Store.ID; id != nil {
 		st.Linked, st.Phone = true, id.User
 	}
 	return st
@@ -127,7 +132,8 @@ func Open(ctx context.Context, sessionPath string, allowlist []string, log waLog
 	}
 
 	c := &Client{
-		WA:        whatsmeow.NewClient(device, log.Sub("Client")),
+		wa:        whatsmeow.NewClient(device, log.Sub("Client")),
+		container: container,
 		log:       log,
 		lock:      lock,
 		startedAt: time.Now(),
@@ -139,8 +145,47 @@ func Open(ctx context.Context, sessionPath string, allowlist []string, log waLog
 			c.allow[p] = true
 		}
 	}
-	c.WA.AddEventHandler(c.handle)
+	c.wa.AddEventHandler(c.handle)
 	return c, nil
+}
+
+// WA returns the current whatsmeow client (it changes after a relink).
+func (c *Client) WA() *whatsmeow.Client {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.wa
+}
+
+func init() {
+	// Show up on the phone as an ordinary WhatsApp Web session.
+	store.SetOSInfo("Mac OS", [3]uint32{10, 15, 7})
+	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
+}
+
+// relink replaces a logged-out device with a fresh one and waits for a scan.
+func (c *Client) relink() {
+	c.mu.Lock()
+	if c.relinking || c.ctx == nil {
+		c.mu.Unlock()
+		return
+	}
+	c.relinking = true
+	old := c.wa
+	c.wa = whatsmeow.NewClient(c.container.NewDevice(), c.log.Sub("Client"))
+	c.wa.AddEventHandler(c.handle)
+	c.connected = make(chan struct{})
+	c.mu.Unlock()
+	old.Disconnect()
+
+	c.log.Warnf("starting a fresh link: open the dashboard and click Link WhatsApp")
+	err := c.Connect(c.ctx, "")
+	c.mu.Lock()
+	c.relinking = false
+	if err == nil {
+		c.loggedOut = false
+	}
+	c.mu.Unlock()
+	c.changed()
 }
 
 // Connect connects, linking first if the session is new. While unlinked it
@@ -148,8 +193,11 @@ func Open(ctx context.Context, sessionPath string, allowlist []string, log waLog
 // one. With pairPhone set (international format), it prints an 8-character
 // pairing code instead: WhatsApp > Linked devices > Link with phone number.
 func (c *Client) Connect(ctx context.Context, pairPhone string) error {
-	if c.WA.Store.ID != nil {
-		if err := c.WA.Connect(); err != nil {
+	c.mu.Lock()
+	c.ctx = ctx
+	c.mu.Unlock()
+	if c.WA().Store.ID != nil {
+		if err := c.WA().Connect(); err != nil {
 			return err
 		}
 		return c.waitConnected(ctx)
@@ -166,7 +214,7 @@ func (c *Client) Connect(ctx context.Context, pairPhone string) error {
 		if err != nil {
 			c.log.Warnf("pairing: %v (retrying)", err)
 		}
-		c.WA.Disconnect()
+		c.WA().Disconnect()
 		c.setQR("")
 		select {
 		case <-ctx.Done():
@@ -177,11 +225,11 @@ func (c *Client) Connect(ctx context.Context, pairPhone string) error {
 }
 
 func (c *Client) pairOnce(ctx context.Context, pairPhone string) (bool, error) {
-	qrs, err := c.WA.GetQRChannel(ctx)
+	qrs, err := c.WA().GetQRChannel(ctx)
 	if err != nil {
 		return false, err
 	}
-	if err := c.WA.Connect(); err != nil {
+	if err := c.WA().Connect(); err != nil {
 		return false, err
 	}
 	pairing := false
@@ -191,7 +239,7 @@ func (c *Client) pairOnce(ctx context.Context, pairPhone string) (bool, error) {
 			if pairPhone != "" {
 				if !pairing {
 					pairing = true
-					code, err := c.WA.PairPhone(ctx, digits(pairPhone), true, whatsmeow.PairClientChrome, "Chrome (Linux)")
+					code, err := c.WA().PairPhone(ctx, digits(pairPhone), true, whatsmeow.PairClientChrome, "Chrome (Linux)")
 					if err != nil {
 						return false, fmt.Errorf("pair phone: %w", err)
 					}
@@ -218,8 +266,11 @@ func (c *Client) pairOnce(ctx context.Context, pairPhone string) (bool, error) {
 }
 
 func (c *Client) waitConnected(ctx context.Context) error {
+	c.mu.Lock()
+	ch := c.connected
+	c.mu.Unlock()
 	select {
-	case <-c.connected:
+	case <-ch:
 		return nil
 	case <-time.After(45 * time.Second):
 		return errors.New("timed out waiting for WhatsApp connection")
@@ -230,7 +281,7 @@ func (c *Client) waitConnected(ctx context.Context) error {
 
 // Close disconnects and releases the session lock.
 func (c *Client) Close() {
-	c.WA.Disconnect()
+	c.WA().Disconnect()
 	if c.lock != nil {
 		c.lock.Close()
 	}
@@ -239,18 +290,28 @@ func (c *Client) Close() {
 func (c *Client) handle(evt any) {
 	switch e := evt.(type) {
 	case *events.Connected:
-		c.log.Infof("connected as %s", c.WA.Store.ID)
-		c.connOnce.Do(func() { close(c.connected) })
+		c.log.Infof("connected as %s", c.WA().Store.ID)
+		c.mu.Lock()
+		select {
+		case <-c.connected:
+		default:
+			close(c.connected)
+		}
+		c.mu.Unlock()
 		go c.announceAvailable()
 		c.changed()
 	case *events.Disconnected:
 		c.changed()
 	case *events.LoggedOut:
-		c.log.Errorf("LOGGED OUT (reason %v): restart to link again", e.Reason)
+		c.log.Errorf("LOGGED OUT (reason %v). Check Linked devices on the phone; a new QR is coming", e.Reason)
 		c.mu.Lock()
 		c.loggedOut = true
 		c.mu.Unlock()
 		c.changed()
+		go func() {
+			time.Sleep(2 * time.Second)
+			c.relink()
+		}()
 	case *events.StreamReplaced:
 		c.log.Errorf("another client took over this session; is a second process running?")
 		c.changed()
@@ -278,9 +339,9 @@ func (c *Client) handle(evt any) {
 // Right after linking the push name hasn't synced yet, so retry for a while.
 func (c *Client) announceAvailable() {
 	for range 30 {
-		err := c.WA.SendPresence(context.Background(), types.PresenceAvailable)
+		err := c.WA().SendPresence(context.Background(), types.PresenceAvailable)
 		if err == nil {
-			c.log.Infof("presence: available (push name %q)", c.WA.Store.PushName)
+			c.log.Infof("presence: available (push name %q)", c.WA().Store.PushName)
 			return
 		}
 		if !errors.Is(err, whatsmeow.ErrNoPushName) {
@@ -374,24 +435,33 @@ func (c *Client) phoneJID(src types.MessageSource) types.JID {
 		return alt
 	}
 	if s.Server == types.HiddenUserServer {
-		if pn, err := c.WA.Store.LIDs.GetPNForLID(context.Background(), s); err == nil && !pn.IsEmpty() {
+		if pn, err := c.WA().Store.LIDs.GetPNForLID(context.Background(), s); err == nil && !pn.IsEmpty() {
 			return pn.ToNonAD()
 		}
 	}
 	return s
 }
 
+// ErrNotLinked means the device was logged out and no one has scanned a new QR yet.
+var ErrNotLinked = errors.New("WhatsApp isn't linked: click Link WhatsApp in the sidebar and scan the QR")
+
 // SendText sends a plain text message.
 func (c *Client) SendText(ctx context.Context, to types.JID, text string) (types.MessageID, error) {
-	id := c.WA.GenerateMessageID()
+	if c.WA().Store.ID == nil {
+		return "", ErrNotLinked
+	}
+	id := c.WA().GenerateMessageID()
 	c.sent.Store(id, true)
-	resp, err := c.WA.SendMessage(ctx, to, &waE2E.Message{Conversation: proto.String(text)}, whatsmeow.SendRequestExtra{ID: id})
+	resp, err := c.WA().SendMessage(ctx, to, &waE2E.Message{Conversation: proto.String(text)}, whatsmeow.SendRequestExtra{ID: id})
 	return resp.ID, err
 }
 
 // SendVoiceNote uploads Ogg Opus audio and sends it as a push-to-talk bubble.
 func (c *Client) SendVoiceNote(ctx context.Context, to types.JID, ogg []byte, seconds uint32, waveform []byte) (types.MessageID, error) {
-	up, err := c.WA.Upload(ctx, ogg, whatsmeow.MediaAudio)
+	if c.WA().Store.ID == nil {
+		return "", ErrNotLinked
+	}
+	up, err := c.WA().Upload(ctx, ogg, whatsmeow.MediaAudio)
 	if err != nil {
 		return "", fmt.Errorf("upload: %w", err)
 	}
@@ -408,9 +478,9 @@ func (c *Client) SendVoiceNote(ctx context.Context, to types.JID, ogg []byte, se
 		Waveform:          waveform,
 		MediaKeyTimestamp: proto.Int64(time.Now().Unix()),
 	}}
-	id := c.WA.GenerateMessageID()
+	id := c.WA().GenerateMessageID()
 	c.sent.Store(id, true)
-	resp, err := c.WA.SendMessage(ctx, to, msg, whatsmeow.SendRequestExtra{ID: id})
+	resp, err := c.WA().SendMessage(ctx, to, msg, whatsmeow.SendRequestExtra{ID: id})
 	return resp.ID, err
 }
 
@@ -419,7 +489,7 @@ func (c *Client) SendVoiceNote(ctx context.Context, to types.JID, ogg []byte, se
 func (c *Client) Recording(chat types.JID) (stop func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 	send := func(state types.ChatPresence) {
-		if err := c.WA.SendChatPresence(context.Background(), chat, state, types.ChatPresenceMediaAudio); err != nil {
+		if err := c.WA().SendChatPresence(context.Background(), chat, state, types.ChatPresenceMediaAudio); err != nil {
 			c.log.Warnf("chat presence %s: %v", state, err)
 		}
 	}
@@ -450,14 +520,14 @@ func (c *Client) Recording(chat types.JID) (stop func()) {
 
 // MarkRead sends blue ticks for a message.
 func (c *Client) MarkRead(ctx context.Context, in Inbound) {
-	if err := c.WA.MarkRead(ctx, []types.MessageID{in.ID}, time.Now(), in.Chat, in.Sender); err != nil {
+	if err := c.WA().MarkRead(ctx, []types.MessageID{in.ID}, time.Now(), in.Chat, in.Sender); err != nil {
 		c.log.Warnf("mark read: %v", err)
 	}
 }
 
 // DownloadAudio fetches and decrypts an inbound voice note.
 func (c *Client) DownloadAudio(ctx context.Context, a *waE2E.AudioMessage) ([]byte, error) {
-	return c.WA.Download(ctx, a)
+	return c.WA().Download(ctx, a)
 }
 
 // PhoneJID builds a JID for an outbound message to a phone number.
