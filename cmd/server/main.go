@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"io"
 	"io/fs"
@@ -66,7 +67,7 @@ func main() {
 	c := &core.Core{
 		Store: st, Brain: br, Voice: el, Hub: hub, AudioDir: "data/audio",
 		VoiceID: voiceID, TTSModel: config.Get("TTS_MODEL", "eleven_flash_v2_5"), Settings: voice.DefaultSettings,
-		Debounce:        time.Duration(atoi(config.Get("DEBOUNCE_MS", "3000"))) * time.Millisecond,
+		Debounce:        time.Duration(atoi(config.Get("DEBOUNCE_MS", "2000"))) * time.Millisecond,
 		MaxVoicePerHour: atoi(config.Get("MAX_VOICE_PER_HOUR", "10")),
 		Gateway:         logGateway{},
 	}
@@ -110,6 +111,7 @@ func main() {
 	mux.HandleFunc("GET /api/contacts/{id}/messages", api.messages)
 	mux.HandleFunc("POST /api/contacts/{id}/status", api.setStatus)
 	mux.HandleFunc("POST /api/contacts/{id}/send", api.send)
+	mux.HandleFunc("POST /api/contacts/{id}/reset", api.resetChat)
 	mux.HandleFunc("GET /api/runs", api.runs)
 	mux.HandleFunc("GET /api/whatsapp/qr.png", api.qrPNG)
 	mux.HandleFunc("POST /api/simulate", api.simulate)
@@ -137,7 +139,7 @@ func main() {
 func fromWA(c *wa.Client, in wa.Inbound) core.Msg {
 	m := core.Msg{
 		WAID: string(in.ID), Chat: in.Chat, From: in.From, Phone: in.Phone, PushName: in.PushName,
-		Text: in.Text, Raw: in, At: in.Timestamp,
+		Text: in.Text, Raw: in, At: time.Now(), // receive time: WhatsApp timestamps are whole seconds and use the sender's clock
 	}
 	if in.Audio != nil {
 		audio := in.Audio
@@ -296,6 +298,19 @@ func (a *api) send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.core.SendAsJohn(r.Context(), pathID(r), body.Text); err != nil {
+		if errors.Is(err, wa.ErrNotLinked) {
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			return
+		}
+		httpErr(w, err)
+		return
+	}
+	writeJSON(w, map[string]bool{"ok": true})
+}
+
+// resetChat clears one conversation so the next message starts fresh.
+func (a *api) resetChat(w http.ResponseWriter, r *http.Request) {
+	if err := a.core.ResetChat(pathID(r)); err != nil {
 		httpErr(w, err)
 		return
 	}
