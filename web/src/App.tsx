@@ -84,7 +84,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen min-w-[1100px] gap-4 bg-[radial-gradient(900px_500px_at_0%_0%,oklch(0.94_0.04_285),transparent)] p-4">
-      <aside className="flex w-56 shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/20 xl:w-60">
+      <aside className="flex w-[clamp(260px,24vw,400px)] shrink-0 flex-col rounded-2xl bg-gradient-to-b from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/20">
         <div className="flex items-center gap-2.5 px-2 py-1">
           <div className="grid size-9 place-items-center rounded-xl bg-white/20 text-lg font-extrabold">U</div>
           <div>
@@ -105,7 +105,7 @@ export default function App() {
             >
               <n.icon className="size-4" />
               <span className="flex-1 text-left">{n.label}</span>
-              {!!n.badge && <span className="rounded-full bg-amber px-1.5 text-[11px] font-bold text-amber-950">{n.badge}</span>}
+              {!!n.badge && <span className="min-w-5 rounded-full bg-amber-100 px-1.5 text-center text-[11px] font-semibold text-amber-800 tabular-nums">{n.badge}</span>}
             </button>
           ))}
         </nav>
@@ -177,28 +177,23 @@ function WhatsAppPill({ wa, onLink }: { wa: WhatsAppStatus; onLink: () => void }
 function Stat({ icon: Icon, label, value, decimals = 0, accent, warn, hint }: { icon: typeof Clock; label: string; value: number; decimals?: number; accent?: boolean; warn?: boolean; hint?: string }) {
   const shown = useCountUp(value)
   const body = (
-    <>
-      <div className={cn("grid size-10 shrink-0 place-items-center rounded-lg", accent ? "bg-white/20 text-white" : warn ? "bg-amber/20 text-amber-800" : "bg-secondary text-foreground/70")}>
-        <Icon className="size-[18px]" />
-      </div>
+    <div className="flex items-start justify-between gap-3" title={hint}>
       <div className="min-w-0">
-        <div className="text-2xl font-semibold tracking-tight tabular-nums">{shown.toFixed(decimals)}</div>
-        <div className={cn("truncate text-xs", accent ? "text-white/85" : "text-muted-foreground")}>{label}</div>
+        <div className={cn("flex items-center gap-1.5 truncate text-xs font-medium", accent ? "text-white/85" : "text-muted-foreground")}>
+          {warn && <span className="size-1.5 shrink-0 rounded-full bg-amber" />}
+          {label}
+        </div>
+        <div className="mt-2 text-[28px] leading-none font-semibold tracking-tight tabular-nums">{shown.toFixed(decimals)}</div>
       </div>
-    </>
+      <Icon className={cn("size-4 shrink-0", accent ? "text-white/80" : "text-muted-foreground/70")} />
+    </div>
   )
   // The headline number sits on a grainy gradient; the rest stay quiet.
   if (accent)
     return (
-      <Grain seed="hours-saved" palette="mint" className="flex items-center gap-4 rounded-xl p-4 text-white" style={{}}>
-        <div className="flex items-center gap-4" title={hint}>
-          {body}
-        </div>
+      <Grain seed="hours-saved" palette="mint" className="rounded-xl p-4 text-white">
+        {body}
       </Grain>
     )
-  return (
-    <div title={hint} className="flex items-center gap-4 rounded-xl border bg-card p-4">
-      {body}
-    </div>
-  )
+  return <div className="rounded-xl border bg-card p-4">{body}</div>
 }
