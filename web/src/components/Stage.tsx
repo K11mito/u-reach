@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react"
-import { AudioLines, BrainCircuit, Check, Ear, MessageCircle, Send, Smartphone, X } from "lucide-react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { AudioLines, BrainCircuit, Check, Ear, MessageCircle, Mic, Send, Smartphone, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { clock, displayName, useCountUp, type Contact, type Message, type Run, type State } from "@/lib/api"
-import { Equalizer, Initials, Linkified, Ticks, VoiceNote } from "./bits"
+import { clock, displayName, useCountUp, type Message, type Run, type State } from "@/lib/api"
+import { Equalizer, Initials, JohnAvatar, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
 
 const STAGES = [
   { key: "received_at", label: "Received", sub: "message in", icon: MessageCircle },
@@ -12,7 +12,9 @@ const STAGES = [
   { key: "sent_at", label: "Sent", sub: "voice note + link", icon: Send },
 ] as const
 
-/** Full-screen projector view of the live pipeline, next to the mirrored phone. */
+type Brain = { spoken_script: string; handoff: boolean; handoff_reason: string; opt_out: boolean }
+
+/** Full-screen projector view: the live pipeline above the conversation, next to the mirrored phone. */
 export function Stage({
   state,
   runs,
@@ -35,48 +37,57 @@ export function Stage({
     return () => window.clearInterval(t)
   }, [])
   useEffect(() => {
-    if (run) loadMessages(run.contact_id)
-  }, [run?.id, run?.status, loadMessages]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (run && !messages[run.contact_id]) loadMessages(run.contact_id)
+  }, [run, messages, loadMessages])
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => {
+    const key = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !document.fullscreenElement) onExit()
       if (e.key === "f" || e.key === "F") {
         if (document.fullscreenElement) document.exitFullscreen()
         else document.documentElement.requestFullscreen().catch(() => {})
       }
     }
-    window.addEventListener("keydown", esc)
-    return () => window.removeEventListener("keydown", esc)
+    window.addEventListener("keydown", key)
+    return () => window.removeEventListener("keydown", key)
   }, [onExit])
 
-  const msgs = run ? (messages[run.contact_id] ?? []) : []
-  const inbound = useMemo(
-    () => (run ? msgs.filter((m) => m.direction === "in" && m.created_at >= run.received_at - 1000 && (!run.heard_at || m.created_at <= run.heard_at)) : []),
-    [msgs, run],
-  )
-  const reply = msgs.filter((m) => run && m.run_id === run.id)
-  const note = reply.find((m) => m.kind === "voice")
-  const texts = reply.filter((m) => m.kind === "text")
   const brain = useMemo(() => {
     try {
-      return run?.brain ? (JSON.parse(run.brain) as { spoken_script: string; handoff: boolean; handoff_reason: string; opt_out: boolean }) : null
+      return run?.brain ? (JSON.parse(run.brain) as Brain) : null
     } catch {
       return null
     }
   }, [run?.brain])
 
-  const total = run ? ((run.sent_at || (run.status === "running" ? now : 0)) - run.received_at) / 1000 : 0
+  // The whole conversation, newest at the bottom; the current exchange is highlighted.
+  const thread = (run ? (messages[run.contact_id] ?? []) : []).slice(-16)
+  const inCurrent = (m: Message) =>
+    !!run && (m.run_id === run.id || (m.direction === "in" && m.created_at >= run.received_at - 1500 && (!run.heard_at || m.created_at <= run.heard_at + 500)))
+
+  const scroller = useRef<HTMLDivElement>(null)
+  const scrolled = useRef(false)
+  useLayoutEffect(() => {
+    const el = scroller.current
+    if (!el || !thread.length) return
+    // Jump on first paint (a projector shouldn't animate in), glide for new messages.
+    el.scrollTo({ top: el.scrollHeight, behavior: scrolled.current ? "smooth" : "auto" })
+    scrolled.current = true
+  }, [thread.length, run?.status, run?.thought_at])
+
+  const live = run?.status === "running"
+  const end = run?.sent_at || (live ? now : 0)
+  const total = run && end ? (end - run.received_at) / 1000 : 0
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-[radial-gradient(1200px_700px_at_15%_0%,oklch(0.42_0.2_280),transparent),radial-gradient(900px_600px_at_90%_100%,oklch(0.38_0.2_305),transparent)] bg-[oklch(0.2_0.08_280)] text-white">
-      <header className="flex items-center justify-between px-10 pt-8">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-[oklch(0.2_0.08_280)] bg-[radial-gradient(1200px_700px_at_15%_0%,oklch(0.42_0.2_280),transparent),radial-gradient(900px_600px_at_90%_100%,oklch(0.38_0.2_305),transparent)] text-white">
+      <header className="flex items-center justify-between px-10 pt-7">
         <div className="flex items-center gap-3">
-          <div className="grid size-11 place-items-center rounded-2xl bg-white/15 text-xl font-extrabold backdrop-blur">U</div>
+          <JohnAvatar size={46} src={state.ambassador.avatar} />
           <div>
-            <div className="text-xl font-extrabold tracking-tight">U-Reach</div>
+            <div className="text-xl font-extrabold tracking-tight">John's AI voice</div>
             <div className="flex items-center gap-1.5 text-sm text-white/70">
-              <span className={cn("size-2 rounded-full", state.whatsapp.connected ? "bg-wa" : "bg-white/40")} />
-              John's AI voice · {state.whatsapp.connected ? "live on WhatsApp" : "standing by"}
+              <span className={cn("size-2 rounded-full", state.whatsapp.connected ? "bg-wa shadow-[0_0_8px] shadow-wa" : "bg-white/40")} />
+              U-Reach · {state.whatsapp.connected ? `live on WhatsApp +${state.whatsapp.phone}` : "standing by"}
             </div>
           </div>
         </div>
@@ -89,14 +100,14 @@ export function Stage({
         </div>
       </header>
 
-      <main className="grid min-h-0 flex-1 grid-cols-[1fr_clamp(260px,27vw,420px)] gap-8 px-10 py-8 2xl:gap-10">
-        <section className="flex min-h-0 flex-col gap-6">
+      <main className="grid min-h-0 flex-1 grid-cols-[1fr_clamp(260px,27vw,420px)] gap-8 px-10 pt-6 pb-8 2xl:gap-10">
+        <section className="flex min-h-0 flex-col gap-5">
           <div className="grid grid-cols-5 gap-2 xl:gap-3">
             {STAGES.map((s, i) => {
               const at = run ? run[s.key] : 0
               const prev = i > 0 && run ? run[STAGES[i - 1].key] : 0
               const done = at > 0
-              const active = !!run && run.status === "running" && !done && (i === 0 || prev > 0)
+              const active = !!run && live && !done && (i === 0 || prev > 0)
               const ms = done ? (i === 0 ? 0 : at - prev) : active && prev ? now - prev : 0
               const Icon = s.icon
               return (
@@ -111,9 +122,7 @@ export function Stage({
                     <div className={cn("grid size-10 place-items-center rounded-2xl", done ? "bg-wa text-white" : active ? "bg-white text-indigo-700" : "bg-white/10 text-white/50")}>
                       {done && i > 0 ? <Check className="size-5" /> : <Icon className={cn("size-5", active && "animate-pulse")} />}
                     </div>
-                    <span className="font-mono text-xs tabular-nums text-white/80 xl:text-sm">
-                      {i === 0 ? (at ? clock(at) : "") : ms ? `${(ms / 1000).toFixed(1)}s` : ""}
-                    </span>
+                    <span className="font-mono text-xs text-white/80 tabular-nums xl:text-sm">{i === 0 ? (at ? clock(at) : "") : ms ? `${(ms / 1000).toFixed(1)}s` : ""}</span>
                   </div>
                   <div className="mt-3 text-base font-bold xl:text-lg">{s.label}</div>
                   <div className="truncate text-xs text-white/60">{s.sub}</div>
@@ -125,62 +134,57 @@ export function Stage({
           {!run ? (
             <div className="grid flex-1 place-items-center rounded-3xl border border-dashed border-white/20 text-center">
               <div>
-                <div className="text-3xl font-bold">Text John on WhatsApp</div>
-                <div className="mt-2 text-lg text-white/60">{state.whatsapp.phone ? `+${state.whatsapp.phone}` : "Waiting for the first message…"}</div>
+                <div className="text-4xl font-extrabold">Text John on WhatsApp</div>
+                <div className="mt-3 font-mono text-2xl text-white/70">{state.whatsapp.phone ? `+${state.whatsapp.phone}` : "Waiting for the first message…"}</div>
               </div>
             </div>
           ) : (
-            <div className="grid min-h-0 flex-1 grid-cols-2 gap-6">
-              <Panel title="Incoming" contact={contact}>
-                {inbound.length === 0 && <p className="text-white/50">…</p>}
-                {inbound.map((m) => (
-                  <div key={m.id} className="rounded-2xl rounded-tl-md bg-white px-4 py-3 text-lg leading-snug text-foreground shadow-lg">
-                    {m.kind === "voice" ? <span className="text-muted-foreground">🎤 {m.text || "Voice note…"}</span> : m.text}
-                  </div>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur">
+              <div className="flex items-center gap-3 border-b border-white/10 px-6 py-3.5">
+                <Initials name={displayName(contact) || "?"} src={contact?.avatar} size={42} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-lg font-bold">{displayName(contact)}</div>
+                  <div className="truncate text-xs text-white/60">{contact?.context || "messaging John on WhatsApp"}</div>
+                </div>
+                {contact && <StatusChip status={contact.status} className="bg-white/90" />}
+              </div>
+              {brain?.handoff && (
+                <div className="border-b border-amber/30 bg-amber/15 px-6 py-2 text-sm font-semibold text-amber">
+                  ⚑ Handed to the real John{brain.handoff_reason ? `: ${brain.handoff_reason}` : ""}
+                </div>
+              )}
+              <div ref={scroller} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-5 [scrollbar-width:none]">
+                {thread.map((m) => (
+                  <StageBubble key={m.id} m={m} current={inCurrent(m)} who={displayName(contact)} />
                 ))}
-              </Panel>
-              <Panel title="John's reply" john>
-                {brain?.handoff && (
-                  <div className="rounded-2xl bg-amber/20 px-4 py-2.5 text-sm font-semibold text-amber ring-1 ring-amber/40">
-                    ⚑ Handed to the real John{brain.handoff_reason ? `: ${brain.handoff_reason}` : ""}
-                  </div>
-                )}
-                {note ? (
-                  <div className="rounded-2xl rounded-tr-md bg-wa-bubble px-4 py-3 text-foreground shadow-lg">
-                    <VoiceNote src={note.audio_path} durationMs={note.duration_ms} seed={note.id} outgoing big />
-                    <div className="mt-1 flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
-                      {note.status === "played" && <span className="font-semibold text-sky-600">{displayName(contact)} listened</span>}
-                      <Ticks status={note.status} voice />
+                {live && (
+                  <div className="flex justify-end">
+                    <div className="inline-flex items-center gap-3 rounded-2xl rounded-tr-md bg-wa-bubble px-5 py-3 text-lg font-semibold text-wa-dark shadow-lg">
+                      {run.thought_at ? (
+                        <>
+                          <Mic className="size-5 animate-pulse" /> recording audio…
+                        </>
+                      ) : (
+                        <>
+                          <Equalizer className="text-wa-dark" /> thinking…
+                        </>
+                      )}
                     </div>
                   </div>
-                ) : run.status === "running" ? (
-                  <div className="flex items-center gap-3 text-xl text-wa">
-                    <Equalizer className="text-wa" /> {run.thought_at ? "recording audio…" : "thinking…"}
-                  </div>
-                ) : run.status === "failed" ? (
-                  <p className="text-amber">Couldn't reply: {run.error}</p>
-                ) : null}
-                {texts.map((m) => (
-                  <div key={m.id} className="rounded-2xl rounded-tr-md bg-wa-bubble px-4 py-3 text-base whitespace-pre-wrap text-foreground shadow-lg [overflow-wrap:anywhere]">
-                    <Linkified text={m.text.trim()} />
-                  </div>
-                ))}
-                {(note?.text || (!note && run.status !== "running" && brain?.spoken_script)) && (
-                  <p className="text-base leading-relaxed text-white/75 italic">“{note?.text || brain?.spoken_script}”</p>
                 )}
-              </Panel>
+                {run.status === "failed" && <p className="text-right text-amber">Couldn't reply: {run.error}</p>}
+              </div>
             </div>
           )}
 
           {run && (
             <div className="flex items-center justify-between text-sm text-white/60">
               <span>
-                {contact ? `${displayName(contact)} · ` : ""}
                 {run.model ? `${run.model} · ` : ""}
                 {state.ambassador.tts_model}
               </span>
               <span className="font-mono text-base text-white">
-                {total > 0 ? `${total.toFixed(1)}s` : ""} {run.status === "sent" || run.status === "handoff" ? "total" : ""}
+                {total > 0 ? `${total.toFixed(1)}s` : ""} {!live && total > 0 ? "from message to voice note" : ""}
               </span>
             </div>
           )}
@@ -197,31 +201,43 @@ export function Stage({
   )
 }
 
+function StageBubble({ m, current, who }: { m: Message; current: boolean; who: string }) {
+  const out = m.direction === "out"
+  return (
+    <div className={cn("flex transition-opacity duration-500", out ? "justify-end" : "justify-start", current ? "opacity-100" : "opacity-75")}>
+      <div
+        className={cn(
+          "max-w-[78%] rounded-2xl px-4 py-3 text-foreground shadow-lg",
+          out ? "rounded-tr-md bg-wa-bubble" : "rounded-tl-md bg-white",
+          current && (out ? "ring-2 ring-wa" : "ring-2 ring-white/70"),
+        )}
+      >
+        {m.kind === "voice" ? (
+          <div className="space-y-2">
+            <VoiceNote src={m.audio_path} durationMs={m.duration_ms} seed={m.id} outgoing={out} big={current} />
+            {m.text && <p className={cn("leading-snug text-foreground/75 italic", current ? "text-[15px]" : "text-sm")}>“{m.text}”</p>}
+          </div>
+        ) : (
+          <div className={cn("leading-snug whitespace-pre-wrap [overflow-wrap:anywhere]", current ? "text-lg" : "text-base")}>
+            <Linkified text={m.text.trim()} />
+          </div>
+        )}
+        <div className="mt-1 flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
+          {out && m.kind === "voice" && m.status === "played" && <span className="font-semibold text-sky-600">{who} listened</span>}
+          {clock(m.created_at)}
+          {out && <Ticks status={m.status} voice={m.kind === "voice"} />}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Counter({ label, value, decimals = 0 }: { label: string; value: number; decimals?: number }) {
   const shown = useCountUp(value, 1400)
   return (
     <div className="text-right">
       <div className="text-4xl font-extrabold tabular-nums">{shown.toFixed(decimals)}</div>
       <div className="text-xs tracking-wide text-white/60 uppercase">{label}</div>
-    </div>
-  )
-}
-
-function Panel({ title, contact, john, children }: { title: string; contact?: Contact; john?: boolean; children: React.ReactNode }) {
-  return (
-    <div className="flex min-h-0 flex-col gap-4 overflow-y-auto rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur [scrollbar-width:none]">
-      <div className="flex items-center gap-3">
-        {john ? (
-          <div className="grid size-10 place-items-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 font-extrabold">J</div>
-        ) : (
-          <Initials name={displayName(contact) || "?"} size={40} />
-        )}
-        <div>
-          <div className="text-xs tracking-wide text-white/50 uppercase">{title}</div>
-          <div className="text-lg font-bold">{john ? "John Klensch" : displayName(contact)}</div>
-        </div>
-      </div>
-      {children}
     </div>
   )
 }

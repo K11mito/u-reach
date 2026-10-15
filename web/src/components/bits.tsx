@@ -22,7 +22,19 @@ export function StatusChip({ status, className }: { status: Status; className?: 
 
 const HUES = [265, 290, 220, 330, 200, 160, 20, 45]
 
-export function Initials({ name, size = 40, className }: { name: string; size?: number; className?: string }) {
+/** A contact's WhatsApp photo, or their initials when there isn't one. */
+export function Initials({ name, size = 40, className, src }: { name: string; size?: number; className?: string; src?: string }) {
+  const [broken, setBroken] = useState(false)
+  if (src && !broken)
+    return (
+      <img
+        src={`/audio/${src}`}
+        alt={name}
+        onError={() => setBroken(true)}
+        className={cn("shrink-0 rounded-full object-cover ring-1 ring-black/5", className)}
+        style={{ width: size, height: size }}
+      />
+    )
   const letters = name
     .replace(/[^\p{L}\s]/gu, "")
     .split(/\s+/)
@@ -41,8 +53,19 @@ export function Initials({ name, size = 40, className }: { name: string; size?: 
   )
 }
 
-/** John's avatar: the U-Bot stand-in until Kyle's artwork lands. */
-export function JohnAvatar({ size = 40 }: { size?: number }) {
+/** John's avatar: his WhatsApp photo once linked, else a branded "J". */
+export function JohnAvatar({ size = 40, src }: { size?: number; src?: string }) {
+  const [broken, setBroken] = useState(false)
+  if (src && !broken)
+    return (
+      <img
+        src={`/audio/${src}`}
+        alt="John Klensch"
+        onError={() => setBroken(true)}
+        className="shrink-0 rounded-full object-cover shadow-md ring-2 ring-white/40"
+        style={{ width: size, height: size }}
+      />
+    )
   return (
     <div
       className="grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 font-extrabold text-white shadow-md shadow-indigo-500/30"

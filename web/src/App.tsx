@@ -108,7 +108,7 @@ export default function App() {
         </nav>
         <div className="mt-auto space-y-3 rounded-2xl bg-white/10 p-3">
           <div className="flex items-center gap-3">
-            <JohnAvatar size={40} />
+            <JohnAvatar size={40} src={state.ambassador.avatar} />
             <div className="min-w-0">
               <div className="truncate font-bold">John Klensch</div>
               <div className="text-xs text-white/70">U.Center ambassador</div>

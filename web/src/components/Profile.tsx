@@ -19,7 +19,7 @@ export function Profile({ state }: { state: State }) {
     <div className="grid min-h-0 flex-1 grid-cols-[minmax(320px,380px)_1fr] gap-4 overflow-hidden">
       <div className="space-y-4 overflow-y-auto pr-1">
         <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 p-6 text-white shadow-lg">
-          <JohnAvatar size={72} />
+          <JohnAvatar size={72} src={a.avatar} />
           <div className="mt-4 text-2xl font-extrabold">{p?.name ?? a.name}</div>
           <div className="text-sm text-white/80">{p?.role}</div>
           <div className="mt-5 space-y-2 rounded-xl bg-white/10 p-3 text-sm">

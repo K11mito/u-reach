@@ -173,7 +173,7 @@ function ChatRow({ c, active, unread, run, last, onClick }: { c: Contact; active
     >
       {active && <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary" />}
       <div className="relative">
-        <Initials name={displayName(c)} size={42} />
+        <Initials name={displayName(c)} src={c.avatar} size={42} />
         {run && <span className="absolute -right-0.5 -bottom-0.5 size-3.5 animate-pulse rounded-full border-2 border-card bg-wa" />}
       </div>
       <div className="min-w-0 flex-1">
@@ -250,7 +250,7 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
       <div className="flex items-center gap-3 border-b px-5 py-3">
-        <Initials name={displayName(contact)} size={44} />
+        <Initials name={displayName(contact)} src={contact.avatar} size={44} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-lg font-bold">{displayName(contact)}</span>

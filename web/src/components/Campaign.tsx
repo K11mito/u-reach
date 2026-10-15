@@ -46,7 +46,7 @@ export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses
           {ordered.map((c) => (
             <label key={c.id} className={cn("flex cursor-pointer items-center gap-3 border-b border-border/60 px-4 py-2.5 hover:bg-muted/60", picked.includes(c.id) && "bg-accent/50")}>
               <input type="checkbox" checked={picked.includes(c.id)} onChange={() => toggle(c.id)} className="size-4 accent-[var(--primary)]" />
-              <Initials name={displayName(c)} size={34} />
+              <Initials name={displayName(c)} src={c.avatar} size={34} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{displayName(c)}</div>
                 <div className="truncate text-xs text-muted-foreground">{c.context || `+${c.phone}`}</div>

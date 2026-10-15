@@ -14,6 +14,7 @@ export interface Contact {
   status: Status
   handoff_reason: string
   link_sent_at: number
+  avatar?: string
   created_at: number
   last_message_at: number
 }
@@ -80,6 +81,7 @@ export interface State {
     faq: string
     mock_voice: boolean
     samples?: { original?: string; clone?: string }
+    avatar?: string
     clone_line?: string
   }
   contacts: Contact[]
@@ -152,6 +154,7 @@ type LiveEvent =
   | { type: "whatsapp"; data: WhatsAppStatus }
   | { type: "reset"; data: null }
   | { type: "chat_reset"; data: { contact_id: number } }
+  | { type: "ambassador_avatar"; data: { avatar: string } }
 
 /** Loads dashboard state and keeps it live via SSE. */
 declare global {
@@ -214,6 +217,8 @@ export function useLive() {
             }
           })
           refetch()
+        } else if (ev.type === "ambassador_avatar") {
+          setState((s) => (s ? { ...s, ambassador: { ...s.ambassador, avatar: ev.data.avatar } } : s))
         } else if (ev.type === "chat_reset") {
           setMessages((prev) => ({ ...prev, [ev.data.contact_id]: [] }))
           setRuns((prev) => prev.filter((r) => r.contact_id !== ev.data.contact_id))
