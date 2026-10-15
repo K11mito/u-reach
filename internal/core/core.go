@@ -277,18 +277,15 @@ func (c *Core) run(contactID int64, batch []pending) {
 	}
 	c.stage(runID, "spoken")
 
-	// Sent.
+	// Sent. If the voice note won't go through (a media upload hiccup), the
+	// lead still gets the same words as a text rather than nothing.
 	if spoke {
-		waID := ""
-		if !simulated {
-			waID, err = c.Gateway.SendVoiceNote(ctx, chatJID, vn)
-			if err != nil {
-				fail("send voice", err)
-				return
-			}
+		if err := c.sendVoice(ctx, contactID, runID, chatJID, simulated, reply.SpokenScript, vn, mp3Rel); err != nil {
+			log.Printf("core: voice note failed, sending text instead: %v", err)
+			spoke = false
 		}
-		c.addOut(contactID, runID, waID, "voice", reply.SpokenScript, mp3Rel, int64(vn.Duration*1000))
-	} else {
+	}
+	if !spoke {
 		if err := c.sendText(ctx, contactID, runID, chatJID, simulated, reply.SpokenScript); err != nil {
 			fail("send text", err)
 			return
@@ -375,21 +372,32 @@ func (c *Core) Prewarm(ctx context.Context) {
 func (c *Core) fallback(ctx context.Context, runID int64, contact store.Contact, chatJID types.JID, simulated bool, cause error) {
 	log.Printf("core: brain unavailable for run %d: %v", runID, cause)
 	script := FallbackScript
-	if vn, mp3Rel, err := c.speak(ctx, runID, script); err == nil {
-		waID := ""
-		if !simulated {
-			waID, err = c.Gateway.SendVoiceNote(ctx, chatJID, vn)
+	vn, mp3Rel, err := c.speak(ctx, runID, script)
+	if err == nil {
+		err = c.sendVoice(ctx, contact.ID, runID, chatJID, simulated, script, vn, mp3Rel)
+	}
+	if err != nil {
+		log.Printf("core: holding voice note failed, sending text instead: %v", err)
+		if err := c.sendText(ctx, contact.ID, runID, chatJID, simulated, script); err != nil {
+			log.Printf("core: holding text failed too: %v", err)
 		}
-		if err == nil {
-			c.addOut(contact.ID, runID, waID, "voice", script, mp3Rel, int64(vn.Duration*1000))
-		}
-	} else {
-		c.sendText(ctx, contact.ID, runID, chatJID, simulated, script)
 	}
 	c.Store.SetStatus(contact.ID, store.StatusNeedsJohn, "assistant unavailable: "+cause.Error())
 	c.Store.FinishRun(runID, "failed", "brain: "+cause.Error(), "", "")
 	c.publishRun(runID)
 	c.publishContact(contact.ID)
+}
+
+func (c *Core) sendVoice(ctx context.Context, contactID, runID int64, to types.JID, simulated bool, script string, vn voice.VoiceNote, mp3Rel string) error {
+	waID := ""
+	if !simulated {
+		var err error
+		if waID, err = c.Gateway.SendVoiceNote(ctx, to, vn); err != nil {
+			return err
+		}
+	}
+	c.addOut(contactID, runID, waID, "voice", script, mp3Rel, int64(vn.Duration*1000))
+	return nil
 }
 
 func (c *Core) sendText(ctx context.Context, contactID, runID int64, to types.JID, simulated bool, text string) error {
