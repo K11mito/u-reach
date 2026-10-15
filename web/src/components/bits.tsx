@@ -4,20 +4,37 @@ import { cn } from "@/lib/utils"
 import { Grain } from "./Grain"
 import type { Status } from "@/lib/api"
 
-const STATUS: Record<Status, { label: string; className: string }> = {
-  auto: { label: "Auto", className: "bg-wa/15 text-wa-dark ring-wa/30" },
-  needs_john: { label: "Needs John", className: "bg-amber/20 text-amber-800 ring-amber/40" },
-  human: { label: "John", className: "bg-primary/10 text-primary ring-primary/25" },
-  new: { label: "New", className: "bg-muted text-muted-foreground ring-border" },
+const STATUS: Record<Status, { label: string; dot: string }> = {
+  auto: { label: "Auto", dot: "bg-wa" },
+  needs_john: { label: "Needs John", dot: "bg-amber" },
+  human: { label: "John", dot: "bg-blue" },
+  new: { label: "New", dot: "bg-foreground/25" },
 }
 
-export function StatusChip({ status, className }: { status: Status; className?: string }) {
+/** A chat's state as a coloured dot and a word. `bare` drops the outline for dense lists. */
+export function StatusChip({ status, bare, className }: { status: Status; bare?: boolean; className?: string }) {
   const s = STATUS[status] ?? STATUS.new
   return (
-    <span className={cn("inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ring-1", s.className, className)}>
-      {status === "auto" && <span className="mr-1 size-1.5 rounded-full bg-wa" />}
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 text-[11px] font-medium whitespace-nowrap text-muted-foreground",
+        !bare && "rounded-full border px-2 py-0.5 text-foreground/75",
+        status === "needs_john" && "text-amber-700",
+        className,
+      )}
+    >
+      <span className={cn("size-1.5 rounded-full", s.dot)} />
       {s.label}
     </span>
+  )
+}
+
+/** The U-Reach mark: a small grain square. */
+export function Mark({ size = 32, className }: { size?: number; className?: string }) {
+  return (
+    <Grain seed="u-reach" palette="dusk" className={cn("grid shrink-0 place-items-center rounded-[28%] font-semibold text-white", className)} style={{ width: size, height: size, fontSize: size * 0.45 }}>
+      <span>U</span>
+    </Grain>
   )
 }
 
@@ -57,7 +74,7 @@ export function JohnAvatar({ size = 40, src }: { size?: number; src?: string }) 
         src={`/audio/${src}`}
         alt="John Klensch"
         onError={() => setBroken(true)}
-        className="shrink-0 rounded-full object-cover shadow-md ring-2 ring-white/40"
+        className="shrink-0 rounded-full object-cover ring-1 ring-black/5"
         style={{ width: size, height: size }}
       />
     )
@@ -82,8 +99,8 @@ export function fmtDur(ms = 0) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
 }
 
-/** A WhatsApp-style voice-note player. */
-export function VoiceNote({ src, durationMs, seed, outgoing, big }: { src?: string; durationMs?: number; seed: number; outgoing?: boolean; big?: boolean }) {
+/** A WhatsApp-style voice-note player. `dark` matches WhatsApp's dark theme. */
+export function VoiceNote({ src, durationMs, seed, outgoing, big, dark }: { src?: string; durationMs?: number; seed: number; outgoing?: boolean; big?: boolean; dark?: boolean }) {
   const ref = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -126,7 +143,7 @@ export function VoiceNote({ src, durationMs, seed, outgoing, big }: { src?: stri
         className={cn(
           "grid shrink-0 place-items-center rounded-full transition disabled:opacity-40",
           big ? "size-14" : "size-9",
-          outgoing ? "bg-wa-dark text-white hover:bg-wa-dark/90" : "bg-primary text-white hover:bg-primary/90",
+          dark ? "bg-white/15 text-white hover:bg-white/25" : outgoing ? "bg-wa-dark text-white hover:bg-wa-dark/90" : "bg-primary text-white hover:bg-primary/90",
         )}
         title={src ? "Play" : "Audio not rendered yet"}
       >
@@ -136,12 +153,15 @@ export function VoiceNote({ src, durationMs, seed, outgoing, big }: { src?: stri
         {heights.map((h, i) => (
           <span
             key={i}
-            className={cn("w-[3px] min-w-px shrink rounded-full transition-colors", i / heights.length <= progress && playing ? (outgoing ? "bg-wa-dark" : "bg-primary") : "bg-foreground/25")}
+            className={cn(
+              "w-[3px] min-w-px shrink rounded-full transition-colors",
+              i / heights.length <= progress && playing ? (dark ? "bg-[#53bdeb]" : outgoing ? "bg-wa-dark" : "bg-primary") : dark ? "bg-white/35" : "bg-foreground/25",
+            )}
             style={{ height: `${h * 100}%` }}
           />
         ))}
       </div>
-      <span className={cn("shrink-0 tabular-nums text-muted-foreground", big ? "text-base" : "text-xs")}>{fmtDur(durationMs)}</span>
+      <span className={cn("shrink-0 tabular-nums", dark ? "text-white/60" : "text-muted-foreground", big ? "text-base" : "text-xs")}>{fmtDur(durationMs)}</span>
     </div>
   )
 }
@@ -157,12 +177,12 @@ export function Equalizer({ className }: { className?: string }) {
 }
 
 /** WhatsApp-style delivery ticks for outbound messages. */
-export function Ticks({ status, voice }: { status?: string; voice?: boolean }) {
+export function Ticks({ status, voice, dark }: { status?: string; voice?: boolean; dark?: boolean }) {
   if (!status) return null
   const blue = status === "read" || status === "played"
   const label = status === "played" ? (voice ? "Played" : "Read") : status === "read" ? "Read" : status === "delivered" ? "Delivered" : "Sent"
   return (
-    <span className={cn("inline-flex items-center", blue ? "text-sky-500" : "text-muted-foreground")} title={label}>
+    <span className={cn("inline-flex items-center", blue ? (dark ? "text-[#53bdeb]" : "text-sky-500") : dark ? "text-white/50" : "text-muted-foreground")} title={label}>
       <svg viewBox="0 0 18 12" className="h-3 w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M1 6.5 4.5 10 11 2" />
         {status !== "sent" && <path d="M7.5 9.5 8 10l6.5-8" />}
@@ -174,14 +194,23 @@ export function Ticks({ status, voice }: { status?: string; voice?: boolean }) {
 const URL_RE = /(https?:\/\/[^\s]+)/g
 
 /** Text with tappable links, shown like a link preview pill. */
-export function Linkified({ text }: { text: string }) {
+export function Linkified({ text, dark }: { text: string; dark?: boolean }) {
   const parts = text.split(URL_RE)
   return (
     <>
       {parts.map((p, i) =>
         /^https?:\/\//.test(p) ? (
-          <a key={i} href={p} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 text-[13px] font-semibold text-sky-700 ring-1 ring-black/5 hover:underline">
-            <span className="grid size-5 shrink-0 place-items-center rounded bg-gradient-to-br from-indigo-500 to-purple-600 text-[10px] font-extrabold text-white">U</span>
+          <a
+            key={i}
+            href={p}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(
+              "mt-1 flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-medium hover:underline",
+              dark ? "bg-black/20 text-[#53bdeb]" : "bg-white/70 text-sky-700 ring-1 ring-black/5",
+            )}
+          >
+            <Mark size={20} />
             <span className="truncate">{p.replace(/^https?:\/\//, "")}</span>
           </a>
         ) : (

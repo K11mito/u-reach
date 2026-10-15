@@ -6,7 +6,7 @@
 /* Neutral, editorial base. Colour comes from the grain gradients and a
    little WhatsApp green for "live"; everything else is ink on paper. */
 :root {
-  --radius: 0.75rem;
+  --radius: 0.625rem;
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.19 0 0);
   --card: oklch(1 0 0);
