@@ -198,6 +198,25 @@ func RenderAudio(ctx context.Context, st *store.Store, el *voice.Eleven, voiceID
 	return nil
 }
 
+// Unvoiced lists the seeded AI voice notes in the database that have no audio
+// yet, for example ones added by an earlier run without -render-audio.
+func Unvoiced(st *store.Store) []VoiceNote {
+	contacts, err := st.Contacts()
+	if err != nil {
+		return nil
+	}
+	var notes []VoiceNote
+	for _, c := range contacts {
+		msgs, _ := st.Messages(c.ID, 1000)
+		for _, m := range msgs {
+			if m.Source == "seed" && m.Kind == "voice" && m.AudioPath == "" {
+				notes = append(notes, VoiceNote{m.ID, m.Text})
+			}
+		}
+	}
+	return notes
+}
+
 // LiveMessages counts real (non-seed) messages that a reset would delete.
 func LiveMessages(st *store.Store) int {
 	contacts, err := st.Contacts()

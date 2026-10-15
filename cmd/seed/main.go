@@ -53,15 +53,16 @@ func main() {
 	}
 	voiceID := config.Must("JOHN_VOICE_ID")
 	model := config.Get("TTS_MODEL", "eleven_flash_v2_5")
-	chars := seed.Characters(res.VoiceNotes)
+	notes := seed.Unvoiced(st) // this run's notes, plus any an earlier run left silent
+	chars := seed.Characters(notes)
 	rate := 1.0
 	if strings.Contains(model, "flash") || strings.Contains(model, "turbo") {
 		rate = 0.5
 	}
 	if !*yes {
-		confirm(fmt.Sprintf("Render %d voice notes (%d characters, ~%.0f credits on %s; cached ones are free)?", len(res.VoiceNotes), chars, float64(chars)*rate, model))
+		confirm(fmt.Sprintf("Render %d voice notes (%d characters, ~%.0f credits on %s; cached ones are free)?", len(notes), chars, float64(chars)*rate, model))
 	}
-	must(seed.RenderAudio(context.Background(), st, voice.New(), voiceID, model, res.VoiceNotes, func(v seed.VoiceNote, dur float64, cached bool) {
+	must(seed.RenderAudio(context.Background(), st, voice.New(), voiceID, model, notes, func(v seed.VoiceNote, dur float64, cached bool) {
 		fmt.Printf("  note %d: %.1fs cached=%v\n", v.MessageID, dur, cached)
 	}))
 }
