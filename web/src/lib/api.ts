@@ -106,6 +106,98 @@ async function json<T>(r: Response): Promise<T> {
   return r.json()
 }
 
+/** The server's message for a failed request, without the status code. */
+export const errText = (e: unknown) => String(e).replace(/^Error: \d+ /, "").trim()
+
+// John's editable harness (the John page).
+export interface HarnessPersona {
+  name: string
+  short_name: string
+  role: string
+  background: string[]
+  voice: { tone: string; rhythm: string; english: string; brand_words: string }
+  openers: string[]
+  signature_phrases: string[]
+  metaphors: string[]
+  values: string[]
+  closers: string[]
+  never: string[]
+  sample_lines: string[]
+  how_he_sells: string[]
+}
+export type LinkTiming = "first_reply" | "when_interested" | "when_asked"
+export interface HarnessStyle {
+  min_words: number
+  max_words: number
+  link_timing: LinkTiming
+  language: "english" | "match"
+}
+export interface Harness {
+  persona: HarnessPersona
+  style: HarnessStyle
+}
+export interface HarnessPreset {
+  id: number
+  key?: string
+  name: string
+  description: string
+  harness: Harness
+  updated_at: number
+}
+export interface PlaybookDoc {
+  id: number
+  name: string
+  kind: "md" | "txt" | "pdf"
+  bytes: number
+  words: number
+  chars: number
+  active: boolean
+  preview: string
+  created_at: number
+}
+export interface HarnessSnapshot {
+  active_id: number
+  presets: HarnessPreset[]
+  faq: string
+  referral_url: string
+  documents: PlaybookDoc[]
+  playbook_max_chars: number
+  always_handoff: string[]
+}
+export interface TryResult {
+  reply: { spoken_script: string; followup_text: string; include_referral: boolean; handoff: boolean; handoff_reason: string; opt_out: boolean; remember: string[] }
+  words: number
+  trimmed: boolean
+  forced_handoff: string
+  model: string
+  latency_ms: number
+}
+
+const send = (method: string, url: string, body?: unknown) =>
+  fetch(url, { method, body: body === undefined ? undefined : JSON.stringify(body) }).then(json<HarnessSnapshot>)
+
+export const harnessApi = {
+  get: () => fetch("/api/harness").then(json<HarnessSnapshot>),
+  saveActive: (h: Harness) => send("PUT", "/api/harness/active", h),
+  saveAs: (name: string, description: string, harness: Harness) => send("POST", "/api/harness/presets", { name, description, harness }),
+  activate: (id: number) => send("POST", `/api/harness/presets/${id}/activate`),
+  reset: (id: number) => send("POST", `/api/harness/presets/${id}/reset`),
+  remove: (id: number) => send("DELETE", `/api/harness/presets/${id}`),
+  rename: (id: number, name: string, description: string) => send("PATCH", `/api/harness/presets/${id}`, { name, description }),
+  setFAQ: (text: string) => send("PUT", "/api/harness/faq", { text }),
+  setReferral: (url: string) => send("PUT", "/api/harness/referral", { url }),
+  upload: (file: File) => {
+    const f = new FormData()
+    f.append("file", file, file.name)
+    return fetch("/api/harness/documents", { method: "POST", body: f }).then(json<HarnessSnapshot>)
+  },
+  docText: (id: number) => fetch(`/api/harness/documents/${id}`).then(json<{ text: string }>),
+  setDocActive: (id: number, active: boolean) => send("PATCH", `/api/harness/documents/${id}`, { active }),
+  removeDoc: (id: number) => send("DELETE", `/api/harness/documents/${id}`),
+  tryIt: (name: string, message: string) =>
+    fetch("/api/harness/try", { method: "POST", body: JSON.stringify({ name, message }) }).then(json<TryResult>),
+}
+
 export const api = {
   state: () => fetch("/api/state").then(json<State>),
   messages: (id: number) => fetch(`/api/contacts/${id}/messages`).then(json<Message[]>),
@@ -155,6 +247,7 @@ type LiveEvent =
   | { type: "reset"; data: null }
   | { type: "chat_reset"; data: { contact_id: number } }
   | { type: "ambassador_avatar"; data: { avatar: string } }
+  | { type: "harness"; data: null }
 
 /** Loads dashboard state and keeps it live via SSE. */
 declare global {
@@ -216,6 +309,10 @@ export function useLive() {
               contacts: exists ? s.contacts.map((c) => (c.id === ev.data.id ? ev.data : c)) : [ev.data, ...s.contacts],
             }
           })
+          refetch()
+        } else if (ev.type === "harness") {
+          // John was edited (maybe in another tab): the John page refetches.
+          window.dispatchEvent(new Event("ureach:harness"))
           refetch()
         } else if (ev.type === "ambassador_avatar") {
           setState((s) => (s ? { ...s, ambassador: { ...s.ambassador, avatar: ev.data.avatar } } : s))
