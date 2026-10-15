@@ -1,7 +1,9 @@
-// Package harness is John's editable "harness": the persona card and reply
-// style (per preset), the FAQ, the referral link, and uploaded sales
-// playbook documents. It persists them in the store and pushes the active
-// combination into the brain whenever anything changes.
+// Package harness is John's editable "harness". Who John is (his profile:
+// identity, voice, phrases, guardrails) is global; how he sells (his
+// approach and reply style) comes from the active preset. The FAQ, referral
+// link and uploaded sales playbook are shared by every preset. The package
+// persists all of it in the store and pushes the active combination into
+// the brain whenever anything changes.
 package harness
 
 import (
@@ -18,7 +20,8 @@ import (
 	"ureach/internal/store"
 )
 
-// Persona is John's persona card, the same shape as data/persona/john.json.
+// Persona is the full persona card the brain reads, the same shape as
+// data/persona/john.json. It is the profile and a preset's approach merged.
 type Persona struct {
 	Name             string   `json:"name"`
 	ShortName        string   `json:"short_name"`
@@ -42,13 +45,34 @@ type Voice struct {
 	BrandWords string `json:"brand_words"`
 }
 
-// Harness is what a preset holds.
-type Harness struct {
-	Persona Persona     `json:"persona"`
-	Style   brain.Style `json:"style"`
+// Profile is who John is, whatever preset he sells with.
+type Profile struct {
+	Name             string   `json:"name"`
+	ShortName        string   `json:"short_name"`
+	Role             string   `json:"role"`
+	Background       []string `json:"background"`
+	Values           []string `json:"values"`
+	Voice            Voice    `json:"voice"`
+	SignaturePhrases []string `json:"signature_phrases"`
+	SampleLines      []string `json:"sample_lines"`
+	Metaphors        []string `json:"metaphors"`
+	Never            []string `json:"never"`
 }
 
-// Preset is a named harness John can switch to.
+// Approach is how John sells in one preset.
+type Approach struct {
+	HowHeSells []string `json:"how_he_sells"`
+	Openers    []string `json:"openers"`
+	Closers    []string `json:"closers"`
+}
+
+// Harness is what a preset holds.
+type Harness struct {
+	Approach Approach    `json:"approach"`
+	Style    brain.Style `json:"style"`
+}
+
+// Preset is a named sales approach John can switch to.
 type Preset struct {
 	ID          int64   `json:"id"`
 	Key         string  `json:"key,omitempty"` // built-in presets only
@@ -73,6 +97,7 @@ type DocInfo struct {
 
 // Snapshot is everything the dashboard's John page shows.
 type Snapshot struct {
+	Profile       Profile   `json:"profile"`
 	ActiveID      int64     `json:"active_id"`
 	Presets       []Preset  `json:"presets"`
 	FAQ           string    `json:"faq"`
@@ -84,6 +109,7 @@ type Snapshot struct {
 
 const (
 	settingActive   = "active_preset"
+	settingProfile  = "profile"
 	settingFAQ      = "faq"
 	settingReferral = "referral_url"
 
@@ -98,15 +124,14 @@ var ErrInvalid = errors.New("invalid")
 
 // Service owns the harness. All methods are safe for concurrent use.
 type Service struct {
-	st          *store.Store
-	br          *brain.Brain
-	personaPath string
-	base        Persona // data/persona/john.json, the built-ins start from it
-	mu          sync.Mutex
+	st   *store.Store
+	br   *brain.Brain
+	base Persona // data/persona/john.json; the profile and built-ins start from it
+	mu   sync.Mutex
 }
 
-// New loads John's base persona, seeds the built-in presets, FAQ and
-// referral link on first run, and configures the brain from the active preset.
+// New loads John's base persona, seeds the profile, built-in presets, FAQ and
+// referral link on first run, and configures the brain.
 func New(st *store.Store, br *brain.Brain, personaPath, faqPath string) (*Service, error) {
 	raw, err := os.ReadFile(personaPath)
 	if err != nil {
@@ -116,7 +141,25 @@ func New(st *store.Store, br *brain.Brain, personaPath, faqPath string) (*Servic
 	if err := json.Unmarshal(raw, &base); err != nil {
 		return nil, fmt.Errorf("%s: %w", personaPath, err)
 	}
-	s := &Service{st: st, br: br, personaPath: personaPath, base: base}
+	s := &Service{st: st, br: br, base: base}
+
+	if _, ok, err := st.Setting(settingProfile); err != nil {
+		return nil, err
+	} else if !ok {
+		// Presets saved before the profile was split out carry the whole
+		// persona; keep the active one's identity edits.
+		p := profileOf(base)
+		if id, err := s.activeID(); err == nil {
+			if row, err := st.Preset(id); err == nil {
+				if legacy, ok := legacyPersona(row.Harness); ok {
+					p = profileOf(legacy)
+				}
+			}
+		}
+		if err := s.putProfile(p); err != nil {
+			return nil, err
+		}
+	}
 
 	presets, err := st.Presets()
 	if err != nil {
@@ -163,11 +206,11 @@ func New(st *store.Store, br *brain.Brain, personaPath, faqPath string) (*Servic
 func (s *Service) Snapshot() (Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.snapshot()
-}
-
-func (s *Service) snapshot() (Snapshot, error) {
 	snap := Snapshot{PlaybookMax: MaxPlaybookChars, AlwaysHandoff: alwaysHandoff}
+	var err error
+	if snap.Profile, err = s.profile(); err != nil {
+		return snap, err
+	}
 	rows, err := s.st.Presets()
 	if err != nil {
 		return snap, err
@@ -179,16 +222,15 @@ func (s *Service) snapshot() (Snapshot, error) {
 		}
 		snap.Presets = append(snap.Presets, p)
 	}
-	snap.ActiveID, err = s.activeID()
-	if err != nil {
+	if active, err := s.active(); err == nil {
+		snap.ActiveID = active.ID
+	} else {
 		return snap, err
 	}
-	snap.FAQ, _, err = s.st.Setting(settingFAQ)
-	if err != nil {
+	if snap.FAQ, _, err = s.st.Setting(settingFAQ); err != nil {
 		return snap, err
 	}
-	snap.ReferralURL, _, err = s.st.Setting(settingReferral)
-	if err != nil {
+	if snap.ReferralURL, _, err = s.st.Setting(settingReferral); err != nil {
 		return snap, err
 	}
 	docs, err := s.st.Documents()
@@ -202,16 +244,15 @@ func (s *Service) snapshot() (Snapshot, error) {
 	return snap, nil
 }
 
-// ActivePersonaJSON is the active persona card, for the dashboard state.
+// ActivePersonaJSON is the persona card the brain is using, for the dashboard state.
 func (s *Service) ActivePersonaJSON() json.RawMessage {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	p, err := s.active()
+	cfg, err := s.config(nil, nil)
 	if err != nil {
 		return json.RawMessage("null")
 	}
-	b, _ := json.Marshal(p.Harness.Persona)
-	return b
+	return json.RawMessage(cfg.Persona)
 }
 
 // FAQ is the current FAQ text.
@@ -220,18 +261,29 @@ func (s *Service) FAQ() string {
 	return v
 }
 
-// SaveActive replaces the active preset's persona and style.
-func (s *Service) SaveActive(h Harness) error {
+// SetProfile replaces who John is.
+func (s *Service) SetProfile(p Profile) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := validate(&h); err != nil {
+	if err := p.validate(); err != nil {
 		return err
 	}
-	p, err := s.active()
+	if err := s.putProfile(p); err != nil {
+		return err
+	}
+	return s.apply()
+}
+
+// SavePreset replaces a preset's approach and reply style.
+func (s *Service) SavePreset(id int64, h Harness) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	h.validate()
+	row, err := s.st.Preset(id)
 	if err != nil {
 		return err
 	}
-	if err := s.updatePreset(p.ID, p.Name, p.Description, h); err != nil {
+	if err := s.updatePreset(id, row.Name, row.Description, h); err != nil {
 		return err
 	}
 	return s.apply()
@@ -250,7 +302,7 @@ func (s *Service) Activate(id int64) error {
 	return s.apply()
 }
 
-// SaveAs copies the given harness into a new preset and makes it active.
+// SaveAs adds a new preset with the given approach and makes it active.
 func (s *Service) SaveAs(name, description string, h Harness) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -258,9 +310,7 @@ func (s *Service) SaveAs(name, description string, h Harness) (int64, error) {
 	if name == "" {
 		return 0, fmt.Errorf("%w: give the preset a name", ErrInvalid)
 	}
-	if err := validate(&h); err != nil {
-		return 0, err
-	}
+	h.validate()
 	id, err := s.addPreset("", name, strings.TrimSpace(description), h)
 	if err != nil {
 		return 0, err
@@ -438,27 +488,62 @@ func (s *Service) DocumentText(id int64) (string, error) {
 	return "", store.ErrNotFound
 }
 
-// apply pushes the active preset, FAQ, playbook and link into the brain.
+// PreviewConfig is the brain config with unsaved edits swapped in (nil
+// keeps what's saved), for trying a draft without touching live replies.
+func (s *Service) PreviewConfig(profile *Profile, preset *Harness) (brain.Config, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if profile != nil {
+		if err := profile.validate(); err != nil {
+			return brain.Config{}, err
+		}
+	}
+	if preset != nil {
+		preset.validate()
+	}
+	return s.config(profile, preset)
+}
+
+// apply pushes the saved profile, active preset, FAQ, playbook and link into the brain.
 func (s *Service) apply() error {
-	p, err := s.active()
+	cfg, err := s.config(nil, nil)
 	if err != nil {
 		return err
 	}
-	persona, err := json.MarshalIndent(p.Harness.Persona, "", "  ")
+	s.br.Configure(cfg)
+	return nil
+}
+
+func (s *Service) config(profile *Profile, preset *Harness) (brain.Config, error) {
+	if profile == nil {
+		p, err := s.profile()
+		if err != nil {
+			return brain.Config{}, err
+		}
+		profile = &p
+	}
+	if preset == nil {
+		a, err := s.active()
+		if err != nil {
+			return brain.Config{}, err
+		}
+		preset = &a.Harness
+	}
+	persona, err := json.MarshalIndent(merge(*profile, preset.Approach), "", "  ")
 	if err != nil {
-		return err
+		return brain.Config{}, err
 	}
 	faq, _, err := s.st.Setting(settingFAQ)
 	if err != nil {
-		return err
+		return brain.Config{}, err
 	}
 	referral, _, err := s.st.Setting(settingReferral)
 	if err != nil {
-		return err
+		return brain.Config{}, err
 	}
 	docs, err := s.st.Documents()
 	if err != nil {
-		return err
+		return brain.Config{}, err
 	}
 	var playbook []brain.Doc
 	for _, d := range docs {
@@ -466,8 +551,27 @@ func (s *Service) apply() error {
 			playbook = append(playbook, brain.Doc{Name: d.Name, Text: d.Text})
 		}
 	}
-	s.br.Configure(brain.Config{Persona: string(persona), FAQ: faq, Playbook: playbook, Style: p.Harness.Style, ReferralURL: referral})
-	return nil
+	return brain.Config{Persona: string(persona), FAQ: faq, Playbook: playbook, Style: preset.Style, ReferralURL: referral}, nil
+}
+
+func (s *Service) profile() (Profile, error) {
+	v, ok, err := s.st.Setting(settingProfile)
+	if err != nil || !ok {
+		return profileOf(s.base), err
+	}
+	var p Profile
+	if err := json.Unmarshal([]byte(v), &p); err != nil {
+		return p, fmt.Errorf("profile: %w", err)
+	}
+	return p, nil
+}
+
+func (s *Service) putProfile(p Profile) error {
+	raw, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	return s.st.SetSetting(settingProfile, string(raw))
 }
 
 func (s *Service) activeID() (int64, error) {
@@ -537,25 +641,63 @@ func (s *Service) updatePreset(id int64, name, description string, h Harness) er
 
 func toPreset(r store.Preset) (Preset, error) {
 	p := Preset{ID: r.ID, Key: r.Key, Name: r.Name, Description: r.Description, UpdatedAt: r.UpdatedAt}
-	if err := json.Unmarshal([]byte(r.Harness), &p.Harness); err != nil {
+	if legacy, ok := legacyPersona(r.Harness); ok {
+		var old struct {
+			Style brain.Style `json:"style"`
+		}
+		json.Unmarshal([]byte(r.Harness), &old)
+		p.Harness = Harness{Approach: approachOf(legacy), Style: old.Style}
+	} else if err := json.Unmarshal([]byte(r.Harness), &p.Harness); err != nil {
 		return p, fmt.Errorf("preset %d: %w", r.ID, err)
 	}
-	p.Harness.Style = p.Harness.Style.Normalized()
+	p.Harness.validate()
 	return p, nil
 }
 
-// validate trims empty list items and checks what the brain relies on.
-func validate(h *Harness) error {
-	p := &h.Persona
-	p.Name, p.Role = strings.TrimSpace(p.Name), strings.TrimSpace(p.Role)
+// legacyPersona reads a preset saved before the profile was split out.
+func legacyPersona(raw string) (Persona, bool) {
+	var old struct {
+		Persona *Persona `json:"persona"`
+	}
+	if json.Unmarshal([]byte(raw), &old) != nil || old.Persona == nil {
+		return Persona{}, false
+	}
+	return *old.Persona, true
+}
+
+func profileOf(p Persona) Profile {
+	return Profile{Name: p.Name, ShortName: p.ShortName, Role: p.Role, Background: p.Background, Values: p.Values, Voice: p.Voice,
+		SignaturePhrases: p.SignaturePhrases, SampleLines: p.SampleLines, Metaphors: p.Metaphors, Never: p.Never}
+}
+
+func approachOf(p Persona) Approach {
+	return Approach{HowHeSells: p.HowHeSells, Openers: p.Openers, Closers: p.Closers}
+}
+
+func merge(p Profile, a Approach) Persona {
+	return Persona{Name: p.Name, ShortName: p.ShortName, Role: p.Role, Background: p.Background, Voice: p.Voice,
+		Openers: a.Openers, SignaturePhrases: p.SignaturePhrases, Metaphors: p.Metaphors, Values: p.Values,
+		Closers: a.Closers, Never: p.Never, SampleLines: p.SampleLines, HowHeSells: a.HowHeSells}
+}
+
+// validate trims the profile and checks what the brain relies on.
+func (p *Profile) validate() error {
+	p.Name, p.ShortName, p.Role = strings.TrimSpace(p.Name), strings.TrimSpace(p.ShortName), strings.TrimSpace(p.Role)
 	if p.Name == "" {
 		return fmt.Errorf("%w: John needs a name", ErrInvalid)
 	}
-	for _, l := range []*[]string{&p.Background, &p.Openers, &p.SignaturePhrases, &p.Metaphors, &p.Values, &p.Closers, &p.Never, &p.SampleLines, &p.HowHeSells} {
+	for _, l := range []*[]string{&p.Background, &p.Values, &p.SignaturePhrases, &p.SampleLines, &p.Metaphors, &p.Never} {
+		*l = clean(*l)
+	}
+	return nil
+}
+
+// validate drops empty list items and keeps the style in range.
+func (h *Harness) validate() {
+	for _, l := range []*[]string{&h.Approach.HowHeSells, &h.Approach.Openers, &h.Approach.Closers} {
 		*l = clean(*l)
 	}
 	h.Style = h.Style.Normalized()
-	return nil
 }
 
 func clean(items []string) []string {

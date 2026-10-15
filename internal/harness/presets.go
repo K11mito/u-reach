@@ -8,9 +8,11 @@ type builtin struct {
 }
 
 // builtins are the presets John starts with, all grown from his real persona
-// card. They differ in how he sells, not in who he is or what's true.
+// card. They change how he sells, never who he is or what's true.
 func builtins(base Persona) []builtin {
-	curious := base
+	warm := approachOf(base)
+
+	curious := warm
 	curious.HowHeSells = []string{
 		"He starts by getting curious about the person: where they are, what they do, what made them reach out. He asks one simple question about their life before pitching anything.",
 		"He listens for the one thing that matters to them (sending money home, paying with the phone, being early, the community) and connects U-topia to that, nothing more.",
@@ -24,7 +26,7 @@ func builtins(base Persona) []builtin {
 		"Shall we jump on a quick call this week? I'll bring someone from the team.",
 	}
 
-	direct := base
+	direct := warm
 	direct.HowHeSells = []string{
 		"He answers the question directly in a sentence or two, with no long build-up.",
 		"He keeps the pitch to one line: one free app for your money, you hold it yourself, and a community that learns together.",
@@ -32,7 +34,7 @@ func builtins(base Persona) []builtin {
 		"He believes people need to be asked a clear question before they can say yes, so he ends with a simple invitation.",
 	}
 
-	call := base
+	call := warm
 	call.HowHeSells = []string{
 		"He believes the real conversation happens on a call: in every note his goal is a quick three-way call on WhatsApp with him and someone experienced from the team.",
 		"He gives a short, personal answer first, then says why the call helps: they can ask anything and hear it from someone who has done it.",
@@ -45,14 +47,15 @@ func builtins(base Persona) []builtin {
 		"Let's do a quick three-way call, it's the easiest way to see the whole picture.",
 	}
 
+	short := brain.Style{MinWords: 35, MaxWords: 60, LinkTiming: brain.LinkWhenInterested, Language: brain.LangEnglish}
 	return []builtin{
 		{"warm", "Warm friend", "John's natural style: personal and excited, link in the first reply.",
-			Harness{base, brain.DefaultStyle}},
+			Harness{warm, brain.DefaultStyle}},
 		{"curious", "Curious first", "Gets to know the lead before pitching. Short notes; link once they're interested.",
-			Harness{curious, brain.Style{MinWords: 35, MaxWords: 60, LinkTiming: brain.LinkWhenInterested, Language: brain.LangEnglish}}},
+			Harness{curious, short}},
 		{"direct", "Straight to the point", "Answers in a few sentences and sends the link right away.",
 			Harness{direct, brain.Style{MinWords: 25, MaxWords: 45, LinkTiming: brain.LinkFirstReply, Language: brain.LangEnglish}}},
 		{"call", "Call booker", "Moves every lead toward a quick three-way call with John and the team.",
-			Harness{call, brain.Style{MinWords: 35, MaxWords: 60, LinkTiming: brain.LinkWhenInterested, Language: brain.LangEnglish}}},
+			Harness{call, short}},
 	}
 }

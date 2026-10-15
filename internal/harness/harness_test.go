@@ -26,7 +26,7 @@ func newService(t *testing.T) (*Service, *brain.Brain, *store.Store) {
 	return s, br, st
 }
 
-func TestSeedsPresetsAndConfiguresBrain(t *testing.T) {
+func TestSeedsProfilePresetsAndConfiguresBrain(t *testing.T) {
 	s, br, _ := newService(t)
 	snap, err := s.Snapshot()
 	if err != nil {
@@ -34,6 +34,9 @@ func TestSeedsPresetsAndConfiguresBrain(t *testing.T) {
 	}
 	if len(snap.Presets) != 4 || snap.ActiveID != snap.Presets[0].ID || snap.Presets[0].Key != "warm" {
 		t.Fatalf("want 4 built-ins with Warm friend active, got %d active=%d", len(snap.Presets), snap.ActiveID)
+	}
+	if snap.Profile.Name != "John Klensch" || len(snap.Profile.SignaturePhrases) == 0 {
+		t.Fatalf("profile should be seeded from john.json: %+v", snap.Profile)
 	}
 	if snap.ReferralURL != "https://u.center/?ref=john" || !strings.Contains(snap.FAQ, "U-topia") {
 		t.Fatalf("referral and FAQ should be seeded: %q", snap.ReferralURL)
@@ -43,17 +46,23 @@ func TestSeedsPresetsAndConfiguresBrain(t *testing.T) {
 	}
 }
 
-func TestEditsAndPresetsReachTheBrain(t *testing.T) {
+func TestProfileAndPresetsReachTheBrain(t *testing.T) {
 	s, br, _ := newService(t)
 	snap, _ := s.Snapshot()
+
+	prof := snap.Profile
+	prof.SignaturePhrases = append(prof.SignaturePhrases, "  Let's make it happen.  ", "")
+	if err := s.SetProfile(prof); err != nil {
+		t.Fatal(err)
+	}
 	h := snap.Presets[0].Harness
-	h.Persona.HowHeSells = append(h.Persona.HowHeSells, "  He always mentions the Bangkok meetup.  ", "")
+	h.Approach.HowHeSells = append(h.Approach.HowHeSells, "He always mentions the Bangkok meetup.")
 	h.Style = brain.Style{MinWords: 30, MaxWords: 45, LinkTiming: brain.LinkWhenAsked, Language: brain.LangMatch}
-	if err := s.SaveActive(h); err != nil {
+	if err := s.SavePreset(snap.Presets[0].ID, h); err != nil {
 		t.Fatal(err)
 	}
 	p := br.SystemPrompt()
-	for _, want := range []string{"He always mentions the Bangkok meetup.", "30 to 45 words", "Don't push your link", "language the lead writes in"} {
+	for _, want := range []string{"Let's make it happen.", "He always mentions the Bangkok meetup.", "30 to 45 words", "Don't push your link", "language the lead writes in"} {
 		if !strings.Contains(p, want) {
 			t.Fatalf("prompt missing %q", want)
 		}
@@ -62,16 +71,67 @@ func TestEditsAndPresetsReachTheBrain(t *testing.T) {
 		t.Fatalf("brain style not updated: %+v", st)
 	}
 	saved, _ := s.Snapshot()
-	if got := saved.Presets[0].Harness.Persona.HowHeSells; got[len(got)-1] != "He always mentions the Bangkok meetup." {
-		t.Fatalf("list items should be trimmed and blanks dropped: %q", got[len(got)-3:])
+	if got := saved.Profile.SignaturePhrases; got[len(got)-1] != "Let's make it happen." {
+		t.Fatalf("items should be trimmed and blanks dropped: %q", got[len(got)-2:])
 	}
 
+	// Editing a preset that isn't in use doesn't change live replies.
 	call := snap.Presets[3]
+	call.Harness.Approach.Closers = []string{"Ring me tonight?"}
+	if err := s.SavePreset(call.ID, call.Harness); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(br.SystemPrompt(), "Ring me tonight?") {
+		t.Fatal("an inactive preset must not reach live replies")
+	}
 	if err := s.Activate(call.ID); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(br.SystemPrompt(), "three-way call on WhatsApp with him and someone experienced") {
-		t.Fatal("switching preset should change John's sales approach")
+	if p := br.SystemPrompt(); !strings.Contains(p, "Ring me tonight?") || !strings.Contains(p, "Let's make it happen.") {
+		t.Fatal("switching preset changes the approach and keeps the profile")
+	}
+}
+
+func TestPreviewConfigUsesDraftsWithoutSaving(t *testing.T) {
+	s, br, _ := newService(t)
+	snap, _ := s.Snapshot()
+	draft := snap.Presets[1].Harness
+	draft.Approach.Openers = []string{"Yo {name}!"}
+	prof := snap.Profile
+	prof.Role = "Draft role"
+	cfg, err := s.PreviewConfig(&prof, &draft)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(cfg.Persona, "Yo {name}!") || !strings.Contains(cfg.Persona, "Draft role") || cfg.Style.MaxWords != 60 {
+		t.Fatalf("preview should use both drafts: %s", cfg.Persona)
+	}
+	if strings.Contains(br.SystemPrompt(), "Yo {name}!") || strings.Contains(br.SystemPrompt(), "Draft role") {
+		t.Fatal("previews must not touch live replies")
+	}
+	bad := Profile{}
+	if _, err := s.PreviewConfig(&bad, nil); !errors.Is(err, ErrInvalid) {
+		t.Fatal("a nameless profile is invalid")
+	}
+}
+
+func TestLegacyPresetsKeepTheirEdits(t *testing.T) {
+	st, err := store.Open(filepath.Join(t.TempDir(), "legacy.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	// A preset saved before the profile was split out.
+	id, _ := st.AddPreset(store.Preset{Key: "warm", Name: "Warm friend", Harness: `{"persona":{"name":"John K","role":"Edited role","how_he_sells":["Old step"],"closers":["Old closer"]},"style":{"min_words":30,"max_words":45,"link_timing":"when_asked","language":"english"}}`})
+	st.SetSetting(settingActive, "1")
+	br := &brain.Brain{}
+	s, err := New(st, br, "../../data/persona/john.json", "../../data/faq.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	snap, _ := s.Snapshot()
+	if snap.Profile.Role != "Edited role" || snap.Presets[0].ID != id || snap.Presets[0].Harness.Approach.HowHeSells[0] != "Old step" || snap.Presets[0].Harness.Style.LinkTiming != brain.LinkWhenAsked {
+		t.Fatalf("legacy preset should convert: %+v %+v", snap.Profile.Role, snap.Presets[0].Harness)
 	}
 }
 

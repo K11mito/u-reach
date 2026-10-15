@@ -211,7 +211,26 @@ var fallbackModels = map[string]bool{
 
 // Reply writes John's next voice note for the conversation.
 func (b *Brain) Reply(ctx context.Context, c Contact, history []Turn) (Reply, Meta, error) {
-	return b.generate(ctx, userPrompt(c, history), c, history)
+	return b.generate(ctx, b.current(), userPrompt(c, history), c, history)
+}
+
+// Preview writes a reply with a draft config, for trying unsaved edits.
+// Live replies keep using the configured version.
+func (b *Brain) Preview(ctx context.Context, cfg Config, c Contact, history []Turn) (Reply, Meta, error) {
+	cfg.Style = cfg.Style.Normalized()
+	return b.generate(ctx, setup{system: systemPrompt(cfg), style: cfg.Style, referral: cfg.ReferralURL}, userPrompt(c, history), c, history)
+}
+
+// setup is one consistent view of the config, taken once per reply.
+type setup struct {
+	system, referral string
+	style            Style
+}
+
+func (b *Brain) current() setup {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return setup{system: b.system, style: b.style.Normalized(), referral: b.ReferralURL}
 }
 
 // Opener writes John's first, unprompted voice note to someone he knows
@@ -229,15 +248,15 @@ func (b *Brain) Opener(ctx context.Context, c Contact) (Reply, Meta, error) {
 	s.WriteString("Open warmly by name and mention how you know them. In a sentence or two, say why you thought of them and what U-topia is, made personal to them. " +
 		"End with one simple question that invites a reply. 40 to 70 words, about 15 to 25 seconds. " +
 		"Set include_referral to true and say you're dropping your link below. handoff is false.")
-	return b.generate(ctx, s.String(), c, nil)
+	return b.generate(ctx, b.current(), s.String(), c, nil)
 }
 
-func (b *Brain) generate(ctx context.Context, prompt string, c Contact, history []Turn) (Reply, Meta, error) {
+func (b *Brain) generate(ctx context.Context, cfg setup, prompt string, c Contact, history []Turn) (Reply, Meta, error) {
 	params := anthropic.BetaMessageNewParams{
 		Model:     b.Model,
 		MaxTokens: 8000,
 		System: []anthropic.BetaTextBlockParam{{
-			Text:         b.SystemPrompt(),
+			Text:         cfg.system,
 			CacheControl: anthropic.NewBetaCacheControlEphemeralParam(),
 		}},
 		Messages: []anthropic.BetaMessageParam{
@@ -285,7 +304,7 @@ func (b *Brain) generate(ctx context.Context, prompt string, c Contact, history 
 	if err := json.Unmarshal([]byte(text.String()), &r); err != nil {
 		return Reply{}, meta, fmt.Errorf("brain JSON: %w: %q", err, text.String())
 	}
-	r = b.enforce(r, c, history, &meta)
+	r = enforce(cfg, r, c, history, &meta)
 	return r, meta, nil
 }
 
@@ -300,8 +319,12 @@ var (
 
 // enforce applies the rules that must hold regardless of what the model wrote.
 func (b *Brain) enforce(r Reply, c Contact, history []Turn, meta *Meta) Reply {
+	return enforce(b.current(), r, c, history, meta)
+}
+
+func enforce(cfg setup, r Reply, c Contact, history []Turn, meta *Meta) Reply {
 	latest := latestLeadText(history)
-	style, referral := b.Style(), b.Referral()
+	style, referral := cfg.style, cfg.referral
 
 	if !r.Handoff {
 		if kw := handoffRe.FindString(latest); kw != "" {

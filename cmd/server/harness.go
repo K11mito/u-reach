@@ -14,11 +14,25 @@ import (
 	"ureach/internal/store"
 )
 
-// John's harness: presets, persona and reply style, FAQ, referral link and
-// the uploaded sales playbook. Every change applies to the next reply.
+// John's harness: his profile (who he is), sales presets (how he sells),
+// FAQ, referral link and the uploaded sales playbook. Every change applies
+// to the next reply.
 func (a *api) routeHarness(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/harness", a.harnessGet)
-	mux.HandleFunc("PUT /api/harness/active", a.harnessSaveActive)
+	mux.HandleFunc("PUT /api/harness/profile", a.harnessDo(func(_ int64, r *http.Request) error {
+		var p harness.Profile
+		if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+			return err
+		}
+		return a.harness.SetProfile(p)
+	}))
+	mux.HandleFunc("PUT /api/harness/presets/{id}", a.harnessDo(func(id int64, r *http.Request) error {
+		var h harness.Harness
+		if err := json.NewDecoder(r.Body).Decode(&h); err != nil {
+			return err
+		}
+		return a.harness.SavePreset(id, h)
+	}))
 	mux.HandleFunc("POST /api/harness/presets", a.harnessSaveAs)
 	mux.HandleFunc("POST /api/harness/presets/{id}/activate", a.harnessDo(func(id int64, _ *http.Request) error { return a.harness.Activate(id) }))
 	mux.HandleFunc("POST /api/harness/presets/{id}/reset", a.harnessDo(func(id int64, _ *http.Request) error { return a.harness.Reset(id) }))
@@ -82,19 +96,6 @@ func (a *api) harnessChanged(w http.ResponseWriter) {
 	a.harnessGet(w, nil)
 }
 
-func (a *api) harnessSaveActive(w http.ResponseWriter, r *http.Request) {
-	var h harness.Harness
-	if err := json.NewDecoder(r.Body).Decode(&h); err != nil {
-		harnessErr(w, err)
-		return
-	}
-	if err := a.harness.SaveActive(h); err != nil {
-		harnessErr(w, err)
-		return
-	}
-	a.harnessChanged(w)
-}
-
 func (a *api) harnessSaveAs(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Name        string          `json:"name"`
@@ -142,17 +143,27 @@ func (a *api) harnessDocText(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"text": text})
 }
 
-// harnessTry writes John's reply to a pretend message with the current
-// harness. Nothing is saved or sent.
+// harnessTry writes John's reply to a pretend message. Unsaved profile or
+// preset edits can be passed in to try them first. Nothing is saved or sent.
 func (a *api) harnessTry(w http.ResponseWriter, r *http.Request) {
-	var body struct{ Name, Message string }
+	var body struct {
+		Name    string           `json:"name"`
+		Message string           `json:"message"`
+		Profile *harness.Profile `json:"profile"`
+		Preset  *harness.Harness `json:"preset"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Message) == "" {
 		http.Error(w, "type a message to try", http.StatusBadRequest)
 		return
 	}
+	cfg, err := a.harness.PreviewConfig(body.Profile, body.Preset)
+	if err != nil {
+		harnessErr(w, err)
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
-	reply, meta, err := a.brain.Reply(ctx, brain.Contact{Name: strings.TrimSpace(body.Name)}, []brain.Turn{{FromLead: true, Text: body.Message}})
+	reply, meta, err := a.brain.Preview(ctx, cfg, brain.Contact{Name: strings.TrimSpace(body.Name)}, []brain.Turn{{FromLead: true, Text: body.Message}})
 	if err != nil {
 		http.Error(w, "John's AI couldn't answer: "+err.Error(), http.StatusBadGateway)
 		return
