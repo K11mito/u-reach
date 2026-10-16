@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -621,10 +622,15 @@ func spa(boot func() any) http.Handler {
 	})
 }
 
+// logRequests logs actions and dashboard page loads. The dashboard's data
+// refreshes (it refetches state after every live event), audio and assets
+// are left out: they'd bury the reply pipeline's own lines.
 func logRequests(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || strings.HasPrefix(r.URL.Path, "/api/state") {
-			log.Printf("%s %s", r.Method, r.URL.Path)
+		p := r.URL.Path
+		quiet := r.Method == http.MethodGet && (strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/audio/") || strings.Contains(path.Base(p), "."))
+		if !quiet {
+			log.Printf("%s %s", r.Method, p)
 		}
 		h.ServeHTTP(w, r)
 	})
