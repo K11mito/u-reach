@@ -267,6 +267,24 @@ func (b *Brain) current() setup {
 	return setup{system: b.system, style: b.style.Normalized(), referral: b.ReferralURL, autonomy: NormalizeAutonomy(b.autonomy)}
 }
 
+// Nudge writes a follow-up for a lead who hasn't answered John's last message
+// for a while. There's no new message from them, so the chat goes into the
+// prompt rather than to enforce: the lead-side handoff net is about what a
+// lead just said, which doesn't apply. The income-claim net still does.
+func (b *Brain) Nudge(ctx context.Context, c Contact, history []Turn, quiet time.Duration) (Reply, Meta, error) {
+	days := max(2, int(quiet.Hours()/24))
+	prompt := conversation(c, history) + fmt.Sprintf(`
+They haven't replied for %d days since John's last message. Write John's short follow-up voice note:
+- Pick up exactly where the conversation left off and mention something specific they said or asked.
+- Add one small, genuinely useful thing from the knowledge base that fits them and hasn't been said yet.
+- End with one easy question they can answer in a few words.
+- If they've already joined, ask how they're getting on and offer one helpful next step instead of selling.
+- Warm and light, no pressure and no guilt. Never say "just checking in", "following up", "did you get my message" or "haven't heard from you". They know it's John, so don't introduce yourself.
+- 25 to 55 words, about 10 to 20 seconds.
+handoff and opt_out are false. followup_text is usually empty. include_referral: true only if they never got the link and seemed interested; then say you're dropping your link below, rather than asking whether to send it.`, days)
+	return b.generate(ctx, b.current(), prompt, c, nil)
+}
+
 // Opener writes John's first, unprompted voice note to someone he knows
 // (the outbound campaign). Replies then flow through Reply.
 func (b *Brain) Opener(ctx context.Context, c Contact) (Reply, Meta, error) {
@@ -473,6 +491,12 @@ func capWords(text string, max int) (string, bool) {
 }
 
 func userPrompt(c Contact, history []Turn) string {
+	return conversation(c, history) + "\nWrite John's next voice note replying to the lead's latest message(s)."
+}
+
+// conversation is what the model knows about a lead: who they are and the
+// chat so far.
+func conversation(c Contact, history []Turn) string {
 	var s strings.Builder
 	// The date lives here, not in the cached system prompt.
 	fmt.Fprintf(&s, "Today is %s.\n", time.Now().Format("Monday 2 January 2006"))
@@ -498,7 +522,6 @@ func userPrompt(c Contact, history []Turn) string {
 		}
 		fmt.Fprintf(&s, "[%s, %s] %s\n", who, kind, t.Text)
 	}
-	s.WriteString("\nWrite John's next voice note replying to the lead's latest message(s).")
 	return s.String()
 }
 
