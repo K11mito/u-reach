@@ -94,11 +94,17 @@ export function TryIt({
             {res.reply.opt_out && <Flag tone="amber">Lead opted out</Flag>}
             {res.reply.include_referral ? (
               <Flag tone="green">
-                <Link2 className="size-3" /> Sends the link
+                <Link2 className="size-3" /> Sends his referral link
               </Flag>
             ) : (
-              <Flag>No link yet</Flag>
+              <Flag>Referral link held until they're ready</Flag>
             )}
+            {res.reply.info_link && (
+              <Flag tone="green">
+                <Link2 className="size-3" /> Shares {res.reply.info_link}
+              </Flag>
+            )}
+            {res.reply.interest && <Flag>Rates them {res.reply.interest}</Flag>}
             {res.trimmed && <Flag>Trimmed to length</Flag>}
             <Flag>
               {(res.latency_ms / 1000).toFixed(1)}s · {res.model}

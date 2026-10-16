@@ -205,7 +205,18 @@ export interface AutonomyLevel {
   hands_off: string[]
 }
 export interface TryResult {
-  reply: { spoken_script: string; followup_text: string; include_referral: boolean; handoff: boolean; handoff_reason: string; opt_out: boolean; remember: string[] }
+  reply: {
+    spoken_script: string
+    followup_text: string
+    include_referral: boolean
+    handoff: boolean
+    handoff_reason: string
+    opt_out: boolean
+    remember: string[]
+    interest?: Interest
+    interest_reason?: string
+    info_link?: string // "u.center" or "u-topia.com" when a page was added
+  }
   words: number
   trimmed: boolean
   forced_handoff: string

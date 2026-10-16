@@ -44,6 +44,13 @@ type Style struct {
 // Like John, the AI keeps the conversation going first.
 var DefaultStyle = Style{MinWords: 50, MaxWords: 90, LinkTiming: LinkWhenInterested}
 
+// Info pages John can point a lead to. The model only names one; code adds
+// the address, so a link in a reply is always one of these.
+var infoLinks = map[string]struct{ URL, Intro string }{
+	"u.center":    {"https://u.center/", "Here's U.Center, with all the packages and prices:"},
+	"u-topia.com": {"https://u-topia.com/", "Here's more about the app:"},
+}
+
 // Normalized fills unset fields from DefaultStyle and keeps lengths sane.
 func (st Style) Normalized() Style {
 	if st.MaxWords <= 0 {
@@ -104,6 +111,9 @@ type Reply struct {
 	// whole conversation, and the clue: the Inbox's triage.
 	Interest       string `json:"interest"`
 	InterestReason string `json:"interest_reason"`
+	// An info page to share after the note: "u.center", "u-topia.com" or
+	// "none". After enforce, "" when nothing was added.
+	InfoLink string `json:"info_link"`
 }
 
 // Meta describes how a reply was produced, for logs and the Stage view.
@@ -225,7 +235,7 @@ func (b *Brain) SystemPrompt() string {
 var schema = json.RawMessage(`{
   "type": "object",
   "additionalProperties": false,
-  "required": ["spoken_script", "followup_text", "include_referral", "handoff", "handoff_reason", "opt_out", "remember", "interest", "interest_reason"],
+  "required": ["spoken_script", "followup_text", "include_referral", "handoff", "handoff_reason", "opt_out", "remember", "interest", "interest_reason", "info_link"],
   "properties": {
     "spoken_script":    {"type": "string"},
     "followup_text":    {"type": "string"},
@@ -235,7 +245,8 @@ var schema = json.RawMessage(`{
     "opt_out":          {"type": "boolean"},
     "remember":         {"type": "array", "items": {"type": "string"}},
     "interest":         {"type": "string", "enum": ["cold", "warm", "hot"]},
-    "interest_reason":  {"type": "string"}
+    "interest_reason":  {"type": "string"},
+    "info_link":        {"type": "string", "enum": ["none", "u.center", "u-topia.com"]}
   }
 }`)
 
@@ -282,7 +293,7 @@ They haven't replied for %d days since John's last message. Write John's short f
 - If they've already joined, ask how they're getting on and offer one helpful next step instead of selling.
 - Warm and light, no pressure and no guilt. Never say "just checking in", "following up", "did you get my message" or "haven't heard from you". They know it's John, so don't introduce yourself.
 - 25 to 55 words, about 10 to 20 seconds.
-handoff and opt_out are false. followup_text is usually empty. include_referral: true only if they never got the link and were clearly ready to join; then say you're dropping your link below, rather than asking whether to send it.`, days)
+handoff and opt_out are false. followup_text is usually empty. info_link: a page only if it fits what they asked about and you haven't shared it yet. include_referral: true only if they never got the link and were clearly ready to join; then say you're dropping your link below, rather than asking whether to send it.`, days)
 	return b.generate(ctx, b.current(), prompt, c, nil)
 }
 
@@ -449,7 +460,32 @@ func enforce(cfg setup, r Reply, c Contact, history []Turn, meta *Meta) Reply {
 		r.FollowupText += "\n" + referral
 	}
 
+	// An info page, once per chat, and never next to the referral link
+	// (that's u.center too). A text that only introduced it goes with it.
+	info, ok := infoLinks[strings.ToLower(strings.TrimSpace(r.InfoLink))]
+	if ok && !r.IncludeReferral && !r.Handoff && !r.OptOut && !shared(history, info.URL) {
+		if r.FollowupText == "" {
+			r.FollowupText = info.Intro
+		}
+		r.FollowupText += "\n" + info.URL
+		r.InfoLink = strings.TrimSuffix(strings.TrimPrefix(info.URL, "https://"), "/")
+	} else {
+		if ok && !r.IncludeReferral && strings.HasSuffix(r.FollowupText, ":") {
+			r.FollowupText = ""
+		}
+		r.InfoLink = ""
+	}
 	return r
+}
+
+// shared says whether John already sent this address in the chat.
+func shared(history []Turn, url string) bool {
+	for _, t := range history {
+		if !t.FromLead && strings.Contains(t.Text, url) {
+			return true
+		}
+	}
+	return false
 }
 
 // rateInterest keeps the triage tidy: a known level and a short clue.
@@ -592,6 +628,11 @@ Opt-out: if the lead asks you to stop messaging them or clearly says they're not
 followup_text: one short text message sent after the voice note, or an empty string. Use it to introduce a page or the link, or for a light nudge to keep talking (like "Any questions, just send me a voice note!"); never repeat the voice note's question. Never put a URL in it; the system appends the address of the link or page.
 
 ` + linkRule + ` The system sends the link at most once unless they ask for it again, so when it was already sent, don't say you're sending it again; point them back to it instead.
+
+info_link: share one of these pages when it really helps, by name; the system adds the address after followup_text, so never write it yourself:
+- "u.center": U.Center's site, with the membership packages and their prices, the DAO and the education side. Share it when they ask about packages, prices or the community.
+- "u-topia.com": the U-topia app's site: what the app does, the Visa card, the team, its FAQs and the waitlist. Share it when they want to read more about the app.
+Otherwise "none". At most one per reply, never one you already shared in this chat, and not when you send your referral link. When you share one, say so naturally in the voice note, like "I'll drop you the page with all the packages".
 
 remember: short new facts about the lead worth keeping (where they live, interests, concerns). Empty if none.
 

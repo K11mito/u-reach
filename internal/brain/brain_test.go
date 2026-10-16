@@ -320,3 +320,47 @@ func TestLinkOnceReady(t *testing.T) {
 		t.Fatal("the default prompt should keep the conversation going")
 	}
 }
+
+// Info pages are named by the model and added by code: once per chat, never
+// with the referral link, never on a handoff, never an address it made up.
+func TestInfoLinks(t *testing.T) {
+	b := &Brain{}
+	b.Configure(Config{ReferralURL: "https://u.center/?ref=john"})
+	chat := func(johnSaid, leadSays string) []Turn {
+		h := []Turn{}
+		if johnSaid != "" {
+			h = append(h, Turn{Text: johnSaid})
+		}
+		return append(h, Turn{FromLead: true, Text: leadSays})
+	}
+	for _, tc := range []struct {
+		name     string
+		history  []Turn
+		in       Reply
+		info     string
+		followup string
+	}{
+		{"packages", chat("", "how much are the packages?"),
+			Reply{SpokenScript: "Starter is twenty-five dollars.", InfoLink: "u.center"}, "u.center", "Here's U.Center, with all the packages and prices:\nhttps://u.center/"},
+		{"the app, with John's own words", chat("", "what does the app do?"),
+			Reply{SpokenScript: "It's your money in one app.", FollowupText: "Have a look around:", InfoLink: "u-topia.com"}, "u-topia.com", "Have a look around:\nhttps://u-topia.com/"},
+		{"already shared", chat("Here's more about the app:\nhttps://u-topia.com/", "cool"),
+			Reply{SpokenScript: "Glad you like it.", FollowupText: "Here it is again:", InfoLink: "u-topia.com"}, "", ""},
+		{"referral link wins", chat("", "how do I join?"),
+			Reply{SpokenScript: "Let's do it.", IncludeReferral: true, InfoLink: "u.center"}, "", "Here's my link to get started:\nhttps://u.center/?ref=john"},
+		{"they have the referral link, which is u.center", chat("Here's my link:\nhttps://u.center/?ref=john", "and the prices?"),
+			Reply{SpokenScript: "Starter is twenty-five dollars.", InfoLink: "u.center"}, "", ""},
+		{"handoff", chat("", "I paid and nothing arrived"),
+			Reply{SpokenScript: "Oh no.", Handoff: true, InfoLink: "u-topia.com"}, "", ""},
+		{"not a page we know", chat("", "hi"),
+			Reply{SpokenScript: "Hi!", FollowupText: "See https://evil.example", InfoLink: "evil.example"}, "", "See"},
+		{"none", chat("", "hi"),
+			Reply{SpokenScript: "Hi!", InfoLink: "none"}, "", ""},
+	} {
+		var m Meta
+		r := b.enforce(tc.in, Contact{Name: "Raj"}, tc.history, &m)
+		if r.InfoLink != tc.info || r.FollowupText != tc.followup {
+			t.Errorf("%s: info %q, followup %q; want %q, %q", tc.name, r.InfoLink, r.FollowupText, tc.info, tc.followup)
+		}
+	}
+}
