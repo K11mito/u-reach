@@ -302,6 +302,7 @@ export interface Draft {
   name: string
   script: string
   followup: string
+  link?: boolean // the referral link goes after the note
   audio_path: string
   duration_ms: number
   error?: string

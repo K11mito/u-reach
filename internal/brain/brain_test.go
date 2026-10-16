@@ -2,6 +2,7 @@ package brain
 
 import (
 	"context"
+	"io"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -362,5 +363,39 @@ func TestInfoLinks(t *testing.T) {
 		if r.InfoLink != tc.info || r.FollowupText != tc.followup {
 			t.Errorf("%s: info %q, followup %q; want %q, %q", tc.name, r.InfoLink, r.FollowupText, tc.info, tc.followup)
 		}
+	}
+}
+
+// A campaign opener starts a conversation: no link unless the style sends
+// it in the first message.
+func TestOpenerLink(t *testing.T) {
+	var prompt atomic.Value
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		prompt.Store(string(body))
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"id":"m","type":"message","role":"assistant","model":"claude-test","stop_reason":"end_turn",
+			"content":[{"type":"text","text":"{\"spoken_script\":\"Hey Anna! Thought of you. Have you heard of U-topia?\",\"followup_text\":\"\",\"include_referral\":true,\"handoff\":false,\"handoff_reason\":\"\",\"opt_out\":false,\"remember\":[],\"interest\":\"warm\",\"interest_reason\":\"\",\"info_link\":\"none\"}"}],
+			"usage":{"input_tokens":1,"output_tokens":1}}`))
+	}))
+	defer srv.Close()
+	t.Setenv("ANTHROPIC_BASE_URL", srv.URL)
+	t.Setenv("ANTHROPIC_API_KEY", "test")
+	t.Setenv("BRAIN_MODEL", "claude-test")
+	b, err := New("../../data/persona/john.json", "../../data/faq.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.Configure(Config{Persona: "{}", FAQ: "facts", ReferralURL: "https://u.center/?ref=john"})
+	r, _, err := b.Opener(context.Background(), Contact{Name: "Anna"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.IncludeReferral || strings.Contains(r.FollowupText, "u.center") || !strings.Contains(prompt.Load().(string), "include_referral is false") {
+		t.Fatalf("default style: no link in an opener: %+v", r)
+	}
+	b.Configure(Config{Persona: "{}", FAQ: "facts", ReferralURL: "https://u.center/?ref=john", Style: Style{LinkTiming: LinkFirstReply}})
+	if r, _, _ = b.Opener(context.Background(), Contact{Name: "Anna"}); !r.IncludeReferral || !strings.HasSuffix(r.FollowupText, "https://u.center/?ref=john") {
+		t.Fatalf("link in the first reply: the opener carries it: %+v", r)
 	}
 }

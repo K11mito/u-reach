@@ -310,9 +310,16 @@ func (b *Brain) Opener(ctx context.Context, c Contact) (Reply, Meta, error) {
 		fmt.Fprintf(&s, "What John remembers about them: %s\n", strings.Join(c.Memory, "; "))
 	}
 	s.WriteString("Open warmly by name and mention how you know them. In a sentence or two, say why you thought of them and what U-topia is, made personal to them. " +
-		"End with one simple question that invites a reply. 40 to 70 words, about 15 to 25 seconds. " +
-		"Set include_referral to true and say you're dropping your link below. handoff is false.")
-	return b.generate(ctx, b.current(), s.String(), c, nil)
+		"End with one simple question that invites a reply. 40 to 70 words, about 15 to 25 seconds. handoff is false. info_link is none. ")
+	cfg := b.current()
+	if cfg.style.LinkTiming == LinkFirstReply {
+		s.WriteString("Set include_referral to true and say you're dropping your link below.")
+	} else {
+		// A first message starts a conversation; the link comes once they're ready.
+		s.WriteString("Don't mention or send your link yet: include_referral is false.")
+		cfg.referral = ""
+	}
+	return b.generate(ctx, cfg, s.String(), c, nil)
 }
 
 func (b *Brain) generate(ctx context.Context, cfg setup, prompt string, c Contact, history []Turn) (Reply, Meta, error) {

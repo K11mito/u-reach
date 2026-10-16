@@ -20,6 +20,7 @@ type Draft struct {
 	Name       string `json:"name"`
 	Script     string `json:"script"`
 	Followup   string `json:"followup"`
+	Link       bool   `json:"link"` // add the referral link after the note
 	AudioPath  string `json:"audio_path"`
 	DurationMS int64  `json:"duration_ms"`
 	Error      string `json:"error,omitempty"`
@@ -54,7 +55,11 @@ func (c *Core) draft(ctx context.Context, id int64) Draft {
 		return d
 	}
 	d.Script = r.SpokenScript
+	d.Link = r.IncludeReferral
 	d.Followup = strings.TrimSpace(strings.TrimSuffix(r.FollowupText, c.Brain.Referral()))
+	if d.Followup == "Here's my link to get started:" {
+		d.Followup = ""
+	}
 	vn, mp3, err := c.speak(ctx, 0, d.Script)
 	if err != nil {
 		d.Error = "voice: " + err.Error()
@@ -111,7 +116,8 @@ func (c *Core) sendOpener(ctx context.Context, d Draft) error {
 	c.addOut(ct.ID, 0, waID, "voice", d.Script, mp3, int64(vn.Duration*1000))
 
 	text := strings.TrimSpace(d.Followup)
-	if c.Brain.Referral() != "" {
+	link := d.Link && c.Brain.Referral() != ""
+	if link {
 		if text == "" {
 			text = "Here's my link:"
 		}
@@ -122,7 +128,9 @@ func (c *Core) sendOpener(ctx context.Context, d Draft) error {
 		if err := c.sendText(ctx, ct.ID, 0, to, false, text); err != nil {
 			return err
 		}
-		c.Store.MarkLinkSent(ct.ID)
+		if link {
+			c.Store.MarkLinkSent(ct.ID)
+		}
 	}
 	if ct.Status == store.StatusNew {
 		c.Store.SetStatus(ct.ID, store.StatusAuto, "")

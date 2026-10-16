@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Check, Loader2, Megaphone, MessageCircleReply, Plus, Send, Sparkles, X } from "lucide-react"
+import { Check, Link2, Loader2, Megaphone, MessageCircleReply, Plus, Send, Sparkles, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -106,7 +106,7 @@ function Openers({ contacts, statuses }: { contacts: Contact[]; statuses: Record
       <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-card">
         <div className="border-b px-4 py-3">
           <h2 className="text-[15px] font-semibold tracking-tight">Who should John reach out to?</h2>
-          <p className="text-xs text-muted-foreground">Each gets a personal voice note in his voice, then his link.</p>
+          <p className="text-xs text-muted-foreground">Each gets a personal voice note in his voice that starts a conversation.</p>
         </div>
         <AddContact />
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -189,7 +189,14 @@ function Openers({ contacts, statuses }: { contacts: Contact[]; statuses: Record
                       }}
                       className="min-h-20 text-sm"
                     />
-                    <Input value={d.followup} disabled={sent} onChange={(e) => update(d.contact_id, { followup: e.target.value })} placeholder="Text after the note (link is added automatically)" className="text-sm" />
+                    <div className="flex items-center gap-2">
+                      <Input value={d.followup} disabled={sent} onChange={(e) => update(d.contact_id, { followup: e.target.value })} placeholder="Optional text after the note" className="text-sm" />
+                      {d.link && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs text-foreground/75" title="John's referral link goes after the note">
+                          <Link2 className="size-3" /> + link
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
