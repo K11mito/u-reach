@@ -38,3 +38,18 @@ func TestLastMessages(t *testing.T) {
 		}
 	}
 }
+
+func TestSetInterest(t *testing.T) {
+	st, err := Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	c, _ := st.CreateContact(Contact{JID: "a@s.whatsapp.net", Phone: "991"})
+	st.SetInterest(c.ID, InterestHot, "asked how to pay")
+	st.SetInterest(c.ID, "lukewarm", "not a level") // ignored
+	got, _ := st.Contact(c.ID)
+	if got.Interest != InterestHot || got.InterestReason != "asked how to pay" || got.InterestAt == 0 {
+		t.Fatalf("interest: %+v", got)
+	}
+}

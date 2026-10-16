@@ -324,3 +324,13 @@ func TestRetryable(t *testing.T) {
 		}
 	}
 }
+
+func TestReplyRatesInterest(t *testing.T) {
+	r := newRig(t)
+	r.claude.reply.Interest, r.claude.reply.InterestReason = "hot", "asked how to pay with USDT"
+	r.lead("how do I pay with USDT?")
+	r.waitRun(t)
+	if c := r.contact(t); c.Interest != store.InterestHot || c.InterestReason != "asked how to pay with USDT" {
+		t.Fatalf("contact: %+v", c)
+	}
+}

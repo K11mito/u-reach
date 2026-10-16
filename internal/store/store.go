@@ -35,8 +35,13 @@ type Contact struct {
 	HandoffReason string   `json:"handoff_reason"`
 	LinkSentAt    int64    `json:"link_sent_at"`
 	Avatar        string   `json:"avatar,omitempty"` // WhatsApp profile photo, relative to data/audio
-	CreatedAt     int64    `json:"created_at"`
-	LastMessageAt int64    `json:"last_message_at"`
+	// How close they are to joining, as the AI judged it on its last reply:
+	// cold | warm | hot ("" before the first rating), with the clue.
+	Interest       string `json:"interest"`
+	InterestReason string `json:"interest_reason"`
+	InterestAt     int64  `json:"interest_at"`
+	CreatedAt      int64  `json:"created_at"`
+	LastMessageAt  int64  `json:"last_message_at"`
 }
 
 // IsDemoNumber reports whether a phone number is a fake seeded/simulated one
@@ -156,6 +161,9 @@ func Open(path string) (*Store, error) {
 	// Added after the first release; ignore "duplicate column" on existing DBs.
 	db.Exec(`ALTER TABLE messages ADD COLUMN status TEXT NOT NULL DEFAULT ''`)
 	db.Exec(`ALTER TABLE contacts ADD COLUMN avatar TEXT NOT NULL DEFAULT ''`)
+	db.Exec(`ALTER TABLE contacts ADD COLUMN interest TEXT NOT NULL DEFAULT ''`)
+	db.Exec(`ALTER TABLE contacts ADD COLUMN interest_reason TEXT NOT NULL DEFAULT ''`)
+	db.Exec(`ALTER TABLE contacts ADD COLUMN interest_at INTEGER NOT NULL DEFAULT 0`)
 	return &Store{db: db}, nil
 }
 
@@ -169,13 +177,13 @@ func (s *Store) Reset() error {
 
 func Now() int64 { return time.Now().UnixMilli() }
 
-const contactCols = `id, jid, chat, phone, name, push_name, context, memory, status, handoff_reason, link_sent_at, avatar, created_at, last_message_at`
+const contactCols = `id, jid, chat, phone, name, push_name, context, memory, status, handoff_reason, link_sent_at, avatar, interest, interest_reason, interest_at, created_at, last_message_at`
 
 func scanContact(row interface{ Scan(...any) error }) (Contact, error) {
 	var c Contact
 	var mem string
 	err := row.Scan(&c.ID, &c.JID, &c.Chat, &c.Phone, &c.Name, &c.PushName, &c.Context, &mem,
-		&c.Status, &c.HandoffReason, &c.LinkSentAt, &c.Avatar, &c.CreatedAt, &c.LastMessageAt)
+		&c.Status, &c.HandoffReason, &c.LinkSentAt, &c.Avatar, &c.Interest, &c.InterestReason, &c.InterestAt, &c.CreatedAt, &c.LastMessageAt)
 	if err == nil {
 		json.Unmarshal([]byte(mem), &c.Memory)
 	}
@@ -242,9 +250,9 @@ func (s *Store) CreateContact(c Contact) (Contact, error) {
 		c.Chat = c.JID
 	}
 	mem, _ := json.Marshal(nonNil(c.Memory))
-	res, err := s.db.Exec(`INSERT INTO contacts (jid, chat, phone, name, push_name, context, memory, status, handoff_reason, link_sent_at, created_at, last_message_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		c.JID, c.Chat, c.Phone, c.Name, c.PushName, c.Context, string(mem), c.Status, c.HandoffReason, c.LinkSentAt, c.CreatedAt, c.LastMessageAt)
+	res, err := s.db.Exec(`INSERT INTO contacts (jid, chat, phone, name, push_name, context, memory, status, handoff_reason, link_sent_at, interest, interest_reason, interest_at, created_at, last_message_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		c.JID, c.Chat, c.Phone, c.Name, c.PushName, c.Context, string(mem), c.Status, c.HandoffReason, c.LinkSentAt, c.Interest, c.InterestReason, c.InterestAt, c.CreatedAt, c.LastMessageAt)
 	if err != nil {
 		return c, err
 	}
@@ -280,6 +288,25 @@ func (s *Store) DeleteContact(id int64) error {
 // SetAvatar records where a contact's profile photo is stored.
 func (s *Store) SetAvatar(id int64, path string) error {
 	_, err := s.db.Exec(`UPDATE contacts SET avatar = ? WHERE id = ?`, path, id)
+	return err
+}
+
+// Interest levels the AI rates a lead at.
+const (
+	InterestCold = "cold"
+	InterestWarm = "warm"
+	InterestHot  = "hot"
+)
+
+// SetInterest records how close a lead is to joining and why. An unknown
+// level is ignored, so a bad rating never wipes a good one.
+func (s *Store) SetInterest(id int64, level, reason string) error {
+	switch level {
+	case InterestCold, InterestWarm, InterestHot:
+	default:
+		return nil
+	}
+	_, err := s.db.Exec(`UPDATE contacts SET interest = ?, interest_reason = ?, interest_at = ? WHERE id = ?`, level, reason, Now(), id)
 	return err
 }
 

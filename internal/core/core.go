@@ -304,6 +304,7 @@ func (c *Core) run(contactID int64, batch []pending) {
 		c.Store.MarkLinkSent(contactID)
 	}
 	c.Store.Remember(contactID, reply.Remember)
+	c.Store.SetInterest(contactID, reply.Interest, reply.InterestReason)
 	status := "sent"
 	if reply.OptOut {
 		status = "opt_out"
