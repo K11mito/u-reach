@@ -31,6 +31,7 @@ Dashboard: http://localhost:8080. If WhatsApp isn't linked yet, click **Link Wha
   - **Sales playbook:** upload Markdown, text or PDF strategy for him to read before every reply.
   - **Facts John can share**, his **referral link**, **Try John** (test a message without sending anything) and **Reset demo** for between rehearsals.
 - **Help:** a guide for judges trying it from their own phone.
+- **Sidebar status:** whether WhatsApp is connected, whether voice notes use John's clone or a test tone, and whether Claude answered the last request (it turns red with the reason, such as credit running out).
 - Keys `1` to `6` switch pages.
 
 `TTS_MOCK=1` replaces ElevenLabs with a tone, so no credits are spent.
@@ -43,6 +44,7 @@ make dev                                        # dashboard with hot reload on :
 API_URL=http://localhost:8090 npm --prefix web run dev -- --port 5174   # proxy to a second server instead
 go test ./...                                   # needs ffmpeg; nothing calls Claude, ElevenLabs or WhatsApp
 ```
+CI (`.github/workflows/ci.yml`) runs gofmt, vet, the tests with `-race` and the dashboard build on every pull request.
 
 ## Tools
 | Command | What it does |
