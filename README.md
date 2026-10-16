@@ -1,6 +1,6 @@
 # U-Reach
 
-John's WhatsApp voice-note assistant. A lead messages John's number. About ten seconds later they get a voice note in John's cloned voice that greets them by name and answers their question, plus the next one they'd ask. Then they get his referral link. John's control room (Inbox, Stage view, Campaign, Analytics, John) shows it all live.
+John's WhatsApp voice-note assistant. A lead messages John's number. About ten seconds later they get a voice note in John's cloned voice that greets them by name and answers their question, plus the next one they'd ask. Then they get his referral link. John's control room (Inbox, Campaign, Analytics, Profile, Help) shows it all live.
 
 One Go binary: WhatsApp (whatsmeow), the reply pipeline (Scribe, then Claude, then ElevenLabs TTS), SQLite and SSE, with the React dashboard embedded.
 
@@ -22,7 +22,7 @@ Dashboard: http://localhost:8080. If WhatsApp isn't linked yet, click **Link Wha
 - **Inbox:** live chats with search (`/`), filters, voice notes, and delivered/read/played ticks. **Take over** pauses the AI for a chat; replying from the demo phone itself does the same.
   - **Triage:** on every reply the AI rates the lead cold, warm or hot, with the clue ("asked how to pay with USDT"). Flames next to the name show it (two for hot, one for warm), and **Ready to call** (`/?ready=1`) shows only the hot leads: the people to call today.
 - **Simulate** (bottom of the chat list): type a message, or press the mic to record a voice note. It runs the real pipeline but sends nothing to WhatsApp.
-- **Stage view** (`/stage`, or press `P`): the projector screen. `F` toggles fullscreen and `Esc` exits.
+- **Stage view** (`/stage`): the projector screen, out of the nav for now. `F` toggles fullscreen and `Esc` exits.
 - **Campaign:** add teammates' numbers under demo names, generate personal openers, listen and edit them, then send.
   - **Follow-ups** (`/campaign?view=followups`): when a lead hasn't answered John for 2 days (`NUDGE_AFTER_HOURS`), the AI drafts a short personal follow-up every 10 minutes (`NUDGE_AUTO=0` turns that off; **Draft now** works either way). Nothing goes out until John approves it. Drafts are text until he listens or sends, so skipped ones cost no voice credits. One follow-up per silence: a lead who writes back, or whose chat John takes over, drops out, and a draft is checked again just before it's sent. Demo leads (+99 numbers) get it added to their chat, never sent on WhatsApp.
 - **Analytics:** the two-week funnel (leads reached, voice notes, links, joined) and what the APIs really cost over the last 24 hours.

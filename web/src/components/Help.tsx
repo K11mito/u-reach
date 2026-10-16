@@ -49,13 +49,13 @@ export function Help({ state }: { state: State }) {
           Send a voice note yourself: he understands those too. Ask a follow-up and he remembers the conversation.
         </Step>
         <Step n={3} icon={MonitorPlay} title="Watch it happen here">
-          Your chat jumps to the top of the <b>Inbox</b> as it arrives. Open <b>Stage view</b> (press 2) to see each step live: received, heard, thinking,
-          speaking, sent, with how long each one took.
+          Your chat jumps to the top of the <b>Inbox</b> as it arrives, and you can watch John's AI think, record and send its reply live. The AI also rates
+          how close you are to joining: flames next to your name.
         </Step>
         <Step n={4} icon={ShieldCheck} title="Ask the hard questions">
           "How much can I earn?", "Is this a pyramid scheme?", "How many countries does it work in?" It answers from what it learned from U.Center's calls
           and websites, honestly, and never promises income. Then say your payment didn't arrive: only a person can fix that, so it hands the chat to the
-          real John and it turns <b>Needs John</b> here. That's the default, <b>Balanced</b>: move the autonomy slider on the <b>John</b> page to
+          real John and it turns <b>Needs John</b> here. That's the default, <b>Balanced</b>: move the autonomy slider on the <b>Profile</b> page to
           Cautious and the money questions come to you too, or to Full autonomy and only emergencies do.
         </Step>
         <Step n={5} icon={Hand} title="Take over as John">
@@ -63,7 +63,7 @@ export function Help({ state }: { state: State }) {
           Press <b>Hand back to AI</b> and the AI picks the conversation up again.
         </Step>
         <Step n={6} icon={LayoutDashboard} title="Explore the rest">
-          <b>Campaign</b>: pick leads and the AI writes each a personal voice-note opener for John to approve. <b>Analytics</b>: the funnel, and what it
+          <b>Campaign</b>: pick leads and the AI writes each a personal voice-note opener for John to approve, plus follow-ups for leads who went quiet. <b>Analytics</b>: the funnel, and what it
           really costs to run. <b>Profile</b>: John's persona, sales presets, knowledge base and playbook, with a box to try replies before they go out.
         </Step>
       </div>
@@ -73,17 +73,14 @@ export function Help({ state }: { state: State }) {
           <li>This is a hackathon proof of concept. The other leads in the Inbox are made-up demo data; yours is real.</li>
           <li>Your messages go through Claude (Anthropic) to write the reply and ElevenLabs for John's voice. Your chat shows on this dashboard: ask us and we'll delete it.</li>
           <li>If several judges message at once, give it a few more seconds.</li>
-          <li>Please leave <b>Reset demo</b> on the John page to us: it clears every chat, yours included.</li>
+          <li>Please leave <b>Reset demo</b> on the Profile page to us: it clears every chat, yours included.</li>
         </Note>
         <Note icon={Keyboard} title="Shortcuts">
           <li>
-            <Kbd>1</Kbd>–<Kbd>6</Kbd> switch pages, <Kbd>P</Kbd> presents the Stage view
+            <Kbd>1</Kbd>–<Kbd>5</Kbd> switch pages
           </li>
           <li>
             <Kbd>/</Kbd> searches the Inbox
-          </li>
-          <li>
-            On the Stage view, <Kbd>F</Kbd> goes fullscreen, <Kbd>Ctrl</Kbd> + <Kbd>+</Kbd> / <Kbd>−</Kbd> zooms, and <Kbd>Esc</Kbd> goes back
           </li>
         </Note>
       </div>

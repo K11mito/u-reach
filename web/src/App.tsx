@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { Bot, ChartColumn, CircleHelp, Inbox as InboxIcon, Megaphone, MonitorPlay, Mic, QrCode, UserRound } from "lucide-react"
+import { Bot, ChartColumn, CircleHelp, Inbox as InboxIcon, Megaphone, Mic, QrCode, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { explainError, useLive, type BrainHealth, type WhatsAppStatus } from "@/lib/api"
 import { Inbox } from "@/components/Inbox"
@@ -62,11 +62,12 @@ export default function App() {
     return () => window.clearTimeout(t)
   }, [])
 
-  // Number keys switch pages; P presents (Stage view). Ignored while typing.
+  // Number keys switch pages, in nav order. Ignored while typing. The Stage
+  // view is out of the nav for now but still opens at /stage.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      const map: Record<string, Page> = { "1": "inbox", "2": "stage", "3": "campaign", "4": "analytics", "5": "profile", "6": "help", p: "stage" }
+      const map: Record<string, Page> = { "1": "inbox", "2": "campaign", "3": "analytics", "4": "profile", "5": "help" }
       if (map[e.key]) go(map[e.key])
     }
     window.addEventListener("keydown", key)
@@ -109,7 +110,6 @@ export default function App() {
 
   const nav = [
     { id: "inbox" as const, label: "Inbox", icon: InboxIcon, badge: state.stats.needs_john },
-    { id: "stage" as const, label: "Stage view", icon: MonitorPlay },
     { id: "campaign" as const, label: "Campaign", icon: Megaphone },
     { id: "analytics" as const, label: "Analytics", icon: ChartColumn },
     { id: "profile" as const, label: "Profile", icon: UserRound },
