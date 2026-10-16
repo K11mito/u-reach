@@ -251,7 +251,7 @@ func (c *Core) run(contactID int64, batch []pending) {
 	}
 	bc := brain.Contact{Name: firstName(contact.DisplayName()), Context: contact.Context, Memory: contact.Memory, LinkSent: contact.LinkSentAt > 0}
 	reply, meta, err := c.Brain.Reply(ctx, bc, history)
-	if err != nil {
+	if err != nil && retryable(err) {
 		log.Printf("core: brain failed, retrying once: %v", err)
 		reply, meta, err = c.Brain.Reply(ctx, bc, history)
 	}
@@ -354,6 +354,15 @@ func (c *Core) speak(ctx context.Context, runID int64, script string) (voice.Voi
 		return voice.VoiceNote{}, "", err
 	}
 	return vn, rel(c.AudioDir, mp3), nil
+}
+
+// retryable says whether asking Claude again could help. A 4xx means the
+// request itself was refused (credit used up, bad key): a second try fails
+// the same way and only delays the holding note. Rate limits and server
+// errors are already retried by the SDK; a malformed answer may come out
+// right the second time.
+func retryable(err error) bool {
+	return !strings.HasPrefix(err.Error(), "claude 4")
 }
 
 // FallbackScript is the holding note sent when the brain is unavailable.

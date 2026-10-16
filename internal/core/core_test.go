@@ -216,6 +216,9 @@ func TestBrainDownSendsHoldingNoteAndHandsOff(t *testing.T) {
 	if n, _ := r.wa.sent(); n != 1 {
 		t.Fatalf("the lead should get the holding voice note, got %d voice notes", n)
 	}
+	if n := r.claude.calls.Load(); n != 1 {
+		t.Fatalf("a refused request isn't worth retrying, Claude was asked %d times", n)
+	}
 	if c := r.contact(t); c.Status != store.StatusNeedsJohn {
 		t.Fatalf("the chat should wait for John: %+v", c)
 	}
@@ -304,5 +307,20 @@ func TestHandBackAfterHandoffWaitsForTheLead(t *testing.T) {
 	time.Sleep(300 * time.Millisecond)
 	if r.claude.calls.Load() != calls {
 		t.Fatal("no reply until the lead writes again")
+	}
+}
+
+func TestRetryable(t *testing.T) {
+	for err, want := range map[string]bool{
+		"claude 400: credit balance is too low": false,
+		"claude 401: invalid x-api-key":         false,
+		"claude 529: overloaded":                true,
+		"claude: context deadline exceeded":     true,
+		`brain JSON: unexpected end of input`:   true,
+		"claude refused (cyber)":                true,
+	} {
+		if got := retryable(errors.New(err)); got != want {
+			t.Errorf("retryable(%q) = %v, want %v", err, got, want)
+		}
 	}
 }
