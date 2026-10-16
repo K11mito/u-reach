@@ -24,6 +24,7 @@ Dashboard: http://localhost:8080. If WhatsApp isn't linked yet, click **Link Wha
 - **Simulate** (bottom of the chat list): type a message, or press the mic to record a voice note. It runs the real pipeline but sends nothing to WhatsApp.
 - **Stage view** (`/stage`, or press `P`): the projector screen. `F` toggles fullscreen and `Esc` exits.
 - **Campaign:** add teammates' numbers under demo names, generate personal openers, listen and edit them, then send.
+  - **Follow-ups** (`/campaign?view=followups`): when a lead hasn't answered John for 2 days (`NUDGE_AFTER_HOURS`), the AI drafts a short personal follow-up every 10 minutes (`NUDGE_AUTO=0` turns that off; **Draft now** works either way). Nothing goes out until John approves it. Drafts are text until he listens or sends, so skipped ones cost no voice credits. One follow-up per silence: a lead who writes back, or whose chat John takes over, drops out, and a draft is checked again just before it's sent. Demo leads (+99 numbers) get it added to their chat, never sent on WhatsApp.
 - **Analytics:** the two-week funnel (leads reached, voice notes, links, joined) and what the APIs really cost over the last 24 hours.
 - **John:** everything that shapes his replies, live with no restart:
   - **Presets** (the pills on his card): how he sells and his reply style (length, when the link goes out). Hover a preset to edit it, or start a new one.

@@ -298,6 +298,47 @@ export interface Draft {
 
 export type CampaignStatus = { status: "sending" | "sent" | "failed"; error?: string }
 
+export type NudgeStatus = "draft" | "sending" | "sent" | "skipped" | "failed" | "stale"
+/** A follow-up for a lead who went quiet, waiting for John's OK. */
+export interface Nudge {
+  id: number
+  contact_id: number
+  script: string
+  followup: string
+  link: boolean
+  status: NudgeStatus
+  error?: string
+  audio_path?: string
+  duration_ms?: number
+  quiet_since: number
+  created_at: number
+  updated_at: number
+  sent_at?: number
+  name: string
+  avatar?: string
+  demo: boolean
+  interest: Interest
+  interest_reason: string
+  last_lead_text: string
+  link_sent: boolean
+}
+export interface NudgeQueue {
+  items: Nudge[] | null
+  waiting: number
+  after_hours: number
+  auto: boolean
+}
+
+export const nudgeApi = {
+  queue: () => fetch("/api/nudges").then(json<NudgeQueue>),
+  draft: () => fetch("/api/nudges/draft", { method: "POST" }).then(json<{ drafted: number }>),
+  send: (ids: number[]) => fetch("/api/nudges/send", { method: "POST", body: JSON.stringify({ ids }) }).then(json<{ sending: number[] }>),
+  edit: (id: number, script: string, followup: string) => fetch(`/api/nudges/${id}`, { method: "PUT", body: JSON.stringify({ script, followup }) }).then(json<Nudge>),
+  listen: (id: number) => fetch(`/api/nudges/${id}/listen`, { method: "POST" }).then(json<Nudge>),
+  redraft: (id: number) => fetch(`/api/nudges/${id}/redraft`, { method: "POST" }).then(json<Nudge>),
+  skip: (id: number) => fetch(`/api/nudges/${id}/skip`, { method: "POST" }).then(json),
+}
+
 export const displayName = (c?: Contact) => (c ? c.name || c.push_name || `+${c.phone}` : "")
 
 type LiveEvent =
@@ -311,6 +352,7 @@ type LiveEvent =
   | { type: "chat_reset"; data: { contact_id: number } }
   | { type: "ambassador_avatar"; data: { avatar: string } }
   | { type: "harness"; data: null }
+  | { type: "nudges"; data: null }
 
 /** Loads dashboard state and keeps it live via SSE. */
 declare global {
@@ -357,6 +399,7 @@ export function useLive() {
         api.state().then(setState).catch(() => {})
         api.runs().then(setRuns).catch(() => {})
         loaded.current.forEach((id) => loadMessages(id))
+        window.dispatchEvent(new Event("ureach:nudges"))
       }
       es.onerror = () => {
         dropped = true
@@ -386,6 +429,9 @@ export function useLive() {
             }
           })
           refetch()
+        } else if (ev.type === "nudges") {
+          // The follow-up queue changed: the Campaign tab refetches it.
+          window.dispatchEvent(new Event("ureach:nudges"))
         } else if (ev.type === "harness") {
           // John was edited (maybe in another tab): the John page refetches.
           window.dispatchEvent(new Event("ureach:harness"))
@@ -403,6 +449,7 @@ export function useLive() {
             return next
           })
           setRuns((prev) => prev.filter((r) => r.contact_id !== id))
+          window.dispatchEvent(new Event("ureach:nudges"))
           refetch()
         } else if (ev.type === "reset") {
           window.location.reload()

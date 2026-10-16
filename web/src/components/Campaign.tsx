@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Check, Loader2, Megaphone, Plus, Send, Sparkles, X } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Check, Loader2, Megaphone, MessageCircleReply, Plus, Send, Sparkles, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -7,12 +7,65 @@ import { cn } from "@/lib/utils"
 import { api, displayName, errText, type CampaignStatus, type Contact, type Draft } from "@/lib/api"
 import { Initials, StatusChip, VoiceNote } from "./bits"
 import { toast } from "./Toast"
+import { FollowUps, useNudges } from "./FollowUps"
 
 /** Seeded and simulated leads have made-up +99 numbers that are never messaged. */
 const isDemo = (c?: Contact) => !!c?.phone.startsWith("99")
 
-/** Outbound: personal voice-note openers in John's voice, approved before sending. */
+type View = "openers" | "followups"
+
+/** Outbound, approved by John: openers to people he knows, and follow-ups for leads who went quiet. */
 export function Campaign({ contacts, statuses }: { contacts: Contact[]; statuses: Record<number, CampaignStatus> }) {
+  const [view, setView] = useState<View>(() => {
+    const asked = new URLSearchParams(window.location.search).get("view") // a bookmark: /campaign?view=followups
+    if (asked === "followups" || asked === "openers") return asked
+    try {
+      return localStorage.getItem("ureach.campaign") === "followups" ? "followups" : "openers"
+    } catch {
+      return "openers"
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem("ureach.campaign", view)
+    } catch {
+      /* ignore */
+    }
+  }, [view])
+  const { queue, reload } = useNudges()
+  const drafts = (queue?.items ?? []).filter((n) => n.status === "draft" || n.status === "failed").length
+  const tabs: { id: View; label: string; icon: typeof Megaphone; count?: number }[] = [
+    { id: "openers", label: "Openers", icon: Megaphone },
+    { id: "followups", label: "Follow-ups", icon: MessageCircleReply, count: drafts },
+  ]
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex w-fit rounded-lg bg-card p-1 shadow-xs ring-1 ring-border">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setView(t.id)}
+            className={cn(
+              "flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition",
+              view === t.id ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <t.icon className="size-4" />
+            {t.label}
+            {!!t.count && (
+              <span className={cn("rounded-full px-1.5 text-xs tabular-nums", view === t.id ? "bg-white/20" : "bg-orange-100 text-orange-800")}>{t.count}</span>
+            )}
+          </button>
+        ))}
+      </div>
+      {view === "openers" ? <Openers contacts={contacts} statuses={statuses} /> : <FollowUps queue={queue} reload={reload} />}
+    </div>
+  )
+}
+
+/** Personal voice-note openers in John's voice, approved before sending. */
+function Openers({ contacts, statuses }: { contacts: Contact[]; statuses: Record<number, CampaignStatus> }) {
   const [chosen, setPicked] = useState<number[]>([])
   const picked = chosen.filter((id) => contacts.some((c) => c.id === id)) // a reset chat drops out
   const [drafts, setDrafts] = useState<Draft[]>([])
