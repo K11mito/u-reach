@@ -99,6 +99,10 @@ type Reply struct {
 	HandoffReason   string   `json:"handoff_reason"`
 	OptOut          bool     `json:"opt_out"` // asked to stop; the chat pauses for John
 	Remember        []string `json:"remember"`
+	// How close the lead is to joining (cold | warm | hot), judged from the
+	// whole conversation, and the clue: the Inbox's triage.
+	Interest       string `json:"interest"`
+	InterestReason string `json:"interest_reason"`
 }
 
 // Meta describes how a reply was produced, for logs and the Stage view.
@@ -220,7 +224,7 @@ func (b *Brain) SystemPrompt() string {
 var schema = json.RawMessage(`{
   "type": "object",
   "additionalProperties": false,
-  "required": ["spoken_script", "followup_text", "include_referral", "handoff", "handoff_reason", "opt_out", "remember"],
+  "required": ["spoken_script", "followup_text", "include_referral", "handoff", "handoff_reason", "opt_out", "remember", "interest", "interest_reason"],
   "properties": {
     "spoken_script":    {"type": "string"},
     "followup_text":    {"type": "string"},
@@ -228,7 +232,9 @@ var schema = json.RawMessage(`{
     "handoff":          {"type": "boolean"},
     "handoff_reason":   {"type": "string"},
     "opt_out":          {"type": "boolean"},
-    "remember":         {"type": "array", "items": {"type": "string"}}
+    "remember":         {"type": "array", "items": {"type": "string"}},
+    "interest":         {"type": "string", "enum": ["cold", "warm", "hot"]},
+    "interest_reason":  {"type": "string"}
   }
 }`)
 
@@ -408,7 +414,30 @@ func enforce(cfg setup, r Reply, c Contact, history []Turn, meta *Meta) Reply {
 		}
 		r.FollowupText += "\n" + referral
 	}
+	r.Interest, r.InterestReason = rateInterest(r)
 	return r
+}
+
+// rateInterest keeps the triage tidy: a known level and a short clue.
+// Someone who asked to stop is cold whatever the model said.
+func rateInterest(r Reply) (level, reason string) {
+	level = strings.ToLower(strings.TrimSpace(r.Interest))
+	reason = strings.TrimRight(strings.TrimSpace(r.InterestReason), ".")
+	if r.OptOut {
+		level = "cold"
+		if reason == "" {
+			reason = "asked not to be contacted"
+		}
+	}
+	switch level {
+	case "cold", "warm", "hot":
+	default:
+		return "", ""
+	}
+	if words := strings.Fields(reason); len(words) > 12 {
+		reason = strings.Join(words[:12], " ") + "…"
+	}
+	return level, reason
 }
 
 // holdingLine replaces a reply the code won't send. It fits a question, a
@@ -525,5 +554,7 @@ followup_text: one short text message sent after the voice note, or an empty str
 
 ` + linkRule + ` The system sends the link at most once unless they ask for it again, so when it was already sent, don't say you're sending it again; point them back to it instead.
 
-remember: short new facts about the lead worth keeping (where they live, interests, concerns). Empty if none.`
+remember: short new facts about the lead worth keeping (where they live, interests, concerns). Empty if none.
+
+interest: how close the lead is to joining, judged from the whole conversation. "hot": about to join, worth a call from John today: they ask how to pay or join or which package, ask for the link, or say they're signing up now or waiting for a payment to go through. "warm": interested and asking real questions, or already joined and settled in. "cold": just browsing, doubtful, worried or not interested. interest_reason: the clue in eight words or fewer, like "asked how to pay with USDT".`
 }

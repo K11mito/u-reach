@@ -262,3 +262,26 @@ func TestHealthFollowsClaude(t *testing.T) {
 		t.Fatalf("want ok, failing, ok (each change once), got %+v", reports)
 	}
 }
+
+func TestInterestRating(t *testing.T) {
+	b := &Brain{}
+	lead := []Turn{{FromLead: true, Text: "how do I pay?"}}
+	for _, tc := range []struct {
+		in         Reply
+		want, clue string
+	}{
+		{Reply{SpokenScript: "Sure.", Interest: "Hot", InterestReason: "asked how to pay with USDT."}, "hot", "asked how to pay with USDT"},
+		{Reply{SpokenScript: "Sure.", Interest: "lukewarm", InterestReason: "?"}, "", ""},
+		{Reply{SpokenScript: "Of course, take care.", OptOut: true, Interest: "warm"}, "cold", "asked not to be contacted"},
+		{Reply{SpokenScript: "Sure.", Interest: "warm", InterestReason: "one two three four five six seven eight nine ten eleven twelve thirteen"}, "warm", "one two three four five six seven eight nine ten eleven twelve…"},
+	} {
+		var m Meta
+		r := b.enforce(tc.in, Contact{Name: "Raj"}, lead, &m)
+		if r.Interest != tc.want || r.InterestReason != tc.clue {
+			t.Errorf("%+v: got %q %q, want %q %q", tc.in, r.Interest, r.InterestReason, tc.want, tc.clue)
+		}
+	}
+	if !strings.Contains(string(schema), `"interest"`) || !strings.Contains(systemPrompt(Config{}), "interest_reason") {
+		t.Fatal("the model must be asked for the rating")
+	}
+}
