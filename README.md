@@ -16,6 +16,8 @@
 
 # U-Reach
 
+Live Demo: https://jacob-backed-updating-stream.trycloudflare.com/
+
 John's WhatsApp voice-note assistant. A lead messages John's number. About ten seconds later they get a voice note in John's cloned voice that greets them by name and answers their question, plus the next one they'd ask. Then they get his referral link. John's control room (Inbox, Campaign, Analytics, Profile, Help) shows it all live.
 
 One Go binary: WhatsApp (whatsmeow), the reply pipeline (Scribe, then Claude, then ElevenLabs TTS), SQLite and SSE, with the React dashboard embedded.
