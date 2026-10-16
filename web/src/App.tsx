@@ -157,10 +157,19 @@ export default function App() {
               </div>
             </button>
             <div className="space-y-1.5 text-xs">
-              <div className="flex items-center gap-2">
-                <Mic className="size-3.5" />
-                {state.ambassador.mock_voice ? "Voice: mock (no clone set)" : "Your voice, ready"}
-              </div>
+              {state.ambassador.mock_voice ? (
+                // Leads would hear a tone, not John: easy to miss before a demo.
+                <div
+                  className="flex items-start gap-2 rounded-lg bg-amber-400/90 px-2 py-1.5 font-semibold text-amber-950"
+                  title="No voice clone is set, so voice notes are a placeholder tone. Set ELEVENLABS_API_KEY and JOHN_VOICE_ID in .env and restart the server."
+                >
+                  <Mic className="mt-px size-3.5 shrink-0" /> Voice notes are a test tone: no voice clone set
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Mic className="size-3.5" /> Your voice, ready
+                </div>
+              )}
               <WhatsAppPill wa={state.whatsapp} onLink={() => setLinkOpen(true)} />
               <AiPill health={state.brain} onCheck={() => go("profile")} />
               {!connected && <div className="text-amber">Live updates reconnecting…</div>}
