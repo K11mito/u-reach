@@ -58,14 +58,14 @@ export function Hero({
     <div className="grid shrink-0 gap-4 lg:grid-cols-3">
       {/* Who he is: the page's one accent card, like the headline stat on Analytics. */}
       <section className="flex flex-col rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/25">
-        <div className="flex items-start gap-4">
-          <div className="rounded-full ring-4 ring-white/20">
-            <JohnAvatar size={64} src={a.avatar} />
+        <div className="flex items-center gap-5">
+          <div className="shrink-0 rounded-full ring-4 ring-white/25">
+            <JohnAvatar size={104} src={a.avatar} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[11px] font-semibold tracking-wide text-white/70 uppercase">U.Center ambassador</div>
-            <h2 className="text-xl font-semibold tracking-tight">{p.name}</h2>
-            <p className="mt-1 line-clamp-3 text-[13px] leading-snug text-white/85">{p.role}</p>
+            <div className="text-xs font-semibold tracking-wide text-white/75 uppercase">U.Center ambassador</div>
+            <h2 className="text-[28px] leading-tight font-bold tracking-tight">{p.name}</h2>
+            <p className="mt-1.5 text-[15px] leading-snug text-white/90">{p.role}</p>
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-1.5 text-[11px] font-medium">
