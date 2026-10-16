@@ -94,6 +94,12 @@ func main() {
 		Debounce:        time.Duration(atoi(config.Get("DEBOUNCE_MS", "2000"))) * time.Millisecond,
 		MaxVoicePerHour: atoi(config.Get("MAX_VOICE_PER_HOUR", "10")),
 		Gateway:         logGateway{},
+		Nudges:          core.NudgeConfig{After: time.Duration(atoi(config.Get("NUDGE_AFTER_HOURS", "48"))) * time.Hour},
+	}
+	// Follow-ups are drafted every 10 minutes (Claude only; nothing is sent
+	// or recorded until John approves). NUDGE_AUTO=0 drafts only on request.
+	if config.Get("NUDGE_AUTO", "1") != "0" {
+		c.Nudges.Every = 10 * time.Minute
 	}
 
 	var waClient *wa.Client
@@ -141,6 +147,7 @@ func main() {
 		}()
 	}
 
+	go c.RunNudges(ctx)
 	go func() {
 		c.Prewarm(ctx)
 		prepareVoiceSamples(ctx, el, voiceID, c.TTSModel)
@@ -164,6 +171,7 @@ func main() {
 	mux.HandleFunc("POST /api/campaign/draft", api.campaignDraft)
 	mux.HandleFunc("POST /api/campaign/send", api.campaignSend)
 	api.routeHarness(mux)
+	api.routeNudges(mux)
 	mux.Handle("GET /audio/", http.StripPrefix("/audio/", http.FileServer(http.Dir("data/audio"))))
 	mux.Handle("GET /", spa(api.boot))
 
