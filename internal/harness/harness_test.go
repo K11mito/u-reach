@@ -2,6 +2,7 @@ package harness
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -265,5 +266,63 @@ func TestListApproachBecomesText(t *testing.T) {
 	}
 	if err := s.SavePreset(id, Harness{Approach: "   "}); !errors.Is(err, ErrInvalid) {
 		t.Fatal("an empty approach is invalid")
+	}
+}
+
+// The saved facts follow data/faq.md until John edits them.
+func TestFAQFollowsShippedFileUntilEdited(t *testing.T) {
+	dir := t.TempDir()
+	st, err := store.Open(filepath.Join(dir, "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	faqPath := filepath.Join(dir, "faq.md")
+	// start runs the server with this faq.md and returns the harness.
+	start := func(file string) *Service {
+		t.Helper()
+		if err := os.WriteFile(faqPath, []byte(file), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		br := &brain.Brain{}
+		br.Configure(brain.Config{})
+		s, err := New(st, br, "../../data/persona/john.json", faqPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(br.SystemPrompt(), s.FAQ()) {
+			t.Fatal("the brain should get the saved facts")
+		}
+		return s
+	}
+
+	if got := start("# Facts v1").FAQ(); got != "# Facts v1" {
+		t.Fatalf("first run copies the file: %q", got)
+	}
+	s := start("# Facts v2")
+	if got := s.FAQ(); got != "# Facts v2" {
+		t.Fatalf("an unedited copy follows the new file: %q", got)
+	}
+	if err := s.SetFAQ("# John's own facts"); err != nil {
+		t.Fatal(err)
+	}
+	if got := start("# Facts v3").FAQ(); got != "# John's own facts" {
+		t.Fatalf("John's edits survive a new file: %q", got)
+	}
+
+	// Databases from before the shipped version was recorded.
+	legacy := func(saved string) string {
+		t.Helper()
+		st.SetSetting(settingFAQ, saved)
+		st.SetSetting(settingFAQShipped, "")
+		return start("# Facts v4").FAQ()
+	}
+	shippedFAQs[sha("# Old shipped facts")] = true
+	t.Cleanup(func() { delete(shippedFAQs, sha("# Old shipped facts")) })
+	if got := legacy("# Old shipped facts"); got != "# Facts v4" {
+		t.Fatalf("an old shipped copy is upgraded: %q", got)
+	}
+	if got := legacy("# Something John wrote"); got != "# Something John wrote" {
+		t.Fatalf("an unknown saved FAQ is John's and is kept: %q", got)
 	}
 }

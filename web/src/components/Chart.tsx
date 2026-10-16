@@ -84,8 +84,9 @@ export function LineChart({
               </text>
             </g>
           ))}
+          {/* Counted back from the newest point, so it's always labelled and never crowds its neighbour. */}
           {labels.map((l, i) =>
-            i % every === 0 || i === n - 1 ? (
+            (n - 1 - i) % every === 0 ? (
               <text key={i} x={x(i)} y={height - 6} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"} className="fill-muted-foreground text-[11px]">
                 {tick(l, i)}
               </text>

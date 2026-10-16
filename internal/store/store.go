@@ -379,6 +379,27 @@ func (s *Store) Messages(contactID int64, n int) ([]Message, error) {
 
 const messageCols = `id, contact_id, COALESCE(wa_id, ''), direction, kind, source, text, audio_path, duration_ms, run_id, status, created_at`
 
+// LastMessages returns every contact's newest message, keyed by contact id,
+// in one query (the Inbox list's previews).
+func (s *Store) LastMessages() (map[int64]Message, error) {
+	rows, err := s.db.Query(`SELECT ` + messageCols + ` FROM (
+		SELECT *, ROW_NUMBER() OVER (PARTITION BY contact_id ORDER BY created_at DESC, id DESC) AS n FROM messages
+	) WHERE n = 1`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[int64]Message{}
+	for rows.Next() {
+		m, err := scanMessage(rows)
+		if err != nil {
+			return nil, err
+		}
+		out[m.ContactID] = m
+	}
+	return out, rows.Err()
+}
+
 func scanMessage(row interface{ Scan(...any) error }) (Message, error) {
 	var m Message
 	err := row.Scan(&m.ID, &m.ContactID, &m.WAID, &m.Direction, &m.Kind, &m.Source, &m.Text, &m.AudioPath, &m.DurationMS, &m.RunID, &m.Status, &m.CreatedAt)

@@ -251,7 +251,7 @@ func (c *Core) run(contactID int64, batch []pending) {
 	}
 	bc := brain.Contact{Name: firstName(contact.DisplayName()), Context: contact.Context, Memory: contact.Memory, LinkSent: contact.LinkSentAt > 0}
 	reply, meta, err := c.Brain.Reply(ctx, bc, history)
-	if err != nil {
+	if err != nil && retryable(err) {
 		log.Printf("core: brain failed, retrying once: %v", err)
 		reply, meta, err = c.Brain.Reply(ctx, bc, history)
 	}
@@ -277,18 +277,15 @@ func (c *Core) run(contactID int64, batch []pending) {
 	}
 	c.stage(runID, "spoken")
 
-	// Sent.
+	// Sent. If the voice note won't go through (a media upload hiccup), the
+	// lead still gets the same words as a text rather than nothing.
 	if spoke {
-		waID := ""
-		if !simulated {
-			waID, err = c.Gateway.SendVoiceNote(ctx, chatJID, vn)
-			if err != nil {
-				fail("send voice", err)
-				return
-			}
+		if err := c.sendVoice(ctx, contactID, runID, chatJID, simulated, reply.SpokenScript, vn, mp3Rel); err != nil {
+			log.Printf("core: voice note failed, sending text instead: %v", err)
+			spoke = false
 		}
-		c.addOut(contactID, runID, waID, "voice", reply.SpokenScript, mp3Rel, int64(vn.Duration*1000))
-	} else {
+	}
+	if !spoke {
 		if err := c.sendText(ctx, contactID, runID, chatJID, simulated, reply.SpokenScript); err != nil {
 			fail("send text", err)
 			return
@@ -359,8 +356,21 @@ func (c *Core) speak(ctx context.Context, runID int64, script string) (voice.Voi
 	return vn, rel(c.AudioDir, mp3), nil
 }
 
+// retryable says whether asking Claude again could help. A 4xx means the
+// request itself was refused (credit used up, bad key): a second try fails
+// the same way and only delays the holding note. Rate limits and server
+// errors are already retried by the SDK; a malformed answer may come out
+// right the second time.
+func retryable(err error) bool {
+	return !strings.HasPrefix(err.Error(), "claude 4")
+}
+
 // FallbackScript is the holding note sent when the brain is unavailable.
 const FallbackScript = "Hey! Got your message, thank you. Give me a little moment and I'll get back to you properly, okay?"
+
+// unavailable starts the handoff reason of a chat paused because the brain
+// failed, rather than because the AI chose to hand it to John.
+const unavailable = "assistant unavailable: "
 
 // Prewarm renders the fallback note ahead of time, so the safety net is
 // instant and works even if ElevenLabs is slow at that moment.
@@ -375,21 +385,32 @@ func (c *Core) Prewarm(ctx context.Context) {
 func (c *Core) fallback(ctx context.Context, runID int64, contact store.Contact, chatJID types.JID, simulated bool, cause error) {
 	log.Printf("core: brain unavailable for run %d: %v", runID, cause)
 	script := FallbackScript
-	if vn, mp3Rel, err := c.speak(ctx, runID, script); err == nil {
-		waID := ""
-		if !simulated {
-			waID, err = c.Gateway.SendVoiceNote(ctx, chatJID, vn)
-		}
-		if err == nil {
-			c.addOut(contact.ID, runID, waID, "voice", script, mp3Rel, int64(vn.Duration*1000))
-		}
-	} else {
-		c.sendText(ctx, contact.ID, runID, chatJID, simulated, script)
+	vn, mp3Rel, err := c.speak(ctx, runID, script)
+	if err == nil {
+		err = c.sendVoice(ctx, contact.ID, runID, chatJID, simulated, script, vn, mp3Rel)
 	}
-	c.Store.SetStatus(contact.ID, store.StatusNeedsJohn, "assistant unavailable: "+cause.Error())
+	if err != nil {
+		log.Printf("core: holding voice note failed, sending text instead: %v", err)
+		if err := c.sendText(ctx, contact.ID, runID, chatJID, simulated, script); err != nil {
+			log.Printf("core: holding text failed too: %v", err)
+		}
+	}
+	c.Store.SetStatus(contact.ID, store.StatusNeedsJohn, unavailable+cause.Error())
 	c.Store.FinishRun(runID, "failed", "brain: "+cause.Error(), "", "")
 	c.publishRun(runID)
 	c.publishContact(contact.ID)
+}
+
+func (c *Core) sendVoice(ctx context.Context, contactID, runID int64, to types.JID, simulated bool, script string, vn voice.VoiceNote, mp3Rel string) error {
+	waID := ""
+	if !simulated {
+		var err error
+		if waID, err = c.Gateway.SendVoiceNote(ctx, to, vn); err != nil {
+			return err
+		}
+	}
+	c.addOut(contactID, runID, waID, "voice", script, mp3Rel, int64(vn.Duration*1000))
+	return nil
 }
 
 func (c *Core) sendText(ctx context.Context, contactID, runID int64, to types.JID, simulated bool, text string) error {
@@ -466,19 +487,23 @@ func (c *Core) HandleOwn(m Msg) {
 	}
 }
 
-// SendAsJohn sends a text John typed in the dashboard.
+// SendAsJohn sends a text John typed in the dashboard. Seeded and simulated
+// leads have made-up numbers, so their replies are only recorded, the same
+// way the simulate box never sends to WhatsApp.
 func (c *Core) SendAsJohn(ctx context.Context, contactID int64, text string) error {
 	contact, err := c.Store.Contact(contactID)
 	if err != nil {
 		return err
 	}
-	to, err := types.ParseJID(contact.Chat)
-	if err != nil {
-		return err
-	}
-	waID, err := c.Gateway.SendText(ctx, to, text)
-	if err != nil {
-		return err
+	waID := ""
+	if !store.IsDemoNumber(contact.Phone) {
+		to, err := types.ParseJID(contact.Chat)
+		if err != nil {
+			return err
+		}
+		if waID, err = c.Gateway.SendText(ctx, to, text); err != nil {
+			return err
+		}
 	}
 	m, err := c.Store.AddMessage(store.Message{ContactID: contactID, WAID: waID, Direction: "out", Kind: "text", Source: "john", Text: text})
 	if err == nil {
@@ -488,7 +513,13 @@ func (c *Core) SendAsJohn(ctx context.Context, contactID int64, text string) err
 }
 
 // SetStatus changes a chat's mode (take over / hand back) and tells the dashboard.
+// Handing back a chat that was paused because the AI was down answers the
+// lead's waiting message, since their holding note promised a proper reply.
 func (c *Core) SetStatus(contactID int64, status string) error {
+	before, err := c.Store.Contact(contactID)
+	if err != nil {
+		return err
+	}
 	if err := c.Store.SetStatus(contactID, status, ""); err != nil {
 		return err
 	}
@@ -497,7 +528,48 @@ func (c *Core) SetStatus(contactID int64, status string) error {
 		c.Store.AddEvent(contactID, typ, nil)
 	}
 	c.publishContact(contactID)
+	if status == store.StatusAuto && strings.HasPrefix(before.HandoffReason, unavailable) {
+		c.answerWaiting(before)
+	}
 	return nil
+}
+
+// answerWaiting replies to the lead's last message if nobody has really
+// answered it yet (only the holding note went out).
+func (c *Core) answerWaiting(ct store.Contact) {
+	msgs, err := c.Store.Messages(ct.ID, 20)
+	if err != nil {
+		return
+	}
+	var last *store.Message
+	for i := len(msgs) - 1; i >= 0 && last == nil; i-- {
+		switch m := msgs[i]; {
+		case m.Direction == "in":
+			last = &msgs[i]
+		case m.Source == "ai" && m.Text == FallbackScript:
+			continue
+		default:
+			return // John or the AI already answered
+		}
+	}
+	chatJID, err := types.ParseJID(ct.Chat)
+	if last == nil || err != nil {
+		return
+	}
+	log.Printf("core: %s handed back; answering their waiting message", ct.DisplayName())
+	m := Msg{WAID: last.WAID, Chat: chatJID, Phone: ct.Phone, Text: last.Text, Simulated: store.IsDemoNumber(ct.Phone), At: time.UnixMilli(last.CreatedAt)}
+	c.mu.Lock()
+	if c.chats == nil {
+		c.chats = map[int64]*chat{}
+	}
+	ch := c.chats[ct.ID]
+	if ch == nil {
+		ch = &chat{}
+		c.chats[ct.ID] = ch
+	}
+	ch.pending = append(ch.pending, pending{msg: m, msgID: last.ID})
+	c.mu.Unlock()
+	c.fire(ct.ID)
 }
 
 // FetchAvatar pulls a contact's WhatsApp profile photo in the background,

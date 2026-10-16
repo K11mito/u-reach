@@ -250,7 +250,7 @@ function DemoTools() {
     <div className={cn("flex items-center gap-4 rounded-xl border border-dashed p-4")}>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold">Demo tools</div>
-        <p className="text-xs text-muted-foreground">Restore the 10 seeded leads between rehearsals. John's settings stay.</p>
+        <p className="text-xs text-muted-foreground">Restore the seeded demo leads between rehearsals. John's settings stay.</p>
       </div>
       <Button variant="outline" size="sm" onClick={reset} disabled={busy}>
         {busy ? <Loader2 className="animate-spin" /> : <RotateCcw />} Reset demo

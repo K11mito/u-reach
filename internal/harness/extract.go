@@ -64,19 +64,14 @@ func pdfText(data []byte) (text string, err error) {
 		return "", fmt.Errorf("%w: couldn't read this PDF (%v)", ErrInvalid, err)
 	}
 	var b strings.Builder
-	fonts := map[string]*pdf.Font{}
 	for i := 1; i <= r.NumPage(); i++ {
 		p := r.Page(i)
 		if p.V.IsNull() {
 			continue
 		}
-		for _, name := range p.Fonts() {
-			if _, ok := fonts[name]; !ok {
-				f := p.Font(name)
-				fonts[name] = &f
-			}
-		}
-		s, err := p.GetPlainText(fonts)
+		// nil: the page's own fonts. Font names like /F1 are per page, and
+		// often a different font on each one.
+		s, err := p.GetPlainText(nil)
 		if err != nil {
 			return "", fmt.Errorf("%w: couldn't read page %d of this PDF (%v)", ErrInvalid, i, err)
 		}

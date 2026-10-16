@@ -1,8 +1,12 @@
 package brain
 
 import (
+	"context"
 	"math"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -209,5 +213,52 @@ func TestIncomeClaims(t *testing.T) {
 		if incomeClaimRe.MatchString(s) {
 			t.Errorf("should not flag: %q (matched %q)", s, incomeClaimRe.FindString(s))
 		}
+	}
+}
+
+// Health follows Claude: a failing request flips it, the next good one
+// flips it back, and only changes are reported.
+func TestHealthFollowsClaude(t *testing.T) {
+	var fail atomic.Bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if fail.Load() {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low"}}`))
+			return
+		}
+		w.Write([]byte(`{"id":"m","type":"message","role":"assistant","model":"claude-test","stop_reason":"end_turn",
+			"content":[{"type":"text","text":"{\"spoken_script\":\"Hi!\",\"followup_text\":\"\",\"include_referral\":false,\"handoff\":false,\"handoff_reason\":\"\",\"opt_out\":false,\"remember\":[]}"}],
+			"usage":{"input_tokens":1,"output_tokens":1}}`))
+	}))
+	defer srv.Close()
+	t.Setenv("ANTHROPIC_BASE_URL", srv.URL)
+	t.Setenv("ANTHROPIC_API_KEY", "test")
+	t.Setenv("BRAIN_MODEL", "claude-test")
+	b, err := New("../../data/persona/john.json", "../../data/faq.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reports []Health
+	b.OnHealth = func(h Health) { reports = append(reports, h) }
+	if !b.Health().OK {
+		t.Fatal("healthy before the first request")
+	}
+	say := func() { b.Reply(context.Background(), Contact{Name: "Raj"}, []Turn{{FromLead: true, Text: "hi"}}) }
+
+	say()
+	fail.Store(true)
+	say()
+	say()
+	if h := b.Health(); h.OK || !strings.Contains(h.Error, "credit balance") {
+		t.Fatalf("a failing request should show: %+v", h)
+	}
+	fail.Store(false)
+	say()
+	if !b.Health().OK {
+		t.Fatal("a good request clears it")
+	}
+	if len(reports) != 3 || !reports[0].OK || reports[1].OK || !reports[2].OK {
+		t.Fatalf("want ok, failing, ok (each change once), got %+v", reports)
 	}
 }

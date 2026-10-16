@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -81,6 +82,12 @@ func main() {
 	}
 
 	hub := core.NewHub()
+	br.OnHealth = func(h brain.Health) {
+		if !h.OK {
+			log.Printf("brain: Claude is failing: %s", h.Error)
+		}
+		hub.Publish("brain", h)
+	}
 	c := &core.Core{
 		Store: st, Brain: br, Voice: el, Hub: hub, AudioDir: "data/audio",
 		VoiceID: voiceID, TTSModel: config.Get("TTS_MODEL", "eleven_flash_v2_5"), Settings: voice.DefaultSettings,
@@ -263,11 +270,9 @@ func (a *api) snapshot() (map[string]any, error) {
 		return nil, err
 	}
 	waState := waStatus(a.wa)
-	last := map[int64]store.Message{}
-	for _, c := range contacts {
-		if m, _ := a.store.Messages(c.ID, 1); len(m) == 1 {
-			last[c.ID] = m[0]
-		}
+	last, err := a.store.LastMessages()
+	if err != nil {
+		return nil, err
 	}
 	minPerReply := atoi(config.Get("MIN_SAVED_PER_REPLY", "15"))
 	return map[string]any{
@@ -289,6 +294,7 @@ func (a *api) snapshot() (map[string]any, error) {
 		"stats":       stats,
 		"hours_saved": float64(stats.RepliesWeek*minPerReply) / 60,
 		"whatsapp":    waState,
+		"brain":       a.brain.Health(),
 	}, nil
 }
 
@@ -616,10 +622,15 @@ func spa(boot func() any) http.Handler {
 	})
 }
 
+// logRequests logs actions and dashboard page loads. The dashboard's data
+// refreshes (it refetches state after every live event), audio and assets
+// are left out: they'd bury the reply pipeline's own lines.
 func logRequests(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || strings.HasPrefix(r.URL.Path, "/api/state") {
-			log.Printf("%s %s", r.Method, r.URL.Path)
+		p := r.URL.Path
+		quiet := r.Method == http.MethodGet && (strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/audio/") || strings.Contains(path.Base(p), "."))
+		if !quiet {
+			log.Printf("%s %s", r.Method, p)
 		}
 		h.ServeHTTP(w, r)
 	})

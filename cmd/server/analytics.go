@@ -40,21 +40,26 @@ type spendHour struct {
 const spendHours = 24
 
 func (a *api) analytics(w http.ResponseWriter, r *http.Request) {
-	days, err := a.funnel()
+	days, weekLeads, err := a.funnel()
 	if err != nil {
 		httpErr(w, err)
 		return
 	}
 	hours, spend := a.spend()
 	writeJSON(w, map[string]any{
-		"days":     days,
+		"days": days,
+		// Each lead once: the daily counts add up the same lead on every day
+		// they chatted, which would inflate the week and its conversion rates.
+		"week":     map[string]int{"leads": weekLeads},
 		"hours":    hours,
 		"spend":    spend,
 		"response": a.responseTime(),
 	})
 }
 
-func (a *api) funnel() ([]funnelDay, error) {
+// funnel returns the 14 days, and how many different leads the AI talked to
+// over the last seven.
+func (a *api) funnel() ([]funnelDay, int, error) {
 	const dayLen = 24 * time.Hour
 	end := time.Now()
 	start := end.Add(-14 * dayLen)
@@ -72,21 +77,28 @@ func (a *api) funnel() ([]funnelDay, error) {
 
 	msgs, err := a.store.MessagesSince(start.UnixMilli())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
+	// A lead is reached on a day they wrote in or the AI wrote to them (a
+	// campaign opener reaches someone who hasn't written yet).
 	leads := make([]map[int64]bool, len(days))
+	week := map[int64]bool{}
 	for _, m := range msgs {
 		i, ok := day(m.CreatedAt)
 		if !ok {
 			continue
 		}
-		switch {
-		case m.Direction == "in":
+		fromAI := m.Direction == "out" && (m.Source == "ai" || m.Source == "seed")
+		if m.Direction == "in" || fromAI {
 			if leads[i] == nil {
 				leads[i] = map[int64]bool{}
 			}
 			leads[i][m.ContactID] = true
-		case m.Kind == "voice" && (m.Source == "ai" || m.Source == "seed"):
+			if i >= 7 {
+				week[m.ContactID] = true
+			}
+		}
+		if fromAI && m.Kind == "voice" {
 			days[i].Voice++
 		}
 	}
@@ -95,7 +107,7 @@ func (a *api) funnel() ([]funnelDay, error) {
 	}
 	contacts, err := a.store.Contacts()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	for _, c := range contacts {
 		if i, ok := day(c.LinkSentAt); ok && c.LinkSentAt > 0 {
@@ -120,7 +132,7 @@ func (a *api) funnel() ([]funnelDay, error) {
 		}
 		days[i].Purchased = int(math.Round(float64(days[i].Links) * (0.32 + 0.18*jitter(days[i].Date, "buy"))))
 	}
-	return days, nil
+	return days, len(week), nil
 }
 
 // jitter is a stable pseudo-random number in [0, 1) for a key.

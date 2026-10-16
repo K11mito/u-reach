@@ -89,6 +89,14 @@ export interface State {
   stats: Stats
   hours_saved: number
   whatsapp: WhatsAppStatus
+  brain?: BrainHealth
+}
+
+/** Whether the last request reached Claude. */
+export interface BrainHealth {
+  ok: boolean
+  error?: string
+  at?: number
 }
 
 export interface WhatsAppStatus {
@@ -108,6 +116,21 @@ async function json<T>(r: Response): Promise<T> {
 
 /** The server's message for a failed request, without the status code. */
 export const errText = (e: unknown) => String(e).replace(/^Error: \d+ /, "").trim()
+
+/** A pipeline or Claude error in plain words, for John (the raw text is for debugging). */
+export function explainError(error = "") {
+  const e = error.toLowerCase()
+  if (e.includes("credit balance")) return "Claude's API credit has run out."
+  if (/claude 40[13]|authentication|api key/.test(e)) return "Claude rejected the API key."
+  if (/claude 429|rate limit/.test(e)) return "Claude is rate-limiting requests right now."
+  if (/claude 5\d\d|overloaded|timeout|deadline exceeded/.test(e)) return "Claude didn't answer in time."
+  if (/brain json|max_tokens|refused/.test(e)) return "Claude's answer couldn't be used."
+  if (e.startsWith("brain:") || e.startsWith("claude")) return "Claude couldn't be reached."
+  if (e.includes("isn't linked") || e.includes("not linked")) return "WhatsApp isn't linked."
+  if (e.startsWith("send ")) return "WhatsApp didn't accept the message."
+  const s = error.trim() || "Unknown error"
+  return /[.!?]$/.test(s) ? s : `${s}.`
+}
 
 // John's editable harness (the John page). The profile is who John is;
 // presets are how he sells; FAQ, link and playbook are shared.
@@ -221,6 +244,7 @@ export interface FunnelDay {
 }
 export interface Analytics {
   days: FunnelDay[]
+  week?: { leads: number } // each lead counted once over the last 7 days
   hours: { t: number; elevenlabs: number; claude: number }[] // USD per hour
   spend: {
     elevenlabs: { usd_window?: number; credits_window?: number; credits_used?: number; credits_limit?: number; usd_per_credit?: number; plan?: string; error?: string }
@@ -276,6 +300,7 @@ type LiveEvent =
   | { type: "run"; data: Run }
   | { type: "campaign"; data: CampaignStatus & { contact_id: number } }
   | { type: "whatsapp"; data: WhatsAppStatus }
+  | { type: "brain"; data: BrainHealth }
   | { type: "reset"; data: null }
   | { type: "chat_reset"; data: { contact_id: number } }
   | { type: "ambassador_avatar"; data: { avatar: string } }
@@ -303,7 +328,9 @@ export function useLive() {
     }, 400)
   }, [])
 
+  const loaded = useRef(new Set<number>(Object.keys(window.__BOOT__?.messages ?? {}).map(Number)))
   const loadMessages = useCallback((id: number) => {
+    loaded.current.add(id)
     api.messages(id).then((m) => setMessages((prev) => ({ ...prev, [id]: m }))).catch(() => {})
   }, [])
 
@@ -312,10 +339,21 @@ export function useLive() {
     api.runs().then(setRuns).catch(() => {})
     let es: EventSource | null = null
     let retry: number | undefined
+    let dropped = false
     const connect = () => {
       es = new EventSource("/api/events")
-      es.onopen = () => setConnected(true)
+      es.onopen = () => {
+        setConnected(true)
+        if (!dropped) return
+        // Events sent while we were disconnected (a server restart, a
+        // Wi-Fi blip, a sleeping laptop) are gone: catch up on everything.
+        dropped = false
+        api.state().then(setState).catch(() => {})
+        api.runs().then(setRuns).catch(() => {})
+        loaded.current.forEach((id) => loadMessages(id))
+      }
       es.onerror = () => {
+        dropped = true
         setConnected(false)
         es?.close()
         retry = window.setTimeout(connect, 2000)
@@ -351,6 +389,7 @@ export function useLive() {
         } else if (ev.type === "chat_reset") {
           // The lead is removed everywhere; a new message brings them back fresh.
           const id = ev.data.contact_id
+          loaded.current.delete(id)
           setState((s) => (s ? { ...s, contacts: s.contacts.filter((c) => c.id !== id) } : s))
           setMessages((prev) => {
             const next = { ...prev }
@@ -363,6 +402,8 @@ export function useLive() {
           window.location.reload()
         } else if (ev.type === "whatsapp") {
           setState((s) => (s ? { ...s, whatsapp: ev.data } : s))
+        } else if (ev.type === "brain") {
+          setState((s) => (s ? { ...s, brain: ev.data } : s))
         } else if (ev.type === "campaign") {
           setCampaign((prev) => ({ ...prev, [ev.data.contact_id]: { status: ev.data.status, error: ev.data.error } }))
         } else if (ev.type === "run") {
@@ -378,7 +419,7 @@ export function useLive() {
       es?.close()
       window.clearTimeout(retry)
     }
-  }, [refetch])
+  }, [refetch, loadMessages])
 
   return { state, runs, messages, loadMessages, connected, refetch, campaign }
 }

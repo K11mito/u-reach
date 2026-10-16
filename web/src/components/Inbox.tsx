@@ -3,7 +3,7 @@ import { Bot, Hand, Link2, Megaphone, Mic, Reply, RotateCcw, Search, Send, Spark
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { api, clock, dayLabel, displayName, timeAgo, type Contact, type Message, type Run, type Status } from "@/lib/api"
+import { api, clock, dayLabel, displayName, errText, explainError, timeAgo, type Contact, type Message, type Run, type Status } from "@/lib/api"
 import { fmtDur, Initials, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
 import { SimulateBox } from "./SimulateBox"
 import { toast } from "./Toast"
@@ -238,7 +238,7 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
       await api.send(contact.id, draft.trim())
       setDraft("")
     } catch (e) {
-      toast(`Couldn't send: ${e}`, "error")
+      toast(`Couldn't send: ${errText(e)}`, "error")
     } finally {
       setBusy(false)
     }
@@ -248,7 +248,7 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
       await api.setStatus(contact.id, s)
       if (s === "human") window.setTimeout(() => composer.current?.focus(), 50)
     } catch (e) {
-      toast(String(e), "error")
+      toast(errText(e), "error")
     }
   }
 
@@ -288,7 +288,7 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
               await api.resetChat(contact.id)
               toast(`Chat with ${displayName(contact)} reset`)
             } catch (e) {
-              toast(String(e), "error")
+              toast(errText(e), "error")
             }
           }}
           className="text-muted-foreground"
@@ -311,7 +311,12 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
       {(failed || contact.status === "needs_john") && (
         <div className="space-y-2 border-b px-5 py-3">
           {failed && (
-            <Notice tone="red" title="The last reply failed" body={`${sentence(failed.error || "Unknown error")} The lead got a holding note.`}>
+            <Notice
+              tone="red"
+              title="The last reply failed"
+              body={`${explainError(failed.error)} ${failed.error?.startsWith("brain:") ? "The lead got a holding note." : "Nothing reached the lead."}`}
+              detail={failed.error}
+            >
               {!paused && (
                 <Button size="sm" onClick={() => setStatus("human")} className="bg-red-600 text-white hover:bg-red-700">
                   <Hand /> Take over
@@ -320,7 +325,15 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
             </Notice>
           )}
           {contact.status === "needs_john" && (
-            <Notice tone="amber" title="John's turn: the AI is paused in this chat" body={sentence(contact.handoff_reason || "The AI handed this chat to you.")}>
+            <Notice
+              tone="amber"
+              title="John's turn: the AI is paused in this chat"
+              body={
+                contact.handoff_reason.startsWith("assistant unavailable")
+                  ? "The AI couldn't reply this time. Answer as John, or hand back to the AI once it's working and it answers them straight away."
+                  : sentence(contact.handoff_reason || "The AI handed this chat to you.")
+              }
+            >
               <Button size="sm" onClick={() => composer.current?.focus()} className="bg-amber-600 text-white hover:bg-amber-700">
                 <Reply /> Reply as John
               </Button>
@@ -429,8 +442,9 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
 /** Ends a reason with a full stop, so it reads as a sentence. */
 const sentence = (s: string) => (/[.!?]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`)
 
+
 /** A compact card for a state John has to act on. */
-function Notice({ tone, title, body, children }: { tone: "amber" | "red"; title: string; body: string; children?: ReactNode }) {
+function Notice({ tone, title, body, detail, children }: { tone: "amber" | "red"; title: string; body: string; detail?: string; children?: ReactNode }) {
   return (
     <div className={cn("flex items-center gap-3 rounded-xl border p-3 shadow-sm", tone === "amber" ? "border-amber-300 bg-amber-50" : "border-red-200 bg-red-50")}>
       <div className={cn("grid size-9 shrink-0 place-items-center rounded-lg", tone === "amber" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700")}>
@@ -439,6 +453,11 @@ function Notice({ tone, title, body, children }: { tone: "amber" | "red"; title:
       <div className="min-w-0 flex-1">
         <div className={cn("text-sm font-semibold", tone === "amber" ? "text-amber-950" : "text-red-950")}>{title}</div>
         <div className={cn("text-[13px] leading-snug", tone === "amber" ? "text-amber-900" : "text-red-900")}>{body}</div>
+        {detail && (
+          <div className="mt-0.5 truncate font-mono text-[11px] text-red-900/55" title={detail}>
+            {detail}
+          </div>
+        )}
       </div>
       {children && <div className="shrink-0">{children}</div>}
     </div>
