@@ -1,3 +1,19 @@
+<p align="center">
+  <img src="docs/logo.png" width="128" alt="U-Reach logo">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26">
+  <img src="https://img.shields.io/badge/binary-single%2C%20no%20CGO-3fb950" alt="single binary, no CGO">
+  <img src="https://img.shields.io/badge/platform-Linux-333?logo=linux&logoColor=white" alt="Linux">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19">
+  <img src="https://img.shields.io/badge/Claude-Opus%205.5-D97757?logo=anthropic&logoColor=white" alt="Claude Opus 5.5">
+  <img src="https://img.shields.io/badge/voice-ElevenLabs-000000?logo=elevenlabs&logoColor=white" alt="ElevenLabs voice">
+  <img src="https://img.shields.io/badge/WhatsApp-whatsmeow-25D366?logo=whatsapp&logoColor=white" alt="WhatsApp via whatsmeow">
+  <img src="https://img.shields.io/badge/SQLite-pure%20Go-003B57?logo=sqlite&logoColor=white" alt="SQLite, pure Go">
+  <img src="https://img.shields.io/badge/U--Hackathon-2026-8b5cf6" alt="U-Hackathon 2026">
+</p>
+
 # U-Reach
 
 John's WhatsApp voice-note assistant. A lead messages John's number. About ten seconds later they get a voice note in John's cloned voice that greets them by name and answers their question, plus the next one they'd ask. Then they get his referral link. John's control room (Inbox, Campaign, Analytics, Profile, Help) shows it all live.
