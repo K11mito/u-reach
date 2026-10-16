@@ -85,7 +85,7 @@ export function Analytics({ state }: { state: State }) {
           </div>
           <LineChart
             labels={days.map((d) => d.date)}
-            height={170}
+            height={200}
             tick={(d, i) => day(d, i < 0)}
             series={[
               { name: "Leads reached", color: C.leads, values: days.map((d) => d.leads), area: true },
@@ -183,7 +183,7 @@ function Kpi({
   return (
     <div
       className={cn(
-        "rounded-xl px-4 py-3",
+        "rounded-xl px-5 py-4",
         hero ? "bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-lg shadow-indigo-500/25" : "border bg-card shadow-sm",
       )}
     >
@@ -191,12 +191,12 @@ function Kpi({
         <span className={cn("text-xs font-medium", hero ? "text-white/80" : "text-muted-foreground")}>{label}</span>
         <Icon className={cn("size-4", hero ? "text-white/80" : "text-muted-foreground/70")} />
       </div>
-      <div className="mt-1.5 flex items-end justify-between gap-3">
+      <div className="mt-2.5 flex items-end justify-between gap-3">
         <div className="flex items-baseline gap-2" title="vs the week before">
-          <span className="text-[28px] leading-none font-extrabold tracking-tight tabular-nums">{shown.toFixed(decimals)}</span>
+          <span className="text-[32px] leading-none font-extrabold tracking-tight tabular-nums">{shown.toFixed(decimals)}</span>
           <Delta value={delta} light={hero} />
         </div>
-        <Sparkline values={trend} color={hero ? "#ffffff" : color} className="h-8 w-24 shrink-0" />
+        <Sparkline values={trend} color={hero ? "#ffffff" : color} className="h-11 w-28 shrink-0" />
       </div>
     </div>
   )
@@ -281,7 +281,7 @@ function Spend({ data }: { data: Data }) {
           </div>
           <LineChart
             labels={hours.map((h) => String(h.t))}
-            height={170}
+            height={195}
             ticks={8}
             format={(v) => (v === 0 ? "$0" : v < 0.1 ? `$${v.toFixed(3)}` : `$${v.toFixed(2)}`)}
             tick={(t, i) => hour(Number(t), i < 0)}
