@@ -164,6 +164,9 @@ func Open(path string) (*Store, error) {
 	db.Exec(`ALTER TABLE contacts ADD COLUMN interest TEXT NOT NULL DEFAULT ''`)
 	db.Exec(`ALTER TABLE contacts ADD COLUMN interest_reason TEXT NOT NULL DEFAULT ''`)
 	db.Exec(`ALTER TABLE contacts ADD COLUMN interest_at INTEGER NOT NULL DEFAULT 0`)
+	if _, err := db.Exec(nudgeSchema); err != nil {
+		return nil, fmt.Errorf("nudge schema: %w", err)
+	}
 	return &Store{db: db}, nil
 }
 
@@ -171,7 +174,7 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // Reset deletes all app data (used by seed). The WhatsApp session is untouched.
 func (s *Store) Reset() error {
-	_, err := s.db.Exec(`DELETE FROM events; DELETE FROM runs; DELETE FROM messages; DELETE FROM contacts;`)
+	_, err := s.db.Exec(`DELETE FROM nudges; DELETE FROM events; DELETE FROM runs; DELETE FROM messages; DELETE FROM contacts;`)
 	return err
 }
 
