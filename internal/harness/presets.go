@@ -43,7 +43,7 @@ He sends his link once they're ready to join, so the call stays the focus.`
 
 	short := brain.Style{MinWords: 35, MaxWords: 60, LinkTiming: brain.LinkWhenInterested}
 	return []builtin{
-		{"warm", "Warm friend", "John's natural style: personal and excited, link in the first reply.",
+		{"warm", "Warm friend", "John's natural style: personal and excited; keeps the chat going and sends his link once they're ready.",
 			Harness{warm, brain.DefaultStyle}},
 		{"curious", "Curious first", "Gets to know the lead before pitching. Short notes; link once they're interested.",
 			Harness{curious, short}},

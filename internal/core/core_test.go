@@ -108,7 +108,8 @@ func newRig(t *testing.T) *rig {
 	if err != nil {
 		t.Fatal(err)
 	}
-	br.Configure(brain.Config{Persona: "{}", FAQ: "U-topia is a money app.", Style: brain.DefaultStyle, ReferralURL: "https://u.center/?ref=john"})
+	// Link in the first reply, so a reply exercises both sends (voice note, then text).
+	br.Configure(brain.Config{Persona: "{}", FAQ: "U-topia is a money app.", Style: brain.Style{MinWords: 50, MaxWords: 90, LinkTiming: brain.LinkFirstReply}, ReferralURL: "https://u.center/?ref=john"})
 	wa := &fakeGateway{}
 	c := &Core{
 		Store: st, Brain: br, Voice: &voice.Eleven{Mock: true, DataDir: dir}, Gateway: wa, Hub: NewHub(),

@@ -222,7 +222,8 @@ func (c *Core) writeNudge(ctx context.Context, ct store.Contact, quietSince int6
 	n.Script = r.SpokenScript
 	// The link goes in at send time, and only if they still don't have it.
 	ref := c.Brain.Referral()
-	n.Link = r.IncludeReferral && ref != "" && ct.LinkSentAt == 0 && c.Brain.Style().LinkTiming != brain.LinkWhenAsked
+	ready := r.Interest == store.InterestHot || ct.Interest == store.InterestHot
+	n.Link = r.IncludeReferral && ref != "" && ct.LinkSentAt == 0 && (c.Brain.Style().LinkTiming == brain.LinkFirstReply || ready)
 	n.Followup = strings.TrimSpace(strings.TrimSuffix(r.FollowupText, ref))
 	if n.Followup == "Here's my link to get started:" {
 		n.Followup = ""

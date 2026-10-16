@@ -168,7 +168,7 @@ function StyleEditor({ style, onChange }: { style: HarnessStyle; onChange: (p: P
           onChange={(v) => onChange({ link_timing: v })}
           options={[
             { value: "first_reply", label: "First reply", hint: "Right away, with an offer to help set up" },
-            { value: "when_interested", label: "Once interested", hint: "After they ask how to join or say they want in" },
+            { value: "when_interested", label: "Once ready", hint: "Keeps the chat going; sends it when they ask how to join or are rated hot" },
             { value: "when_asked", label: "Only when asked", hint: "Never pushed; sent when they ask for it" },
           ]}
         />

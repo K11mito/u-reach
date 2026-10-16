@@ -8,7 +8,7 @@ import { Section } from "./editors"
 
 const TIMING: Record<HarnessStyle["link_timing"], string> = {
   first_reply: "link in the first reply",
-  when_interested: "link once they're interested",
+  when_interested: "link once they're ready",
   when_asked: "link only when asked",
 }
 

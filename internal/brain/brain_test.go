@@ -285,3 +285,38 @@ func TestInterestRating(t *testing.T) {
 		t.Fatal("the model must be asked for the rating")
 	}
 }
+
+// By default the link waits until the lead is ready, and the chat stays
+// coherent: no "here's my link" without one, and no promise left unkept.
+func TestLinkOnceReady(t *testing.T) {
+	b := &Brain{}
+	b.Configure(Config{ReferralURL: "https://u.center/?ref=john"}) // the default style
+	lead := func(s string) []Turn { return []Turn{{FromLead: true, Text: s}} }
+	ref := "https://u.center/?ref=john"
+	for _, tc := range []struct {
+		name, msg string
+		in        Reply
+		link      bool
+		followup  string
+	}{
+		{"warm lead, a plain answer", "what is U-topia?",
+			Reply{SpokenScript: "So, it's one app for your money. What made you curious?", FollowupText: "Here's my link, Raj.", IncludeReferral: true, Interest: "warm"}, false, ""},
+		{"hot lead", "ok, how do I pay with USDT?",
+			Reply{SpokenScript: "Easy, I'll walk you through it.", IncludeReferral: true, Interest: "hot"}, true, "Here's my link to get started:\n" + ref},
+		{"asked to join", "how do I join?",
+			Reply{SpokenScript: "Love it.", IncludeReferral: true, Interest: "warm"}, true, "Here's my link to get started:\n" + ref},
+		{"the voice note promised it", "sounds good",
+			Reply{SpokenScript: "Great, I'm sending you my link now.", IncludeReferral: true, Interest: "warm"}, true, "Here's my link to get started:\n" + ref},
+		{"not wanted, text kept", "what is U-topia?",
+			Reply{SpokenScript: "It's one app for your money.", FollowupText: "Any questions, just send a voice note!", Interest: "warm"}, false, "Any questions, just send a voice note!"},
+	} {
+		var m Meta
+		r := b.enforce(tc.in, Contact{Name: "Raj"}, lead(tc.msg), &m)
+		if r.IncludeReferral != tc.link || r.FollowupText != tc.followup {
+			t.Errorf("%s: link %v, followup %q; want %v, %q", tc.name, r.IncludeReferral, r.FollowupText, tc.link, tc.followup)
+		}
+	}
+	if !strings.Contains(systemPrompt(Config{}), "Keep the conversation going") {
+		t.Fatal("the default prompt should keep the conversation going")
+	}
+}

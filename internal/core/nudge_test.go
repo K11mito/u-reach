@@ -146,13 +146,13 @@ func TestNudgeDemoLeadStaysLocal(t *testing.T) {
 	r := newRig(t)
 	r.core.Nudges = NudgeConfig{After: time.Millisecond, Quick: true}
 	r.claude.reply = nudgeReply
-	ct, _ := r.store.CreateContact(store.Contact{JID: "990000000777@s.whatsapp.net", Phone: "990000000777", Name: "Mei Lin", Status: store.StatusAuto})
+	ct, _ := r.store.CreateContact(store.Contact{JID: "990000000777@s.whatsapp.net", Phone: "990000000777", Name: "Mei Lin", Status: store.StatusAuto, Interest: store.InterestHot})
 	r.store.AddMessage(store.Message{ContactID: ct.ID, Direction: "in", Kind: "text", Source: "lead", Text: "is this safe?", CreatedAt: store.Now() - 100})
 	r.store.AddMessage(store.Message{ContactID: ct.ID, Direction: "out", Kind: "voice", Source: "seed", Text: "Yes, it's safe.", CreatedAt: store.Now() - 50})
 	time.Sleep(5 * time.Millisecond)
 	n := r.draftOne(t)
 	if !n.Link {
-		t.Fatal("she never got the link and the AI offered it")
+		t.Fatal("she's ready, never got the link, and the AI offered it")
 	}
 	r.core.SendNudges([]int64{n.ID})
 	r.waitNudge(t, n.ID, store.NudgeSent, store.NudgeFailed)

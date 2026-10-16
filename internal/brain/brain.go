@@ -29,7 +29,7 @@ const MaxWords = 110
 // Link timing: when John's referral link goes out.
 const (
 	LinkFirstReply     = "first_reply"     // in the first reply (the original behaviour)
-	LinkWhenInterested = "when_interested" // once the lead shows real interest
+	LinkWhenInterested = "when_interested" // once the lead is ready to join (the default)
 	LinkWhenAsked      = "when_asked"      // only when they ask how to join (enforced in code)
 )
 
@@ -40,8 +40,9 @@ type Style struct {
 	LinkTiming string `json:"link_timing"`
 }
 
-// DefaultStyle is the original tuning: 50 to 90 words, link in the first reply.
-var DefaultStyle = Style{MinWords: 50, MaxWords: 90, LinkTiming: LinkFirstReply}
+// DefaultStyle: 50 to 90 words, and the link only once they're ready to join.
+// Like John, the AI keeps the conversation going first.
+var DefaultStyle = Style{MinWords: 50, MaxWords: 90, LinkTiming: LinkWhenInterested}
 
 // Normalized fills unset fields from DefaultStyle and keeps lengths sane.
 func (st Style) Normalized() Style {
@@ -281,7 +282,7 @@ They haven't replied for %d days since John's last message. Write John's short f
 - If they've already joined, ask how they're getting on and offer one helpful next step instead of selling.
 - Warm and light, no pressure and no guilt. Never say "just checking in", "following up", "did you get my message" or "haven't heard from you". They know it's John, so don't introduce yourself.
 - 25 to 55 words, about 10 to 20 seconds.
-handoff and opt_out are false. followup_text is usually empty. include_referral: true only if they never got the link and seemed interested; then say you're dropping your link below, rather than asking whether to send it.`, days)
+handoff and opt_out are false. followup_text is usually empty. include_referral: true only if they never got the link and were clearly ready to join; then say you're dropping your link below, rather than asking whether to send it.`, days)
 	return b.generate(ctx, b.current(), prompt, c, nil)
 }
 
@@ -380,7 +381,9 @@ var (
 		`|(dollars?|usd|usdt|bucks|baht|euros?|pounds?) (a|per|every) (day|week|month)|(\d+ ?%|percent) (a|per|every) (day|week|month|year)|double (your|their) (money|investment)` +
 		`)`)
 	linkAskRe = regexp.MustCompile(`(?i)\b(link|sign ?up|register|join|enrol+)\b`)
-	sentEndRe = regexp.MustCompile(`[.!?…](["')\]]?)(\s|$)`)
+	// "I'm sending you my link", "dropping my link below", "here's my link".
+	promisesLinkRe = regexp.MustCompile(`(?i)\b(send(ing)?|drop(ping)?|pop(ping)?|here'?s|share|sharing)\b[^.!?]{0,25}\bmy link\b`)
+	sentEndRe      = regexp.MustCompile(`[.!?…](["')\]]?)(\s|$)`)
 )
 
 // enforce applies the rules that must hold regardless of what the model wrote.
@@ -420,11 +423,24 @@ func enforce(cfg setup, r Reply, c Contact, history []Turn, meta *Meta) Reply {
 	// The model never writes the link; code adds the real one, once, unless asked again.
 	r.FollowupText = strings.TrimSpace(urlRe.ReplaceAllString(r.FollowupText, ""))
 	asked := linkAskRe.MatchString(latest)
+	wanted := r.IncludeReferral
 	r.IncludeReferral = r.IncludeReferral && referral != "" && (!c.LinkSent || asked)
-	// "Only when asked" holds in code too. Openers (no history) are the
-	// campaign's deliberate first message and always carry the link.
-	if style.LinkTiming == LinkWhenAsked && len(history) > 0 && !asked {
-		r.IncludeReferral = false
+	// The timing holds in code too: "only when asked" means asked, and "once
+	// ready" means they asked or the AI rates them hot. Openers and
+	// follow-ups (no history) decide for themselves.
+	r.Interest, r.InterestReason = rateInterest(r)
+	if len(history) > 0 && !asked {
+		switch style.LinkTiming {
+		case LinkWhenAsked:
+			r.IncludeReferral = false
+		case LinkWhenInterested:
+			// A voice note that says the link is coming gets it, so the lead
+			// never hears a promise the chat doesn't keep.
+			r.IncludeReferral = r.IncludeReferral && (r.Interest == "hot" || promisesLinkRe.MatchString(r.SpokenScript))
+		}
+	}
+	if wanted && !r.IncludeReferral && strings.Contains(strings.ToLower(r.FollowupText), "link") {
+		r.FollowupText = "" // "Here's my link…" with no link under it
 	}
 	if r.IncludeReferral {
 		if r.FollowupText == "" {
@@ -432,7 +448,7 @@ func enforce(cfg setup, r Reply, c Contact, history []Turn, meta *Meta) Reply {
 		}
 		r.FollowupText += "\n" + referral
 	}
-	r.Interest, r.InterestReason = rateInterest(r)
+
 	return r
 }
 
@@ -540,8 +556,8 @@ func systemPrompt(c Config) string {
 	linkRule := "include_referral: true unless handoff is true or the lead clearly says they're not interested."
 	switch st.LinkTiming {
 	case LinkWhenInterested:
-		closing = "- Move them forward one step at a time. Offer your link only once they show real interest or ask how to join; before that, end with one warm question about them or an offer of a quick call."
-		linkRule = "include_referral: true only once the lead shows real interest (asks how to join, what it costs, or says they want in). False before that, and false when handoff is true."
+		closing = "- Keep the conversation going, the way John would: answer, make it personal, then end with one open invitation to keep talking, like asking what else they'd like to know or one warm question about them. Now and then, not every time, say they can just send you a voice note with any questions. Don't end by pushing your link: it comes near the end, once they're clearly ready to join."
+		linkRule = "include_referral: true only when the lead is clearly ready to join: they ask how to join or sign up, ask for your link, say they want in, or ask how to pay. A question about prices or packages alone isn't enough: answer it, and share u.center with info_link. False when handoff is true; the system also holds the link back until you rate them hot."
 	case LinkWhenAsked:
 		closing = "- Don't push your link. End with one warm question about them or an offer of a quick call. Send the link only when they ask how to join or ask for it."
 		linkRule = "include_referral: true only when the lead asks how to join or asks for the link. The system enforces this."
@@ -573,7 +589,7 @@ How to write spoken_script:
 
 Opt-out: if the lead asks you to stop messaging them or clearly says they're not interested, set opt_out to true. Then spoken_script is one or two kind sentences with no pitch, followup_text is empty, and include_referral is false.
 
-followup_text: one short text message sent after the voice note, or an empty string. Never put a URL in it; the system appends John's referral link when include_referral is true.
+followup_text: one short text message sent after the voice note, or an empty string. Use it to introduce a page or the link, or for a light nudge to keep talking (like "Any questions, just send me a voice note!"); never repeat the voice note's question. Never put a URL in it; the system appends the address of the link or page.
 
 ` + linkRule + ` The system sends the link at most once unless they ask for it again, so when it was already sent, don't say you're sending it again; point them back to it instead.
 
