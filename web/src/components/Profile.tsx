@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { AudioLines, ChevronDown, Copy, Link2, Loader2, Mic, MonitorPlay, RefreshCw, RotateCcw, ScrollText, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -30,6 +30,7 @@ const hashOf = (v: View) => (v.kind === "preset" ? `#preset/${v.id}` : v.kind ==
 export function Profile({ state }: { state: State }) {
   const [snap, setSnap] = useState<HarnessSnapshot | null>(null)
   const [view, setView] = useState<View>(viewFromHash)
+  const [kbOpen, setKbOpen] = useState(false)
 
   const load = useCallback(() => harnessApi.get().then(setSnap).catch((e) => toast(errText(e), "error")), [])
   useEffect(() => {
@@ -93,16 +94,17 @@ export function Profile({ state }: { state: State }) {
 
   // Fills the window like the Inbox: the bottom row takes the rest of the
   // height and its flexible cards (knowledge base, voice training, Try John)
-  // stretch or scroll inside. On a very short window the page scrolls.
+  // stretch or scroll inside. Reading or editing the knowledge base needs more
+  // room than that, so while it's open the page grows downwards instead.
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="flex h-full min-h-[46rem] flex-col gap-4">
+      <div className={cn("flex min-h-[46rem] flex-col gap-4", kbOpen ? "min-h-full" : "h-full")}>
         <Hero state={state} snap={snap} onActivate={activate} onEditPreset={(p) => open({ kind: "preset", id: p.id })} onEditProfile={() => open({ kind: "about" })} onNewPreset={newPreset} onAutonomy={setAutonomy} />
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-3 lg:grid-rows-[minmax(0,1fr)]">
+        <div className={cn("grid min-h-0 flex-1 gap-4 lg:grid-cols-3", !kbOpen && "lg:grid-rows-[minmax(0,1fr)]")}>
           <div className="flex min-h-0 min-w-0 flex-col gap-4">
             <Playbook snap={snap} onChange={setSnap} className="shrink-0" />
-            <Facts snap={snap} run={run} className="flex min-h-0 flex-1 flex-col" />
-            <DemoTools />
+            <Referral snap={snap} run={run} />
+            <Facts snap={snap} run={run} open={kbOpen} setOpen={setKbOpen} className="flex min-h-0 flex-1 flex-col" />
           </div>
           <div className="flex min-h-0 min-w-0 flex-col gap-4">
             <Voice state={state} />
@@ -110,7 +112,7 @@ export function Profile({ state }: { state: State }) {
           </div>
           <div className="flex min-h-0 min-w-0 flex-col gap-4">
             <TryIt className="flex min-h-0 flex-1 flex-col" />
-            <Referral snap={snap} run={run} />
+            <DemoTools />
           </div>
         </div>
       </div>
@@ -160,8 +162,11 @@ function Referral({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
 }
 
 /** The knowledge base: a short preview of its topics that opens into an editor. */
-function Facts({ snap, run, className }: { snap: HarnessSnapshot; run: Run; className?: string }) {
-  const [open, setOpen] = useState(false)
+function Facts({ snap, run, open, setOpen, className }: { snap: HarnessSnapshot; run: Run; open: boolean; setOpen: (o: boolean) => void; className?: string }) {
+  const card = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (open) card.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+  }, [open])
   const [text, setText] = useState(snap.faq)
   useEffect(() => setText(snap.faq), [snap.faq])
   const changed = text !== snap.faq
@@ -192,12 +197,12 @@ function Facts({ snap, run, className }: { snap: HarnessSnapshot; run: Run; clas
       }
     >
       {open ? (
-        <>
-          <div className="min-h-0 flex-1 overflow-y-auto rounded-lg">
+        <div ref={card}>
+          <div className="h-[36rem] overflow-y-auto rounded-lg">
             <TextField value={text} onChange={setText} rows={14} mono />
           </div>
           <div className="mt-1.5 text-right text-[11px] text-muted-foreground tabular-nums">{text.split(/\s+/).filter(Boolean).length.toLocaleString()} words · Markdown</div>
-        </>
+        </div>
       ) : (
         <button onClick={() => setOpen(true)} className="group flex min-h-0 w-full flex-1 flex-col text-left">
           {/* As many topics as fit; the rest fade out under the edge. */}
