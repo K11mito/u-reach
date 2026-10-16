@@ -4,6 +4,7 @@
     "phone": "999000000001",
     "context": "Met at the U.Center meetup in Bangkok",
     "status": "auto",
+    "interest": "warm", "interest_reason": "asked about paying at his shop",
     "memory": ["Lives in Bangkok", "Runs a small coffee shop"],
     "messages": [
       {"ago": "130h", "from": "lead", "text": "Hi John, good to meet you at the meetup! What was the app you showed me?"},
@@ -18,6 +19,7 @@
     "phone": "999000000002",
     "context": "Friend of Daniel, lives in Melbourne",
     "status": "needs_john",
+    "interest": "warm", "interest_reason": "asked what people earn",
     "handoff_reason": "Asked how much she could earn per month",
     "memory": ["Lives in Melbourne", "Interested in earning on the side"],
     "messages": [
@@ -33,6 +35,7 @@
     "phone": "999000000003",
     "context": "Old colleague from Sydney",
     "status": "auto",
+    "interest": "warm", "interest_reason": "joined on Bronze",
     "avatar": "daniel.jpg",
     "memory": ["Lives in Sydney", "Already uses Revolut"],
     "messages": [
@@ -48,6 +51,7 @@
     "phone": "999000000004",
     "context": "Met at a fintech event in Singapore",
     "status": "auto",
+    "interest": "cold", "interest_reason": "worried after losing money before",
     "memory": ["Lives in Singapore", "Worried about crypto safety"],
     "messages": [
       {"ago": "52h", "from": "lead", "text": "Hi John, is this safe? I lost money on an exchange before"},
@@ -60,6 +64,7 @@
     "phone": "999000000005",
     "context": "Cousin of a team member, Mexico City",
     "status": "human",
+    "interest": "warm", "interest_reason": "wants to send money to his mom",
     "avatar": "carlos.jpg",
     "memory": ["Lives in Mexico City", "Prefers to talk in Spanish"],
     "messages": [
@@ -75,6 +80,7 @@
     "phone": "999000000006",
     "context": "Friend from Lahore, studies in Bangkok",
     "status": "auto",
+    "interest": "hot", "interest_reason": "brother installing it tonight",
     "memory": ["Student in Bangkok", "Family in Lahore"],
     "messages": [
       {"ago": "20h", "from": "lead", "text": "Salam John! My family sends me money from Lahore every month, the fees are crazy. Can U-topia help?"},
@@ -88,6 +94,7 @@
     "phone": "999000000007",
     "context": "Friend of a friend in London",
     "status": "needs_john",
+    "interest": "cold", "interest_reason": "asked if it's a pyramid scheme",
     "handoff_reason": "Asked whether it's a pyramid scheme",
     "avatar": "ben.jpg",
     "memory": ["Lives in London", "Skeptical"],
@@ -101,6 +108,7 @@
     "phone": "999000000008",
     "context": "Met on the flight to Bangkok",
     "status": "auto",
+    "interest": "warm", "interest_reason": "wants a card for travel",
     "memory": ["From Osaka", "Travels a lot for work"],
     "messages": [
       {"ago": "6h", "from": "lead", "kind": "voice", "text": "Hi John, it's Kenji from the plane. I travel a lot, can I get a card to use at ATMs?"},
@@ -113,6 +121,7 @@
     "phone": "999000000009",
     "context": "Neighbour in Sukhumvit",
     "status": "auto",
+    "interest": "warm", "interest_reason": "curious about the Flow Summit",
     "memory": ["Lives near Sukhumvit", "Curious about the Flow Summit"],
     "messages": [
       {"ago": "3h", "from": "lead", "text": "John what is happening at the Avani this week? So many people!"},
@@ -134,6 +143,7 @@
     "phone": "999000000011",
     "context": "Met at the Lisbon crypto meetup",
     "status": "auto",
+    "interest": "warm", "interest_reason": "joined, asking what to do first",
     "avatar": "sofia.jpg",
     "memory": ["Sends money home to Mexico"],
     "messages": [
@@ -151,6 +161,7 @@
     "phone": "999000000012",
     "context": "Friend from Berlin, works in logistics",
     "status": "auto",
+    "interest": "warm", "interest_reason": "joined, booked the discovery call",
     "avatar": "lukas.jpg",
     "memory": ["Lives in Berlin"],
     "messages": [
@@ -168,6 +179,7 @@
     "phone": "999000000013",
     "context": "Old friend from Moscow, now in Dubai",
     "status": "auto",
+    "interest": "warm", "interest_reason": "signed up, inviting her sister",
     "avatar": "elena.jpg",
     "memory": ["Lives in Dubai", "Interested in gold"],
     "messages": [
@@ -185,6 +197,7 @@
     "phone": "999000000014",
     "context": "Retired teacher, neighbour from Vancouver",
     "status": "auto",
+    "interest": "warm", "interest_reason": "joined with John's help",
     "avatar": "maggie.jpg",
     "memory": ["Not confident with phones", "Grandson told her about it"],
     "messages": [
@@ -201,6 +214,7 @@
     "phone": "999000000015",
     "context": "Met at the Flow Summit registration desk",
     "status": "needs_john",
+    "interest": "warm", "interest_reason": "asked what people earn",
     "handoff_reason": "Asked how much people earn",
     "avatar": "isabel.jpg",
     "memory": [],
@@ -214,6 +228,7 @@
     "phone": "999000000016",
     "context": "Colleague from the Munich workshop",
     "status": "auto",
+    "interest": "hot", "interest_reason": "paid with USDT, awaiting confirmation",
     "avatar": "katrin.jpg",
     "memory": ["Lives in Munich"],
     "messages": [
@@ -231,6 +246,7 @@
     "phone": "999000000017",
     "context": "Friend from Milan, owns a café",
     "status": "auto",
+    "interest": "hot", "interest_reason": "joining right after the call",
     "avatar": "marco.jpg",
     "memory": ["Owns a café in Milan"],
     "messages": [
@@ -248,6 +264,7 @@
     "phone": "999000000018",
     "context": "Met on the flight to Bangkok",
     "status": "auto",
+    "interest": "hot", "interest_reason": "signing up now",
     "avatar": "emma.jpg",
     "memory": [],
     "messages": [
@@ -263,6 +280,7 @@
     "phone": "999000000019",
     "context": "Hiking friend from Utrecht",
     "status": "auto",
+    "interest": "hot", "interest_reason": "asked for the link to join",
     "avatar": "petra.jpg",
     "memory": ["Sister lives abroad"],
     "messages": [
@@ -280,6 +298,7 @@
     "phone": "999000000020",
     "context": "Friend of Priya, software engineer in Bangalore",
     "status": "auto",
+    "interest": "warm", "interest_reason": "joined",
     "memory": ["Works in software", "Knows Priya"],
     "messages": [
       {"ago": "100h", "from": "lead", "text": "Hey John, Priya's friend Arjun here. Is it like Wise?"},
@@ -296,6 +315,7 @@
     "phone": "999000000021",
     "context": "Kenji's brother, lives in Osaka",
     "status": "auto",
+    "interest": "warm", "interest_reason": "watched the Academy preview",
     "memory": ["Kenji's brother"],
     "messages": [
       {"ago": "54h", "from": "lead", "text": "John-san, Kenji told me about you. What is U.Center exactly?"},
@@ -310,6 +330,7 @@
     "phone": "999000000022",
     "context": "Nurse in Manila, supports her parents",
     "status": "auto",
+    "interest": "warm", "interest_reason": "joined to send money home",
     "memory": ["Sends money to her parents monthly"],
     "messages": [
       {"ago": "76h", "from": "lead", "text": "Good evening John! I send money to my parents every month, will this help?"},
@@ -324,6 +345,7 @@
     "phone": "999000000023",
     "context": "Yoga studio owner in Chiang Mai",
     "status": "auto",
+    "interest": "hot", "interest_reason": "coming to the Flow Summit tomorrow",
     "memory": ["Coming to the Flow Summit"],
     "messages": [
       {"ago": "12h", "from": "lead", "text": "Sawasdee ka John! Are you at the Flow Summit? I want to come"},
@@ -337,6 +359,7 @@
     "phone": "999000000024",
     "context": "Met at a fintech dinner in Dubai",
     "status": "auto",
+    "interest": "hot", "interest_reason": "asked how to pay for membership",
     "memory": [],
     "messages": [
       {"ago": "34h", "from": "lead", "text": "John, is there a monthly fee for the membership?"},
@@ -351,6 +374,7 @@
     "phone": "999000000025",
     "context": "Surf instructor in Bali",
     "status": "auto",
+    "interest": "warm", "interest_reason": "asked the minimum age",
     "memory": ["Lives in Bali"],
     "messages": [
       {"ago": "145h", "from": "lead", "text": "Halo John! I heard about U-topia from a guest. What is it?"},
@@ -364,6 +388,7 @@
     "phone": "999000000026",
     "context": "Former colleague, now in Warsaw",
     "status": "auto",
+    "interest": "warm", "interest_reason": "asked about holding euros and dollars",
     "memory": ["Lives in Warsaw"],
     "messages": [
       {"ago": "84h", "from": "lead", "text": "John! I heard you're in Bangkok. What is this app launch?"},
@@ -378,6 +403,7 @@
     "phone": "999000000027",
     "context": "Mate from the London running club",
     "status": "human",
+    "interest": "cold", "interest_reason": "thinks crypto is dodgy",
     "memory": [],
     "messages": [
       {"ago": "48h", "from": "lead", "text": "Saw your post from Bangkok. What's U-topia?"},

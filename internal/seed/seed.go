@@ -32,6 +32,8 @@ type lead struct {
 	Context       string    `json:"context"`
 	Status        string    `json:"status"`
 	HandoffReason string    `json:"handoff_reason"`
+	Interest      string    `json:"interest"` // cold | warm | hot, as the AI would rate them
+	Reason        string    `json:"interest_reason"`
 	Avatar        string    `json:"avatar"` // file in data/seed-avatars
 	Memory        []string  `json:"memory"`
 	Messages      []message `json:"messages"`
@@ -63,7 +65,8 @@ func Load(st *store.Store, path, referral string) (Result, error) {
 }
 
 // Add loads only the seeded leads that aren't in the database yet, keeping
-// live chats. Existing seeded leads just get their photo if they lack one.
+// live chats. Existing seeded leads just get their photo and interest rating
+// if they lack one.
 func Add(st *store.Store, path, referral string) (Result, error) {
 	leads, err := read(path)
 	if err != nil {
@@ -77,9 +80,16 @@ func Add(st *store.Store, path, referral string) (Result, error) {
 			missing = append(missing, l)
 		case err != nil:
 			return Result{}, err
-		case c.Avatar == "" && l.Avatar != "":
-			if err := setAvatar(st, path, c.ID, l.Avatar); err != nil {
-				return Result{}, err
+		default:
+			if c.Avatar == "" && l.Avatar != "" {
+				if err := setAvatar(st, path, c.ID, l.Avatar); err != nil {
+					return Result{}, err
+				}
+			}
+			if c.Interest == "" && l.Interest != "" {
+				if err := st.SetInterest(c.ID, l.Interest, l.Reason); err != nil {
+					return Result{}, err
+				}
 			}
 		}
 	}
@@ -122,10 +132,14 @@ func insert(st *store.Store, path, referral string, leads []lead) (Result, error
 	for _, l := range leads {
 		jid := l.Phone + "@s.whatsapp.net"
 		c := store.Contact{JID: jid, Chat: jid, Phone: l.Phone, Name: l.Name, Context: l.Context,
-			Memory: l.Memory, Status: l.Status, HandoffReason: l.HandoffReason, CreatedAt: now.Add(-7 * 24 * time.Hour).UnixMilli()}
+			Memory: l.Memory, Status: l.Status, HandoffReason: l.HandoffReason, CreatedAt: now.Add(-7 * 24 * time.Hour).UnixMilli(),
+			Interest: l.Interest, InterestReason: l.Reason}
 		for _, m := range l.Messages {
 			if strings.Contains(m.Text, "{REFERRAL_URL}") {
 				c.LinkSentAt = at(now, m.Ago)
+			}
+			if l.Interest != "" {
+				c.InterestAt = max(c.InterestAt, at(now, m.Ago))
 			}
 		}
 		created, err := st.CreateContact(c)
