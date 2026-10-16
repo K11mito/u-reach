@@ -326,3 +326,49 @@ func TestFAQFollowsShippedFileUntilEdited(t *testing.T) {
 		t.Fatalf("an unknown saved FAQ is John's and is kept: %q", got)
 	}
 }
+
+// A database from before the AI kept conversations going: Warm friend sent
+// the link in the first reply and John's closers all pushed it. One startup
+// moves it to "once ready" (keeping its length) and swaps the closers, once.
+func TestKeepTalkingUpdate(t *testing.T) {
+	s, br, st := newService(t)
+	snap, _ := s.Snapshot()
+	warm, direct := snap.Presets[0], snap.Presets[2]
+	if warm.Harness.Style.LinkTiming != brain.LinkWhenInterested || direct.Harness.Style.LinkTiming != brain.LinkFirstReply {
+		t.Fatalf("new installs: Warm friend once ready, Straight to the point right away: %+v %+v", warm.Harness.Style, direct.Harness.Style)
+	}
+
+	// Roll back to how a live database looked, with John's shorter notes.
+	warm.Harness.Style = brain.Style{MinWords: 25, MaxWords: 45, LinkTiming: brain.LinkFirstReply}
+	s.updatePreset(warm.ID, warm.Name, oldWarmDescription, warm.Harness)
+	prof := snap.Profile
+	prof.Closers = oldClosers
+	s.putProfile(prof)
+	st.SetSetting(settingKeepTalking, "")
+
+	s2, err := New(st, br, "../../data/persona/john.json", "../../data/faq.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	snap, _ = s2.Snapshot()
+	got := snap.Presets[0]
+	if got.Harness.Style != (brain.Style{MinWords: 25, MaxWords: 45, LinkTiming: brain.LinkWhenInterested}) || got.Description == oldWarmDescription {
+		t.Fatalf("Warm friend should send the link once ready and keep its length: %+v %q", got.Harness.Style, got.Description)
+	}
+	if snap.Presets[2].Harness.Style.LinkTiming != brain.LinkFirstReply {
+		t.Fatal("Straight to the point keeps sending the link right away")
+	}
+	if strings.Contains(strings.Join(snap.Profile.Closers, " "), "sending you my link right now") {
+		t.Fatalf("the old closers should be replaced: %q", snap.Profile.Closers)
+	}
+
+	// It runs once: John's later choices stick.
+	got.Harness.Style.LinkTiming = brain.LinkFirstReply
+	s2.updatePreset(got.ID, got.Name, got.Description, got.Harness)
+	if _, err := New(st, br, "../../data/persona/john.json", "../../data/faq.md"); err != nil {
+		t.Fatal(err)
+	}
+	if snap, _ = s2.Snapshot(); snap.Presets[0].Harness.Style.LinkTiming != brain.LinkFirstReply {
+		t.Fatal("after the update, John's own link timing is kept")
+	}
+}

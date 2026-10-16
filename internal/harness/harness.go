@@ -135,6 +135,8 @@ const (
 	// SHA-256 of the data/faq.md the saved FAQ was copied from. A saved FAQ
 	// that still matches it was never edited, so it follows the file.
 	settingFAQShipped = "faq_shipped"
+	// Set once the keep-talking update below has run.
+	settingKeepTalking = "keep_talking"
 
 	// MaxDocChars caps one document (~30k tokens); MaxPlaybookChars caps all
 	// active documents together so every reply stays fast and affordable.
@@ -221,6 +223,9 @@ func New(st *store.Store, br *brain.Brain, personaPath, faqPath string) (*Servic
 	if err := s.syncFAQ(faqPath); err != nil {
 		return nil, err
 	}
+	if err := s.keepTalking(); err != nil {
+		return nil, err
+	}
 	// An empty link falls back to REFERRAL_URL from .env, so adding it there later works.
 	if v, _, err := st.Setting(settingReferral); err != nil {
 		return nil, err
@@ -290,6 +295,67 @@ func (s *Service) ActivePersonaJSON() json.RawMessage {
 func (s *Service) FAQ() string {
 	v, _, _ := s.st.Setting(settingFAQ)
 	return v
+}
+
+// What John's profile and Warm friend shipped with before the AI kept
+// conversations going: every closing line pushed the link.
+var (
+	oldClosers = []string{
+		"I'm sending you my link right now, have a look and tell me what you think.",
+		"Join with my link and I'll personally help you get set up.",
+		"Shall we jump on a quick call this week? I'll bring someone from the team.",
+	}
+	oldWarmDescription = "John's natural style: personal and excited, link in the first reply."
+)
+
+// keepTalking is a one-time update (October 2026): John's AI keeps the
+// conversation going and sends his link once a lead is ready. Warm friend
+// moves from "first reply" to "once ready", keeping its length, and the old
+// link-pushing closing lines give way to the new ones unless John changed
+// them. Straight to the point still sends the link right away.
+func (s *Service) keepTalking() error {
+	if v, _, err := s.st.Setting(settingKeepTalking); err != nil || v == "1" {
+		return err
+	}
+	rows, err := s.st.Presets()
+	if err != nil {
+		return err
+	}
+	for _, r := range rows {
+		if r.Key != "warm" {
+			continue
+		}
+		p, err := s.toPreset(r)
+		if err != nil {
+			return err
+		}
+		if p.Harness.Style.LinkTiming != brain.LinkFirstReply {
+			continue
+		}
+		p.Harness.Style.LinkTiming = brain.LinkWhenInterested
+		desc := r.Description
+		for _, b := range builtins(s.base) {
+			if b.Key == r.Key && desc == oldWarmDescription {
+				desc = b.Description
+			}
+		}
+		if err := s.updatePreset(r.ID, r.Name, desc, p.Harness); err != nil {
+			return err
+		}
+		log.Printf("harness: %s now keeps the chat going and sends the link once leads are ready", r.Name)
+	}
+	prof, err := s.profile()
+	if err != nil {
+		return err
+	}
+	if slices.Equal(clean(prof.Closers), oldClosers) {
+		prof.Closers = s.base.Closers
+		if err := s.putProfile(prof); err != nil {
+			return err
+		}
+		log.Printf("harness: John's closing lines now invite questions instead of pushing the link")
+	}
+	return s.st.SetSetting(settingKeepTalking, "1")
 }
 
 // syncFAQ keeps the saved FAQ in step with data/faq.md. On first run it
