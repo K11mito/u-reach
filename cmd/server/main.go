@@ -175,7 +175,11 @@ func main() {
 	mux.Handle("GET /audio/", http.StripPrefix("/audio/", http.FileServer(http.Dir("data/audio"))))
 	mux.Handle("GET /", spa(api.boot))
 
-	srv := &http.Server{Addr: *addr, Handler: logRequests(mux)}
+	var handler http.Handler = mux
+	if config.Get("PUBLIC_VIEW_ONLY", "1") != "0" {
+		handler = viewOnly(mux)
+	}
+	srv := &http.Server{Addr: *addr, Handler: logRequests(handler)}
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -691,4 +695,20 @@ func digits(s string) string {
 		}
 		return -1
 	}, s)
+}
+
+// viewOnly lets anyone with the public link (a Cloudflare tunnel or another
+// proxy, which add forwarding headers) look around but change nothing: no
+// sending, taking over, resetting or spending credits, and no WhatsApp
+// pairing code. The presenter's own browser on localhost keeps full control.
+// PUBLIC_VIEW_ONLY=0 turns it off, e.g. behind a proxy with its own login.
+func viewOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		public := r.Header.Get("Cf-Connecting-Ip") != "" || r.Header.Get("X-Forwarded-For") != ""
+		if public && (r.Method != http.MethodGet && r.Method != http.MethodHead || r.URL.Path == "/api/whatsapp/qr.png") {
+			http.Error(w, "This is a view-only link. To try it, message the ambassador on WhatsApp (see Help).", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
