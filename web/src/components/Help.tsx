@@ -27,7 +27,7 @@ export function Help({ state }: { state: State }) {
               <div>
                 <div className="text-xs font-medium text-muted-foreground">Scan with your phone's camera</div>
                 <div className="mt-1 text-lg font-bold">Message John</div>
-                <div className="font-mono text-base">{pretty(phone)}</div>
+                <div className="text-lg font-semibold tracking-tight whitespace-nowrap tabular-nums">{pretty(phone)}</div>
                 <a href={`https://wa.me/${phone}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-medium text-indigo-600 hover:underline">
                   or open wa.me/{phone}
                 </a>
@@ -64,7 +64,7 @@ export function Help({ state }: { state: State }) {
         </Step>
         <Step n={6} icon={LayoutDashboard} title="Explore the rest">
           <b>Campaign</b>: pick leads and the AI writes each a personal voice-note opener for John to approve. <b>Analytics</b>: the funnel, and what it
-          really costs to run. <b>John</b>: his persona, sales presets and playbook, with a box to try replies before they go out.
+          really costs to run. <b>Profile</b>: John's persona, sales presets, knowledge base and playbook, with a box to try replies before they go out.
         </Step>
       </div>
 

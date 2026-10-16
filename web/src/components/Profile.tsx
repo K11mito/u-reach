@@ -150,7 +150,7 @@ function Referral({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
   )
 }
 
-/** The facts the AI may state: a short preview that opens into an editor. */
+/** The knowledge base: a short preview of its topics that opens into an editor. */
 function Facts({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState(snap.faq)
@@ -159,8 +159,8 @@ function Facts({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
   const topics = snap.faq.split("\n").filter((l) => l.startsWith("## ")).map((l) => l.slice(3))
   return (
     <Section
-      title="Facts John can share"
-      hint="The only facts the AI states, in every preset. Anything else, he offers to cover on a call."
+      title="Knowledge base"
+      hint="What the AI knows about U-topia and U.Center, built from U.Center's calls, u.center and u-topia.com. Every preset answers from it, and only hands to John when truly stuck."
       icon={ScrollText}
       action={
         open ? (
@@ -170,13 +170,13 @@ function Facts({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
                 Discard
               </Button>
             )}
-            <Button size="sm" variant={changed ? "default" : "outline"} onClick={async () => (!changed || (await run(harnessApi.setFAQ(text), "Facts saved"))) && setOpen(false)}>
+            <Button size="sm" variant={changed ? "default" : "outline"} onClick={async () => (!changed || (await run(harnessApi.setFAQ(text), "Knowledge base saved"))) && setOpen(false)}>
               {changed ? "Save" : "Done"}
             </Button>
           </div>
         ) : (
           <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-            Edit facts
+            Edit
           </Button>
         )
       }

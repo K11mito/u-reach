@@ -16,7 +16,7 @@ import logo from "@/assets/logo.webp"
 import { Toaster, toast } from "@/components/Toast"
 
 type Page = "inbox" | "stage" | "campaign" | "analytics" | "profile" | "help"
-const TITLES: Record<Page, string> = { inbox: "Inbox", stage: "Stage", campaign: "Campaign", analytics: "Analytics", profile: "John", help: "Help" }
+const TITLES: Record<Page, string> = { inbox: "Inbox", stage: "Stage", campaign: "Campaign", analytics: "Analytics", profile: "Profile", help: "Help" }
 const pageFromPath = (): Page => {
   const p = window.location.pathname.replace(/^\//, "")
   return (["stage", "campaign", "analytics", "profile", "help"].includes(p) ? p : "inbox") as Page
@@ -105,7 +105,7 @@ export default function App() {
     { id: "stage" as const, label: "Stage view", icon: MonitorPlay },
     { id: "campaign" as const, label: "Campaign", icon: Megaphone },
     { id: "analytics" as const, label: "Analytics", icon: ChartColumn },
-    { id: "profile" as const, label: "John", icon: UserRound },
+    { id: "profile" as const, label: "Profile", icon: UserRound },
     { id: "help" as const, label: "Help", icon: CircleHelp },
   ]
 
