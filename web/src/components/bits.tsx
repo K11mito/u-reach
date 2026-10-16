@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
-import { Pause, Play } from "lucide-react"
+import { Flame, Pause, Play, Snowflake } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Grain } from "./Grain"
 import logo from "@/assets/logo.webp"
-import type { Status } from "@/lib/api"
+import type { Interest, Status } from "@/lib/api"
 
 const STATUS: Record<Status, { label: string; dot: string }> = {
   auto: { label: "Auto", dot: "bg-wa" },
@@ -26,6 +26,41 @@ export function StatusChip({ status, bare, className }: { status: Status; bare?:
     >
       <span className={cn("size-1.5 rounded-full", s.dot)} />
       {s.label}
+    </span>
+  )
+}
+
+const HEAT = {
+  hot: { label: "Hot", flames: 2, icon: "text-red-500 fill-orange-400", pill: "bg-orange-50 text-orange-900 ring-orange-200" },
+  warm: { label: "Warm", flames: 1, icon: "text-amber-500 fill-amber-300", pill: "bg-amber-50 text-amber-900 ring-amber-200" },
+  cold: { label: "Cold", flames: 0, icon: "text-sky-500", pill: "bg-sky-50 text-sky-900 ring-sky-200" },
+}
+
+/** How close a lead is to joining, as flames: two when hot, one when warm, none when cold. */
+export function Heat({ level, reason, size = 14, className }: { level?: Interest; reason?: string; size?: number; className?: string }) {
+  const h = level ? HEAT[level] : undefined
+  if (!h?.flames) return null
+  return (
+    <span title={reason ? `${h.label}: ${reason}` : h.label} aria-label={h.label} className={cn("inline-flex shrink-0 items-center", className)}>
+      {Array.from({ length: h.flames }, (_, i) => (
+        <Flame key={i} className={cn(h.icon, i > 0 && "-ml-1")} style={{ width: size, height: size }} strokeWidth={2.25} />
+      ))}
+    </span>
+  )
+}
+
+/** The AI's read on a lead, with its reason: "Hot · asked how to pay with USDT". */
+export function HeatPill({ level, reason, className }: { level?: Interest; reason?: string; className?: string }) {
+  const h = level ? HEAT[level] : undefined
+  if (!h) return null
+  return (
+    <span
+      title="The AI's read on how close they are to joining, updated on every reply"
+      className={cn("inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1", h.pill, className)}
+    >
+      {h.flames ? <Heat level={level} size={13} /> : <Snowflake className={cn("size-3.5 shrink-0", h.icon)} />}
+      <span className="shrink-0 font-semibold">{h.label}</span>
+      {reason && <span className="truncate opacity-80">· {reason}</span>}
     </span>
   )
 }

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject }
 import { AudioLines, BrainCircuit, Check, Ear, Hand, MessageCircle, Mic, Send, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { clock, displayName, explainError, useCountUp, type Message, type Run, type State } from "@/lib/api"
-import { Equalizer, Initials, JohnAvatar, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
+import { Equalizer, HeatPill, Initials, JohnAvatar, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
 import { BrandHeader } from "./BrandHeader"
 
 const STAGES = [
@@ -231,6 +231,7 @@ export function Stage({
                     <div className="truncate text-lg font-bold">{displayName(contact)}</div>
                     <div className="truncate text-xs text-muted-foreground">{contact?.context || "messaging John on WhatsApp"}</div>
                   </div>
+                  {contact && <HeatPill level={contact.interest} reason={contact.interest_reason} className="max-w-[420px] px-3 py-1.5 text-sm" />}
                   {contact && <StatusChip status={contact.status} />}
                 </div>
                 {brain?.handoff && (

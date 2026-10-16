@@ -1,10 +1,10 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { Bot, Hand, Link2, Megaphone, Mic, Reply, RotateCcw, Search, Send, Sparkles, TriangleAlert, Undo2, UserRound } from "lucide-react"
+import { Bot, Flame, Hand, Link2, Megaphone, Mic, Reply, RotateCcw, Search, Send, Sparkles, TriangleAlert, Undo2, UserRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { api, clock, dayLabel, displayName, errText, explainError, timeAgo, type Contact, type Message, type Run, type Status } from "@/lib/api"
-import { fmtDur, Initials, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
+import { fmtDur, Heat, HeatPill, Initials, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
 import { SimulateBox } from "./SimulateBox"
 import { toast } from "./Toast"
 
@@ -27,13 +27,19 @@ export function Inbox({
 }) {
   const [selected, setSelected] = useState<number | null>(null)
   const [filter, setFilter] = useState<Filter>("all")
+  // Only hot leads: the people to call today. /?ready=1 opens with it on.
+  const [ready, setReady] = useState(() => new URLSearchParams(window.location.search).has("ready"))
   const [query, setQuery] = useState("")
   const search = useRef<HTMLInputElement>(null)
 
   const sorted = useMemo(() => [...contacts].sort((a, b) => (b.last_message_at || b.created_at) - (a.last_message_at || a.created_at)), [contacts])
   const visible = sorted.filter(
-    (c) => (filter === "all" || c.status === filter) && (!query || `${displayName(c)} ${c.context} ${c.phone}`.toLowerCase().includes(query.toLowerCase())),
+    (c) =>
+      (filter === "all" || c.status === filter) &&
+      (!ready || c.interest === "hot") &&
+      (!query || `${displayName(c)} ${c.context} ${c.phone} ${c.interest_reason ?? ""}`.toLowerCase().includes(query.toLowerCase())),
   )
+  const hot = contacts.filter((c) => c.interest === "hot").length
   const current = sorted.find((c) => c.id === selected) ?? visible[0] ?? sorted[0]
 
   // Unread: a lead's newest message arrived after we last looked at that chat.
@@ -137,12 +143,28 @@ export function Inbox({
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setReady((r) => !r)}
+            aria-pressed={ready}
+            title="Leads the AI rates hot: they asked how to pay or join, or said they're signing up"
+            className={cn(
+              "flex h-8 w-full items-center gap-2 rounded-md border px-2.5 text-xs font-medium transition",
+              ready ? "border-orange-300 bg-orange-50 text-orange-900 shadow-xs" : "border-dashed text-muted-foreground hover:border-solid hover:bg-muted/50 hover:text-foreground",
+            )}
+          >
+            <Flame className={cn("size-3.5", ready || hot ? "fill-orange-400 text-red-500" : "")} />
+            Ready to call
+            <span className="tabular-nums opacity-60">{hot}</span>
+            <span className="ml-auto text-[11px] opacity-70">{ready ? <X className="size-3.5" /> : "hot leads only"}</span>
+          </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           {visible.map((c) => (
             <ChatRow key={c.id} c={c} active={current?.id === c.id} unread={current?.id !== c.id && unread(c)} run={liveRuns.get(c.id)} last={newest(c.id)} onClick={() => setSelected(c.id)} />
           ))}
-          {!visible.length && <p className="px-4 py-10 text-center text-sm text-muted-foreground">No leads match.</p>}
+          {!visible.length && (
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">{ready ? "No hot leads right now. The AI flags them as they come in." : "No leads match."}</p>
+          )}
         </div>
         <SimulateBox />
       </div>
@@ -177,7 +199,10 @@ function ChatRow({ c, active, unread, run, last, onClick }: { c: Contact; active
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className={cn("truncate text-sm font-medium", unread && "font-semibold")}>{displayName(c)}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className={cn("truncate text-sm font-medium", unread && "font-semibold")}>{displayName(c)}</span>
+            <Heat level={c.interest} reason={c.interest_reason} />
+          </span>
           <span className={cn("flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums", unread ? "font-semibold text-wa-dark" : "text-muted-foreground")}>
             {timeAgo(c.last_message_at || c.created_at)}
             {unread && <span className="size-2 rounded-full bg-wa" />}
@@ -259,6 +284,7 @@ function ChatView({ contact, messages, run, failed, onCampaign }: { contact: Con
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
             <span className="truncate text-[17px] font-semibold tracking-tight">{displayName(contact)}</span>
+            <HeatPill level={contact.interest} reason={contact.interest_reason} className="max-w-[340px]" />
             {contact.status === "needs_john" ? (
               <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-300">
                 <TriangleAlert className="size-3.5" /> Needs John

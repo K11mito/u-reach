@@ -15,9 +15,15 @@ export interface Contact {
   handoff_reason: string
   link_sent_at: number
   avatar?: string
+  /** How close they are to joining, as the AI rated them on its last reply. */
+  interest?: Interest
+  interest_reason?: string
+  interest_at?: number
   created_at: number
   last_message_at: number
 }
+
+export type Interest = "cold" | "warm" | "hot" | ""
 
 export interface Message {
   id: number
