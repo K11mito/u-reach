@@ -130,27 +130,27 @@ function PresetPill({ preset, active, onActivate, onEdit }: { preset: HarnessPre
   return (
     <div
       className={cn(
-        "group/pill inline-flex h-8 items-center rounded-full transition [text-shadow:none]",
+        "group/pill inline-flex h-8 items-center rounded-full transition-colors [text-shadow:none]",
         active ? "bg-white text-foreground shadow-sm shadow-black/10" : "bg-white/15 text-white backdrop-blur hover:bg-white/25",
       )}
     >
-      <button onClick={onActivate} title={active ? `In use: ${preset.description}` : `Switch to ${preset.name}: ${preset.description}`} className="inline-flex h-8 items-center gap-1.5 rounded-full pl-3 text-xs font-medium">
+      <button onClick={onActivate} title={active ? `In use: ${preset.description}` : `Switch to ${preset.name}: ${preset.description}`} className="inline-flex h-8 items-center gap-1.5 rounded-full pr-1.5 pl-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-white/70">
         {active && <Check className="size-3.5" />}
         {preset.name}
       </button>
-      {/* Hidden until hover or keyboard focus, so the row stays calm. */}
+      {/* Keeps its space and only fades in on hover or keyboard focus: nothing
+          changes width, so the row never shifts or flickers. */}
       <button
         onClick={onEdit}
         aria-label={`Edit ${preset.name}`}
         title={`Edit ${preset.name}`}
         className={cn(
-          "ml-1 grid h-6 w-0 place-items-center overflow-hidden rounded-full opacity-0 transition-all group-hover/pill:mr-1 group-hover/pill:w-6 group-hover/pill:opacity-100 focus-visible:mr-1 focus-visible:w-6 focus-visible:opacity-100",
+          "mr-1 grid size-6 place-items-center rounded-full opacity-0 outline-none transition-opacity group-hover/pill:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-white/70",
           active ? "bg-secondary hover:bg-foreground/10" : "bg-white/20 hover:bg-white/30",
         )}
       >
         <Pencil className="size-3" />
       </button>
-      <span className="w-3 transition-all group-hover/pill:w-0" />
     </div>
   )
 }
