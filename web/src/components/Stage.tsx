@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react"
 import { AudioLines, BrainCircuit, Check, Ear, Hand, MessageCircle, Mic, Send, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { clock, displayName, useCountUp, type Message, type Run, type State } from "@/lib/api"
+import { clock, displayName, explainError, useCountUp, type Message, type Run, type State } from "@/lib/api"
 import { Equalizer, Initials, JohnAvatar, Linkified, StatusChip, Ticks, VoiceNote } from "./bits"
 import { BrandHeader } from "./BrandHeader"
 
@@ -261,7 +261,11 @@ export function Stage({
                         </div>
                       </div>
                     )}
-                    {run.status === "failed" && <p className="text-right text-amber-700">Couldn't reply: {run.error}</p>}
+                    {run.status === "failed" && (
+                      <p className="text-right text-amber-700" title={run.error}>
+                        Couldn't reply: {explainError(run.error)} {run.error?.startsWith("brain:") && "They got a holding note, and the chat is waiting for John."}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
