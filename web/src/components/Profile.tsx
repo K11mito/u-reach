@@ -283,7 +283,6 @@ function TrainVoice({ className }: { className?: string }) {
       hint="Add recordings to make the clone even closer."
       icon={Upload}
       className={cn("flex flex-col bg-muted/40", className)}
-      action={<span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground ring-1 ring-border">Coming soon</span>}
     >
       <div aria-disabled className="pointer-events-none flex min-h-0 flex-1 flex-col gap-3 opacity-55 select-none">
         <div className="flex min-h-14 flex-1 flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border-2 border-dashed border-foreground/15 px-4 py-3 text-center">
