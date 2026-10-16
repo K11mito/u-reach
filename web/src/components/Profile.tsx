@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { AudioLines, ChevronDown, Copy, Link2, Loader2, Mic, MonitorPlay, RotateCcw, ScrollText } from "lucide-react"
+import { AudioLines, ChevronDown, Copy, Link2, Loader2, Mic, MonitorPlay, RefreshCw, RotateCcw, ScrollText, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { api, errText, harnessApi, type HarnessPreset, type HarnessSnapshot, type State } from "@/lib/api"
@@ -106,6 +106,7 @@ export function Profile({ state }: { state: State }) {
           </div>
           <div className="flex min-h-0 min-w-0 flex-col gap-4">
             <Voice state={state} />
+            <TrainVoice className="min-h-0 flex-1" />
           </div>
           <div className="flex min-h-0 min-w-0 flex-col gap-4">
             <TryIt className="flex min-h-0 flex-1 flex-col" />
@@ -265,6 +266,31 @@ function Voice({ state }: { state: State }) {
       ) : (
         <p className="rounded-xl bg-secondary px-3.5 py-3 text-sm text-muted-foreground">The samples appear here once his voice clone is set up.</p>
       )}
+    </Section>
+  )
+}
+
+/** Not built yet: where John would add recordings to improve his clone. Greyed out on purpose. */
+function TrainVoice({ className }: { className?: string }) {
+  return (
+    <Section
+      title="Train his voice"
+      hint="Add recordings to make the clone even closer."
+      icon={Upload}
+      className={cn("flex flex-col bg-muted/40", className)}
+      action={<span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground ring-1 ring-border">Coming soon</span>}
+    >
+      <div aria-disabled className="pointer-events-none flex min-h-0 flex-1 flex-col gap-3 opacity-55 select-none">
+        <div className="flex min-h-14 flex-1 flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border-2 border-dashed border-foreground/15 px-4 py-3 text-center">
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <Upload className="size-4 text-muted-foreground" /> Upload audio
+          </span>
+          <span className="text-xs text-muted-foreground">MP3, WAV or M4A · 1 to 3 minutes of just John, no music</span>
+        </div>
+        <Button variant="outline" disabled className="w-full shrink-0">
+          <RefreshCw /> Retrain the voice clone
+        </Button>
+      </div>
     </Section>
   )
 }
