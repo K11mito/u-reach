@@ -1,10 +1,10 @@
 import { useState } from "react"
-import { BookOpenText, Check, Link2, Mic, Pencil, Plus, UserRoundPen, X } from "lucide-react"
+import { BookOpenText, Check, Link2, Mic, Pencil, Plus, ShieldCheck, Sparkles, UserRoundPen, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Autonomy as AutonomyLevel, HarnessPreset, HarnessSnapshot, HarnessStyle, State } from "@/lib/api"
 import { JohnAvatar } from "../bits"
-import { Grain } from "../Grain"
 import { Autonomy } from "./Autonomy"
+import { Section } from "./editors"
 
 const TIMING: Record<HarnessStyle["link_timing"], string> = {
   first_reply: "link in the first reply",
@@ -19,8 +19,9 @@ export function styleSummary(s: HarnessStyle) {
 }
 
 /**
- * John's card: who he is and which preset he sells with. Clicking a preset
- * switches to it; hovering it reveals the edit button for its details.
+ * The top of John's page: who he is, which preset he sells with, and how
+ * much his AI handles alone. Clicking a preset switches to it; hovering it
+ * reveals the edit button for its details.
  */
 export function Hero({
   state,
@@ -43,6 +44,7 @@ export function Hero({
   const p = snap.profile
   const active = snap.presets.find((x) => x.id === snap.active_id) ?? snap.presets[0]
   const docs = snap.documents.filter((d) => d.active).length
+  const level = snap.levels.find((l) => l.key === snap.autonomy)
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState("")
   const create = async () => {
@@ -53,41 +55,45 @@ export function Hero({
   }
 
   return (
-    <Grain seed="john-hero" palette="ocean" className="rounded-xl p-6 text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.12)]">
-      <div className="relative flex items-start gap-5">
-        <JohnAvatar size={84} src={a.avatar} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <h2 className="text-2xl font-semibold tracking-tight">{p.name}</h2>
-              <p className="mt-1 line-clamp-2 max-w-2xl text-sm text-white/90">{p.role}</p>
-            </div>
-            <button
-              onClick={onEditProfile}
-              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-black/20 px-3 text-xs font-medium backdrop-blur transition hover:bg-black/30"
-              title="Edit who John is: background, voice, phrases, guardrails"
-            >
-              <UserRoundPen className="size-3.5" /> Edit John
-            </button>
+    <div className="grid shrink-0 gap-4 lg:grid-cols-3">
+      {/* Who he is: the page's one accent card, like the headline stat on Analytics. */}
+      <section className="flex flex-col rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 p-4 text-white shadow-lg shadow-indigo-500/25">
+        <div className="flex items-start gap-4">
+          <div className="rounded-full ring-4 ring-white/20">
+            <JohnAvatar size={64} src={a.avatar} />
           </div>
-          <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-medium">
-            <Chip icon={Mic}>{a.mock_voice ? "Voice clone not set (mock tone)" : "Cloned voice ready"}</Chip>
-            <Chip icon={BookOpenText}>
-              {docs} playbook doc{docs === 1 ? "" : "s"} active
-            </Chip>
-            <Chip icon={Link2}>{snap.referral_url ? "Referral link set" : "No referral link"}</Chip>
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] font-semibold tracking-wide text-white/70 uppercase">U.Center ambassador</div>
+            <h2 className="text-xl font-semibold tracking-tight">{p.name}</h2>
+            <p className="mt-1 line-clamp-3 text-[13px] leading-snug text-white/85">{p.role}</p>
           </div>
         </div>
-      </div>
+        <div className="mt-4 flex flex-wrap gap-1.5 text-[11px] font-medium">
+          <Chip icon={Mic}>{a.mock_voice ? "Voice clone not set" : "Cloned voice ready"}</Chip>
+          <Chip icon={BookOpenText}>
+            {docs} playbook doc{docs === 1 ? "" : "s"}
+          </Chip>
+          <Chip icon={Link2}>{snap.referral_url ? "Referral link set" : "No referral link"}</Chip>
+        </div>
+        <div className="mt-auto flex items-center gap-2 pt-5">
+          <button
+            onClick={onEditProfile}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white px-3.5 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50"
+            title="Edit who John is: background, voice, phrases, guardrails"
+          >
+            <UserRoundPen className="size-4" /> Edit John
+          </button>
+          <span className="text-xs text-white/70">Background, voice, phrases and guardrails</span>
+        </div>
+      </section>
 
-      <div className="relative mt-6 border-t border-white/20 pt-5">
-        <div className="mb-2.5 text-[11px] font-semibold tracking-wide text-white/75 uppercase">Selling as</div>
+      <Section title="Selling as" hint="Click a preset to switch, hover it to edit." icon={Sparkles} className="flex flex-col">
         <div className="flex flex-wrap items-center gap-2">
           {snap.presets.map((x) => (
             <PresetPill key={x.id} preset={x} active={x.id === active?.id} onActivate={() => onActivate(x)} onEdit={() => onEditPreset(x)} />
           ))}
           {naming ? (
-            <div className="inline-flex h-8 items-center gap-1 rounded-full bg-white/95 py-1 pr-1 pl-3 text-foreground [text-shadow:none]">
+            <div className="inline-flex h-8 items-center gap-1 rounded-full border bg-background py-1 pr-1 pl-3">
               <input
                 autoFocus
                 value={name}
@@ -96,7 +102,7 @@ export function Hero({
                 placeholder="New preset name"
                 className="w-36 bg-transparent text-xs outline-none"
               />
-              <button onClick={create} disabled={!name.trim()} className="grid size-6 place-items-center rounded-full bg-foreground text-background disabled:opacity-40" aria-label="Create preset">
+              <button onClick={create} disabled={!name.trim()} className="grid size-6 place-items-center rounded-full bg-indigo-600 text-white disabled:opacity-40" aria-label="Create preset">
                 <Check className="size-3.5" />
               </button>
               <button onClick={() => setNaming(false)} className="grid size-6 place-items-center rounded-full hover:bg-secondary" aria-label="Cancel">
@@ -106,7 +112,7 @@ export function Hero({
           ) : (
             <button
               onClick={() => setNaming(true)}
-              className="inline-flex h-8 items-center gap-1 rounded-full border border-dashed border-white/50 px-3 text-xs font-medium text-white/90 transition hover:border-white hover:bg-white/10"
+              className="inline-flex h-8 items-center gap-1 rounded-full border border-dashed border-foreground/25 px-3 text-xs font-medium text-muted-foreground transition hover:border-indigo-400 hover:text-indigo-700"
               title="New preset, starting from the one in use"
             >
               <Plus className="size-3.5" /> New
@@ -114,15 +120,31 @@ export function Hero({
           )}
         </div>
         {active && (
-          <p className="mt-3 text-xs text-white/85">
-            <b className="font-semibold">{active.name}:</b> {styleSummary(active.harness.style)}
-          </p>
+          <div className="mt-auto pt-4">
+            <div className="rounded-lg bg-indigo-50/70 px-3.5 py-3 ring-1 ring-indigo-100">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-indigo-950">{active.name}</span>
+                <button onClick={() => onEditPreset(active)} className="inline-flex items-center gap-1 text-xs font-medium text-indigo-700 hover:underline">
+                  <Pencil className="size-3" /> Edit
+                </button>
+              </div>
+              {active.description && <p className="mt-0.5 line-clamp-1 text-xs text-indigo-950/70" title={active.description}>{active.description}</p>}
+              <p className="mt-1.5 text-xs font-medium text-indigo-900/80">{styleSummary(active.harness.style)}</p>
+            </div>
+          </div>
         )}
-      </div>
-      <div className="relative mt-5 border-t border-white/20 pt-5">
+      </Section>
+
+      <Section
+        title="Autonomy"
+        hint="What the AI handles before calling John."
+        icon={ShieldCheck}
+        className="flex flex-col"
+        action={level && <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-100">{level.label}</span>}
+      >
         <Autonomy value={snap.autonomy} levels={snap.levels} onChange={onAutonomy} />
-      </div>
-    </Grain>
+      </Section>
+    </div>
   )
 }
 
@@ -130,11 +152,11 @@ function PresetPill({ preset, active, onActivate, onEdit }: { preset: HarnessPre
   return (
     <div
       className={cn(
-        "group/pill inline-flex h-8 items-center rounded-full transition-colors [text-shadow:none]",
-        active ? "bg-white text-foreground shadow-sm shadow-black/10" : "bg-white/15 text-white backdrop-blur hover:bg-white/25",
+        "group/pill inline-flex h-8 items-center rounded-full transition-colors",
+        active ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/25" : "bg-secondary text-foreground/80 hover:bg-indigo-50 hover:text-indigo-800",
       )}
     >
-      <button onClick={onActivate} title={active ? `In use: ${preset.description}` : `Switch to ${preset.name}: ${preset.description}`} className="inline-flex h-8 items-center gap-1.5 rounded-full pr-1.5 pl-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+      <button onClick={onActivate} title={active ? `In use: ${preset.description}` : `Switch to ${preset.name}: ${preset.description}`} className="inline-flex h-8 items-center gap-1.5 rounded-full pr-1.5 pl-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
         {active && <Check className="size-3.5" />}
         {preset.name}
       </button>
@@ -145,8 +167,8 @@ function PresetPill({ preset, active, onActivate, onEdit }: { preset: HarnessPre
         aria-label={`Edit ${preset.name}`}
         title={`Edit ${preset.name}`}
         className={cn(
-          "mr-1 grid size-6 place-items-center rounded-full opacity-0 outline-none transition-opacity group-hover/pill:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-white/70",
-          active ? "bg-secondary hover:bg-foreground/10" : "bg-white/20 hover:bg-white/30",
+          "mr-1 grid size-6 place-items-center rounded-full opacity-0 outline-none transition-opacity group-hover/pill:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-indigo-400",
+          active ? "bg-white/20 hover:bg-white/30" : "bg-white hover:bg-indigo-100",
         )}
       >
         <Pencil className="size-3" />
@@ -157,7 +179,7 @@ function PresetPill({ preset, active, onActivate, onEdit }: { preset: HarnessPre
 
 function Chip({ icon: Icon, children }: { icon: typeof Mic; children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-md bg-black/20 px-2 py-1 backdrop-blur">
+    <span className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-2 py-1 ring-1 ring-white/15">
       <Icon className="size-3" />
       {children}
     </span>

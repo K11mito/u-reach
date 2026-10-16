@@ -5,15 +5,15 @@ import { cn } from "@/lib/utils"
 /** A titled card on the John page. `hint` says how the AI uses it. */
 export function Section({ title, hint, icon: Icon, action, children, className }: { title: string; hint?: string; icon?: typeof Plus; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={cn("rounded-xl border bg-card p-5", className)}>
-      <div className="mb-4 flex items-start gap-3">
+    <section className={cn("rounded-xl border bg-card p-4 shadow-sm", className)}>
+      <div className="mb-3 flex items-start gap-3">
         {Icon && (
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-foreground/70">
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600">
             <Icon className="size-4" />
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold tracking-tight">{title}</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight">{title}</h3>
           {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
         </div>
         {action}

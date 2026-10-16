@@ -8,7 +8,7 @@ import { Section, Toggle } from "./editors"
 const ACCEPT = ".md,.markdown,.txt,.pdf"
 
 /** Uploaded sales strategy John reads before every reply. */
-export function Playbook({ snap, onChange }: { snap: HarnessSnapshot; onChange: (s: HarnessSnapshot) => void }) {
+export function Playbook({ snap, onChange, className }: { snap: HarnessSnapshot; onChange: (s: HarnessSnapshot) => void; className?: string }) {
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [over, setOver] = useState(false)
@@ -33,7 +33,7 @@ export function Playbook({ snap, onChange }: { snap: HarnessSnapshot; onChange: 
   }
 
   return (
-    <Section title="Sales playbook" hint="Strategy John reads before every reply: objection handling, scripts, what to lead with." icon={BookOpenText}>
+    <Section title="Sales playbook" hint="Scripts and objection handling John reads first." icon={BookOpenText} className={className}>
       <button
         onClick={() => input.current?.click()}
         onDragOver={(e) => {
@@ -48,24 +48,26 @@ export function Playbook({ snap, onChange }: { snap: HarnessSnapshot; onChange: 
         }}
         disabled={busy}
         className={cn(
-          "flex w-full flex-col items-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-6 text-center transition",
-          over ? "border-foreground bg-secondary" : "border-border hover:border-foreground/30 hover:bg-secondary/60",
+          "flex w-full items-center gap-3.5 rounded-xl border-2 border-dashed px-4 py-3.5 text-left transition",
+          over ? "border-indigo-400 bg-indigo-50" : "border-border hover:border-indigo-300 hover:bg-indigo-50/50",
         )}
       >
-        <span className="grid size-10 place-items-center rounded-full bg-secondary">{busy ? <Loader2 className="size-5 animate-spin" /> : <Upload className="size-5" />}</span>
-        <span className="text-sm font-medium">{busy ? "Reading…" : "Drop a file or click to upload"}</span>
-        <span className="text-xs text-muted-foreground">Markdown, text or PDF with selectable text · up to 15 MB</span>
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-indigo-50 text-indigo-600">{busy ? <Loader2 className="size-5 animate-spin" /> : <Upload className="size-5" />}</span>
+        <span className="min-w-0">
+          <span className="block text-sm font-medium">{busy ? "Reading…" : "Drop a file or click to upload"}</span>
+          <span className="block text-xs text-muted-foreground">Markdown, text or PDF · up to 15 MB</span>
+        </span>
       </button>
       <input ref={input} type="file" accept={ACCEPT} multiple hidden onChange={(e) => upload(e.target.files)} />
 
       {snap.documents.length > 0 && (
         <>
-          <div className="mt-4 space-y-2">
+          <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">
             {snap.documents.map((d) => (
               <DocRow key={d.id} d={d} onChange={onChange} />
             ))}
           </div>
-          <div className="mt-4">
+          <div className="mt-3">
             <div className="mb-1.5 flex justify-between text-[11px] text-muted-foreground">
               <span>Playbook length</span>
               <span className="tabular-nums">

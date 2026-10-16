@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ChevronDown, Copy, Link2, Loader2, Mic, MonitorPlay, RotateCcw, ScrollText } from "lucide-react"
+import { AudioLines, ChevronDown, Copy, Link2, Loader2, Mic, MonitorPlay, RotateCcw, ScrollText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { api, errText, harnessApi, type HarnessPreset, type HarnessSnapshot, type State } from "@/lib/api"
@@ -22,9 +22,10 @@ const viewFromHash = (): View => {
 const hashOf = (v: View) => (v.kind === "preset" ? `#preset/${v.id}` : v.kind === "about" ? "#about" : "")
 
 /**
- * John's page. The card at the top is who he is and which preset he sells
- * with; presets and his profile open their own editors. Below are the things
- * shared by every preset: the sales playbook, his facts and his link.
+ * John's page. The top row is who he is, which preset he sells with and how
+ * much his AI handles alone; presets and his profile open their own editors.
+ * Below, in three columns: what he knows (playbook, knowledge base), how he
+ * sounds (his voice), and trying him out (Try John, his link).
  */
 export function Profile({ state }: { state: State }) {
   const [snap, setSnap] = useState<HarnessSnapshot | null>(null)
@@ -90,19 +91,26 @@ export function Profile({ state }: { state: State }) {
     }
   }
 
+  // Fills the window like the Inbox: the bottom row takes the rest of the
+  // height and its flexible cards (knowledge base, voice training, Try John)
+  // stretch or scroll inside. On a very short window the page scrolls.
   return (
-    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 pb-6">
-      <Hero state={state} snap={snap} onActivate={activate} onEditPreset={(p) => open({ kind: "preset", id: p.id })} onEditProfile={() => open({ kind: "about" })} onNewPreset={newPreset} onAutonomy={setAutonomy} />
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
-        <div className="space-y-4">
-          <Playbook snap={snap} onChange={setSnap} />
-          <Facts snap={snap} run={run} />
-        </div>
-        <div className="space-y-4">
-          <TryIt />
-          <Referral snap={snap} run={run} />
-          <Voice state={state} />
-          <DemoTools />
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="flex h-full min-h-[46rem] flex-col gap-4">
+        <Hero state={state} snap={snap} onActivate={activate} onEditPreset={(p) => open({ kind: "preset", id: p.id })} onEditProfile={() => open({ kind: "about" })} onNewPreset={newPreset} onAutonomy={setAutonomy} />
+        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-3 lg:grid-rows-[minmax(0,1fr)]">
+          <div className="flex min-h-0 min-w-0 flex-col gap-4">
+            <Playbook snap={snap} onChange={setSnap} className="shrink-0" />
+            <Facts snap={snap} run={run} className="flex min-h-0 flex-1 flex-col" />
+            <DemoTools />
+          </div>
+          <div className="flex min-h-0 min-w-0 flex-col gap-4">
+            <Voice state={state} />
+          </div>
+          <div className="flex min-h-0 min-w-0 flex-col gap-4">
+            <TryIt className="flex min-h-0 flex-1 flex-col" />
+            <Referral snap={snap} run={run} />
+          </div>
         </div>
       </div>
     </div>
@@ -117,7 +125,7 @@ function Referral({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
   const changed = url.trim() !== snap.referral_url
   const save = () => run(harnessApi.setReferral(url), "Referral link saved")
   return (
-    <Section title="Referral link" hint="Sent as a text after his voice note. Leads who join through it get John as their sponsor." icon={Link2}>
+    <Section title="Referral link" hint="Sent after his voice note; joiners get John as sponsor." icon={Link2} className="shrink-0">
       <div className="flex gap-2">
         <input
           value={url}
@@ -151,7 +159,7 @@ function Referral({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
 }
 
 /** The knowledge base: a short preview of its topics that opens into an editor. */
-function Facts({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
+function Facts({ snap, run, className }: { snap: HarnessSnapshot; run: Run; className?: string }) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState(snap.faq)
   useEffect(() => setText(snap.faq), [snap.faq])
@@ -160,8 +168,9 @@ function Facts({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
   return (
     <Section
       title="Knowledge base"
-      hint="What the AI knows about U-topia and U.Center, built from U.Center's calls, u.center and u-topia.com. Every preset answers from it, and only hands to John when truly stuck."
+      hint="What the AI knows about U-topia and U.Center."
       icon={ScrollText}
+      className={className}
       action={
         open ? (
           <div className="flex gap-1">
@@ -183,21 +192,24 @@ function Facts({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
     >
       {open ? (
         <>
-          <div className="max-h-[32rem] overflow-y-auto rounded-lg">
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-lg">
             <TextField value={text} onChange={setText} rows={14} mono />
           </div>
           <div className="mt-1.5 text-right text-[11px] text-muted-foreground tabular-nums">{text.split(/\s+/).filter(Boolean).length.toLocaleString()} words · Markdown</div>
         </>
       ) : (
-        <button onClick={() => setOpen(true)} className="group w-full text-left">
-          <div className="flex flex-wrap gap-1.5">
-            {topics.map((t) => (
-              <span key={t} className="rounded-md bg-secondary px-2 py-1 text-xs text-foreground/80">
-                {t}
-              </span>
-            ))}
+        <button onClick={() => setOpen(true)} className="group flex min-h-0 w-full flex-1 flex-col text-left">
+          {/* As many topics as fit; the rest fade out under the edge. */}
+          <div className="relative min-h-0 flex-1 overflow-hidden [mask-image:linear-gradient(to_bottom,black_calc(100%-1.5rem),transparent)]">
+            <div className="flex flex-wrap gap-1.5">
+              {topics.map((t) => (
+                <span key={t} className="rounded-md bg-secondary px-2 py-1 text-xs text-foreground/80">
+                  {t}
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-foreground">
+          <div className="mt-2 flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground group-hover:text-foreground">
             {snap.faq.split(/\s+/).filter(Boolean).length.toLocaleString()} words across {topics.length} topics <ChevronDown className="size-3" />
           </div>
         </button>
@@ -206,29 +218,53 @@ function Facts({ snap, run }: { snap: HarnessSnapshot; run: Run }) {
   )
 }
 
+const MODELS: Record<string, string> = {
+  eleven_flash_v2_5: "ElevenLabs Flash v2.5",
+  eleven_multilingual_v2: "ElevenLabs Multilingual v2",
+  eleven_turbo_v2_5: "ElevenLabs Turbo v2.5",
+}
+
+/** The real John next to his clone, so anyone can hear how close it is. */
 function Voice({ state }: { state: State }) {
   const a = state.ambassador
-  if (!a.samples?.original && !a.samples?.clone) return null
+  const ready = !a.mock_voice
   return (
-    <Section title="His voice" hint="The real John next to his clone." icon={Mic}>
-      <div className="space-y-2">
-        {a.samples.original && (
-          <div className="rounded-xl bg-secondary px-3 py-2">
-            <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-              <MonitorPlay className="size-3.5 text-red-500" /> The real John
+    <Section
+      title="His voice"
+      hint="The real John next to his AI clone."
+      icon={AudioLines}
+      action={
+        <span
+          title={ready ? `Leads hear the clone, made with ${MODELS[a.tts_model] ?? a.tts_model}` : "No voice clone set: notes are a placeholder tone"}
+          className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1", ready ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-amber-50 text-amber-800 ring-amber-200")}
+        >
+          <span className={cn("size-1.5 rounded-full", ready ? "bg-emerald-500" : "bg-amber-500")} />
+          {ready ? "Clone live" : "Test tone"}
+        </span>
+      }
+    >
+      {a.samples?.original || a.samples?.clone ? (
+        <div className="space-y-2">
+          {a.samples.original && (
+            <div className="rounded-xl bg-secondary px-3.5 py-2">
+              <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                <MonitorPlay className="size-3.5 text-red-500" /> The real John, from his talk
+              </div>
+              <VoiceNote src={a.samples.original} durationMs={14000} seed={11} />
             </div>
-            <VoiceNote src={a.samples.original} durationMs={14000} seed={11} />
-          </div>
-        )}
-        {a.samples.clone && (
-          <div className="rounded-xl bg-wa-bubble px-3 py-2">
-            <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-wa-dark">
-              <Mic className="size-3.5" /> His AI voice
+          )}
+          {a.samples.clone && (
+            <div className="rounded-xl bg-wa-bubble px-3.5 py-2 ring-1 ring-wa/15">
+              <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-wa-dark">
+                <Mic className="size-3.5" /> His AI voice
+              </div>
+              <VoiceNote src={a.samples.clone} durationMs={9000} seed={22} outgoing />
             </div>
-            <VoiceNote src={a.samples.clone} durationMs={9000} seed={22} outgoing />
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      ) : (
+        <p className="rounded-xl bg-secondary px-3.5 py-3 text-sm text-muted-foreground">The samples appear here once his voice clone is set up.</p>
+      )}
     </Section>
   )
 }
@@ -247,10 +283,10 @@ function DemoTools() {
     }
   }
   return (
-    <div className={cn("flex items-center gap-4 rounded-xl border border-dashed p-4")}>
+    <div className="flex shrink-0 items-center gap-4 rounded-xl border border-dashed bg-card/60 px-4 py-3">
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold">Demo tools</div>
-        <p className="text-xs text-muted-foreground">Restore the seeded demo leads between rehearsals. John's settings stay.</p>
+        <p className="text-xs text-muted-foreground">Restore the demo leads between rehearsals.</p>
       </div>
       <Button variant="outline" size="sm" onClick={reset} disabled={busy}>
         {busy ? <Loader2 className="animate-spin" /> : <RotateCcw />} Reset demo
