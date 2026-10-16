@@ -66,9 +66,13 @@ type Core struct {
 	// Avatar fetches a WhatsApp profile photo (nil when WhatsApp is off).
 	Avatar func(ctx context.Context, jid types.JID) ([]byte, error)
 
+	// Nudges tunes the follow-up queue for quiet leads.
+	Nudges NudgeConfig
+
 	mu            sync.Mutex
 	chats         map[int64]*chat
 	avatarChecked map[int64]time.Time
+	nudge         nudger
 }
 
 // Go runs fn in a goroutine and turns a panic into a log line, so one bad
@@ -130,6 +134,7 @@ func (c *Core) Handle(m Msg) {
 		return
 	}
 	c.Hub.Publish("message", msg)
+	c.staleNudges(contact.ID, "they wrote back")
 	if !m.Simulated {
 		c.Gateway.MarkRead(ctx, m)
 	}
@@ -509,6 +514,7 @@ func (c *Core) SendAsJohn(ctx context.Context, contactID int64, text string) err
 	m, err := c.Store.AddMessage(store.Message{ContactID: contactID, WAID: waID, Direction: "out", Kind: "text", Source: "john", Text: text})
 	if err == nil {
 		c.Hub.Publish("message", m)
+		c.staleNudges(contactID, "John messaged them")
 	}
 	return err
 }
@@ -527,6 +533,9 @@ func (c *Core) SetStatus(contactID int64, status string) error {
 	typ := map[string]string{store.StatusHuman: "taken_over", store.StatusAuto: "handed_back"}[status]
 	if typ != "" {
 		c.Store.AddEvent(contactID, typ, nil)
+	}
+	if status != store.StatusAuto {
+		c.staleNudges(contactID, "John took over the chat")
 	}
 	c.publishContact(contactID)
 	if status == store.StatusAuto && strings.HasPrefix(before.HandoffReason, unavailable) {
