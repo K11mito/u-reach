@@ -480,9 +480,23 @@ export function useLive() {
       }
     }
     connect()
+    // Through a public link (a Cloudflare tunnel) the live stream can be held
+    // back by the proxy, so remote viewers also refresh every few seconds.
+    // The presenter's own screen, on localhost, stays purely live.
+    const local = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)
+    const poll = local
+      ? undefined
+      : window.setInterval(() => {
+          if (document.hidden) return
+          api.state().then(setState).catch(() => {})
+          api.runs().then(setRuns).catch(() => {})
+          loaded.current.forEach((id) => loadMessages(id))
+          window.dispatchEvent(new Event("ureach:nudges"))
+        }, 4000)
     return () => {
       es?.close()
       window.clearTimeout(retry)
+      window.clearInterval(poll)
     }
   }, [refetch, loadMessages])
 
